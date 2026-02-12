@@ -11,8 +11,8 @@ Aplicação web que permite gerir todos os aspetos de uma escola de dança: alun
 - **Product Owner (Líder):** Diogo Silva
 - **Scrum Master (Secretário):** Rodrigo Miranda
 - **Developers:**  -Alexandre Barbosa,
-                   -Hugo Carvalho,
-                   -Rui Barbosa,
+                   \n-Hugo Carvalho,
+                   \n-Rui Barbosa,
 
 ## 🛠️ Stack Tecnológica
 
@@ -25,7 +25,6 @@ Aplicação web que permite gerir todos os aspetos de uma escola de dança: alun
 - React 18
 - JavaScript / TypeScript
 - HTML5 & CSS3
-- Axios
 
 ### Ferramentas
 - Git & GitHub
@@ -82,16 +81,6 @@ PostgreSQL 18.0+
 - Daily standups de 15 minutos
 - Sprint reviews e retrospectives
 
-## 🧪 Testes
-```bash
-# Backend
-cd backend
-mvn test
-
-# Frontend
-cd frontend
-npm test
-```
 
 ## 📝 Documentação
 
@@ -125,7 +114,8 @@ Projeto académico - IPCA 2025/2026
 
 ## 📧 Contacto
 
-[Emails da equipa]
+31504@alunos.ipca.pt (Email Líder)
+31509@alunos.ipca.pt (Email Secretário)
 
 ---
 
