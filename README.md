@@ -11,8 +11,8 @@ Aplicação web que permite gerir todos os aspetos de uma escola de dança: alun
 - **Product Owner (Líder):** Diogo Silva
 - **Scrum Master (Secretário):** Rodrigo Miranda
 - **Developers:**  -Alexandre Barbosa,
-                   \n-Hugo Carvalho,
-                   \n-Rui Barbosa,
+                   -Hugo Carvalho,
+                   -Rui Barbosa,
 
 ## 🛠️ Stack Tecnológica
 
@@ -69,7 +69,6 @@ Aplicação web que permite gerir todos os aspetos de uma escola de dança: alun
 ### Pré-requisitos
 ```bash
 Java 17+
-Node.js 18+
 PostgreSQL 18.0+
 ```
 
