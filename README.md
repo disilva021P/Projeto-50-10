@@ -11,8 +11,8 @@ Aplicação web que permite gerir todos os aspetos de uma escola de dança: alun
 - **Product Owner (Líder):** Diogo Silva
 - **Scrum Master (Secretário):** Rodrigo Miranda
 - **Developers:**  -Alexandre Barbosa,
--                  -Hugo Carvalho,
--                  -Rui Barbosa,
+                   -Hugo Carvalho,
+                   -Rui Barbosa,
 
 ## 🛠️ Stack Tecnológica
 
