@@ -1,0 +1,194 @@
+# ===============================
+# BACKEND (Spring Boot / Java)
+# ===============================
+
+# Compiled class files
+*.class
+*.jar
+*.war
+*.ear
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Log files
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+
+# ===============================
+# FRONTEND (React / Node.js)
+# ===============================
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Production build
+build/
+dist/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Cache
+.npm
+.eslintcache
+.node_repl_history
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ===============================
+# IDE - VS Code (Principal)
+# ===============================
+
+.vscode/
+*.code-workspace
+.history/
+
+# ===============================
+# IDE - Outros
+# ===============================
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Eclipse
+.metadata
+.classpath
+.project
+.settings/
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.loadpath
+.recommenders
+
+# NetBeans
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# ===============================
+# SYSTEM FILES
+# ===============================
+
+# Linux / Fedora
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# ===============================
+# PROJECT SPECIFIC
+# ===============================
+
+# Application properties (contém passwords)
+**/application-*.properties
+!**/application.properties.example
+
+# Uploads de utilizadores
+uploads/
+temp/
+
+# Backup files
+*.backup
+*.bak
+
+# Documentation builds
+docs/_build/
+docs/.doctrees/
+
+# ===============================
+# OUTROS
+# ===============================
+
+# Certificates and keys
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+
+# Compressed files
+*.zip
+*.tar.gz
+*.rar
+
+# Package files
+*.dmg
+*.pkg
+*.deb
+*.rpm
