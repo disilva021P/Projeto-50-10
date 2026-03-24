@@ -10,4 +10,9 @@ import java.util.List;
 @RequestMapping("/api/horarios")
 public class HorariosController {
 
+    @GetMapping
+    public horarios(){
+
+    }
+
 }
