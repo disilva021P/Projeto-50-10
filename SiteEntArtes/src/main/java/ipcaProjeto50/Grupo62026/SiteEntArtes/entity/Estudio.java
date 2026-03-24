@@ -21,7 +21,7 @@ public class Estudio {
     private Integer capacidade;
 
     @Lob
-    @Column(name = "notas")
+    @Column(name = "notas",columnDefinition = "TEXT")
     private String notas;
 
 

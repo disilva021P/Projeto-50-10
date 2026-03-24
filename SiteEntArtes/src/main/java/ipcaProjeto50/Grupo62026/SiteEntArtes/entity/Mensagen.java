@@ -26,7 +26,7 @@ public class Mensagen {
     private Utilizadore destinatario;
 
     @Lob
-    @Column(name = "conteudo", nullable = false)
+    @Column(name = "conteudo", nullable = false, columnDefinition = "TEXT")
     private String conteudo;
 
     @ColumnDefault("CURRENT_TIMESTAMP")

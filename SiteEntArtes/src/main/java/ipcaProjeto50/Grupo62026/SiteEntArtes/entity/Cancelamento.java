@@ -26,7 +26,7 @@ public class Cancelamento {
     private Utilizadore utilizador;
 
     @Lob
-    @Column(name = "motivo", nullable = false)
+    @Column(name = "motivo", nullable = false,columnDefinition = "TEXT")
     private String motivo;
 
     @ColumnDefault("0")

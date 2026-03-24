@@ -18,7 +18,7 @@ public class TipoPagamento {
     private String tipoPagamento;
 
     @Lob
-    @Column(name = "descricao")
+    @Column(name = "descricao", columnDefinition = "TEXT")
     private String descricao;
 
 

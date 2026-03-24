@@ -34,7 +34,7 @@ public class InventarioUnidade {
     private String localizacao;
 
     @Lob
-    @Column(name = "notas")
+    @Column(name = "notas",columnDefinition = "TEXT")
     private String notas;
 
     @ColumnDefault("CURRENT_TIMESTAMP")

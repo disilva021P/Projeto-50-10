@@ -22,7 +22,7 @@ public class Aluno {
     private Utilizadore utilizadores;
 
     @Lob
-    @Column(name = "notas")
+    @Column(name = "notas", columnDefinition = "TEXT")
     private String notas;
 
 

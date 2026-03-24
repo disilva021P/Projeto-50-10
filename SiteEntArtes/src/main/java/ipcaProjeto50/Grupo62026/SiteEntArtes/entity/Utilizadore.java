@@ -50,7 +50,7 @@ public class Utilizadore {
     private LocalDate dataNascimento;
 
     @Lob
-    @Column(name = "nif", nullable = false)
+    @Column(name = "nif", nullable = false, columnDefinition = "TEXT")
     private String nif;
 
 

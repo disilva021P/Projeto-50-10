@@ -22,7 +22,7 @@ public class Artigo {
     private String nome;
 
     @Lob
-    @Column(name = "descricao", nullable = false)
+    @Column(name = "descricao", nullable = false,columnDefinition = "TEXT")
     private String descricao;
 
     @Column(name = "tamanho", nullable = false, length = 50)

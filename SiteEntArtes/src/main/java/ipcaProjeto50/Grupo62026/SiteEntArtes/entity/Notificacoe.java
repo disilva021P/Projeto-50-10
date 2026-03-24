@@ -25,7 +25,7 @@ public class Notificacoe {
     private String titulo;
 
     @Lob
-    @Column(name = "mensagem", nullable = false)
+    @Column(name = "mensagem", nullable = false, columnDefinition = "TEXT")
     private String mensagem;
 
     @ColumnDefault("0")

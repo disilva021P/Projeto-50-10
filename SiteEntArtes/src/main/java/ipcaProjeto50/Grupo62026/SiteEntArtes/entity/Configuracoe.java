@@ -24,7 +24,7 @@ public class Configuracoe {
     private String valor;
 
     @Lob
-    @Column(name = "descricao")
+    @Column(name = "descricao",columnDefinition = "TEXT")
     private String descricao;
 
     @ColumnDefault("CURRENT_TIMESTAMP")

@@ -22,7 +22,7 @@ public class AuditoriaLog {
     private Utilizadore idUtilizador;
 
     @Lob
-    @Column(name = "acao", nullable = false)
+    @Column(name = "acao", nullable = false,columnDefinition = "TEXT")
     private String acao;
 
     @ColumnDefault("CURRENT_TIMESTAMP")

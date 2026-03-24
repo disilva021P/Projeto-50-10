@@ -18,7 +18,7 @@ public class Modalidade {
     private String nome;
 
     @Lob
-    @Column(name = "descricao")
+    @Column(name = "descricao", columnDefinition = "TEXT")
     private String descricao;
 
 

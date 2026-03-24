@@ -26,7 +26,7 @@ public class Pagamento {
     private Boolean pago;
 
     @Lob
-    @Column(name = "descricao")
+    @Column(name = "descricao", columnDefinition = "TEXT")
     private String descricao;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

@@ -33,7 +33,7 @@ public class Professore {
     private Boolean professorExterno;
 
     @Lob
-    @Column(name = "notas")
+    @Column(name = "notas", columnDefinition = "TEXT")
     private String notas;
 
 

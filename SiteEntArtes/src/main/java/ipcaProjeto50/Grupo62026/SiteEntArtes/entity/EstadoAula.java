@@ -18,7 +18,7 @@ public class EstadoAula {
     private String estado;
 
     @Lob
-    @Column(name = "descricao")
+    @Column(name = "descricao",columnDefinition = "TEXT")
     private String descricao;
 
 
