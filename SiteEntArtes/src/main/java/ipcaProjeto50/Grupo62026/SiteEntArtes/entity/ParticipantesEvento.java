@@ -1,0 +1,26 @@
+package ipcaProjeto50.Grupo62026.SiteEntArtes.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "participantes_evento")
+public class ParticipantesEvento {
+    @EmbeddedId
+    private ParticipantesEventoId id;
+
+    @MapsId("eventoId")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "evento_id", nullable = false)
+    private Evento evento;
+
+    @MapsId("utilizadorId")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "utilizador_id", nullable = false)
+    private Utilizadore utilizador;
+
+
+}

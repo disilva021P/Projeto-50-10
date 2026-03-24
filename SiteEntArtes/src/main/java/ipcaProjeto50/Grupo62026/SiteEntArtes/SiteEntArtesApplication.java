@@ -1,4 +1,4 @@
-package ipcaProjeto50._Grupo62026.SiteEntArtes;
+package ipcaProjeto50.Grupo62026.SiteEntArtes;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
