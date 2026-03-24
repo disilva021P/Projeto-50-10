@@ -36,14 +36,12 @@ public class AuthController {
         try {
             Authentication auth = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(loginData.email(), loginData.password())
-
             );
             UserDetails userDetails = (UserDetails) auth.getPrincipal();
-            String token = jwtService.generateToken(userDetails.getUsername());
+            String token = jwtService.generateToken(userDetails);
+            System.out.println(userDetails.getAuthorities());
             return ResponseEntity.ok(token);
-
         } catch (AuthenticationException e) {
-            System.out.println(e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Email ou Password incorretos");
         }
     }

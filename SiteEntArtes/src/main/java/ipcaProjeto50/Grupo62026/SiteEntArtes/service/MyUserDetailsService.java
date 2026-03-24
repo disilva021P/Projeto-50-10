@@ -20,11 +20,10 @@ public class MyUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         Utilizadore usuario = repositorio.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Utilizador não encontrado"));
-        System.out.println("ESTOU AQUI____");
         return User.builder()
                 .username(usuario.getEmail())
                 .password(usuario.getPalavraPasse()) // Deve estar encriptada com BCrypt na BD
-                .authorities(usuario.getTipo().getTipoUtilizador().toUpperCase()) // Ou as roles que tiveres
+                .authorities(usuario.getTipo().getTipoUtilizador())
                 .build();
     }
 }

@@ -52,6 +52,17 @@ public class Utilizadore {
     @Lob
     @Column(name = "nif", nullable = false, columnDefinition = "TEXT")
     private String nif;
-
+    public boolean isAluno(){
+        return this.tipo.getTipoUtilizador().equals("ROLE_ALUNO");
+    }
+    public boolean isProfessor(){
+        return this.tipo.getTipoUtilizador().equals("ROLE_PROFESSOR");
+    }
+    public boolean isCoordenacao(){
+        return this.tipo.getTipoUtilizador().equals("ROLE_COORDENACAO");
+    }
+    public boolean isEncarregado(){
+        return this.tipo.getTipoUtilizador().equals("ROLE_Encarregado");
+    }
 
 }
