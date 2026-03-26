@@ -6,6 +6,8 @@ import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -31,7 +33,7 @@ public class Mensagen {
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "enviada_em", nullable = false)
-    private Instant enviadaEm;
+        private LocalDateTime enviadaEm;
 
 
 }

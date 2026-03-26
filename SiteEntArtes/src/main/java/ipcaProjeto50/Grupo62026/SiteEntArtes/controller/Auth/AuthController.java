@@ -39,7 +39,6 @@ public class AuthController {
             );
             UserDetails userDetails = (UserDetails) auth.getPrincipal();
             String token = jwtService.generateToken(userDetails);
-            System.out.println(userDetails.getAuthorities());
             return ResponseEntity.ok(token);
         } catch (AuthenticationException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Email ou Password incorretos");
