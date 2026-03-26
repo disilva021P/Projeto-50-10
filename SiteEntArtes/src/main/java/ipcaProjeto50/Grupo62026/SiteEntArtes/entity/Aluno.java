@@ -1,5 +1,6 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.entity;
 
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.AulaDto;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

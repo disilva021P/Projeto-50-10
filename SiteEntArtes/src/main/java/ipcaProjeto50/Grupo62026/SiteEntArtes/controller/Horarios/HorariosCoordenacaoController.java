@@ -35,8 +35,6 @@ public class HorariosCoordenacaoController {
     public ResponseEntity<List<Aula>> horarioDia(
             @RequestParam(value = "data", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data) {
-
-        // Se "data" for null, usa a data de hoje
         LocalDate dataBusca = (data != null) ? data : LocalDate.now();
 
         List<Aula> aulas = aulaService.findByDataAula(dataBusca);

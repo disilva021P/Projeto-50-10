@@ -1,5 +1,7 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.entity;
 
+import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.AulaDto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -62,6 +64,9 @@ public class Aula {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "tipo_aula", nullable = false)
     private TipoAula tipoAula;
+
+
+
 
 
 }

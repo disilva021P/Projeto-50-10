@@ -1,5 +1,7 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
+import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.AulaDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Aula;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Utilizadore;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.AulaRepository;
@@ -19,11 +21,12 @@ import java.util.Optional;
 public class AulaService {
     private final UtilizadoreRepository utilizadoreRepository;
     private final AulaRepository aulaRepository;
-
+    private final IdHasher idHasher;
     @Autowired
-    public AulaService(AulaRepository aulaRepository,UtilizadoreRepository utilizadoreRepository) {
+    public AulaService(AulaRepository aulaRepository,UtilizadoreRepository utilizadoreRepository, IdHasher idHasher) {
         this.aulaRepository = aulaRepository;
         this.utilizadoreRepository= utilizadoreRepository;
+        this.idHasher = idHasher;
     }
 
     // Listar todas as aulas
@@ -55,10 +58,31 @@ public class AulaService {
         LocalDate dia = LocalDate.now();
         return aulaRepository.findByDataAula(dia);
     }
-    public List<Aula> buscarAulaporEmail_Data(LocalDate dataAula, String email){
+    public List<AulaDto> buscarAulaporEmail_Data(LocalDate dataAula, String email){
         Optional<Utilizadore> utilizador = utilizadoreRepository.findByEmail(email);
         if(utilizador.isEmpty()) throw new RuntimeException("Erro a encontrar utilizador");
-
-        return aulaRepository.findByDataEAluno(dataAula,utilizador.get().getId());
+        List<Aula> aulas = aulaRepository.findByDataEAluno(dataAula,utilizador.get().getId());
+        return converterListaAulaParaAulaDto(aulas);
     }
+
+    public List<AulaDto> converterListaAulaParaAulaDto(List<Aula> aulas) {
+         return aulas.stream()
+                .map(this::converterParaDto)
+                .toList();
+    }
+    public AulaDto converterParaDto(Aula aula) {
+        return new AulaDto(
+                idHasher.encode(aula.getId()),
+                aula.getModalidade(),
+                aula.getEstudio(),
+                aula.getMaxAlunos(),
+                aula.getDuracaoMinutos(),
+                aula.getDataAula(),
+                aula.getHoraInicio(),
+                aula.getHoraFim(),
+                aula.getEstado(),
+                aula.getTipoAula()
+        );
+    }
+
 }

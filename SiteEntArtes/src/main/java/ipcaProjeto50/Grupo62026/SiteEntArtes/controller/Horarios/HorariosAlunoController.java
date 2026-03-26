@@ -1,5 +1,6 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.controller.Horarios;
 
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.AulaDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Aula;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.service.AulaService;
 import org.apache.tomcat.util.net.openssl.ciphers.Authentication;
@@ -23,14 +24,14 @@ public class HorariosAlunoController {
         this.aulaService=aulaService;
     }
     @GetMapping
-    public ResponseEntity<List<Aula>> horarioDia(@AuthenticationPrincipal String userEmail,
-            @RequestParam(value = "data", required = false)
+    public ResponseEntity<List<AulaDto>> horarioDia(@AuthenticationPrincipal String userEmail,
+                                                    @RequestParam(value = "data", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data) {
 
         // Se "data" for null, usa a data de hoje
         LocalDate dataBusca = (data != null) ? data : LocalDate.now();
 
-        List<Aula> aulas = aulaService.buscarAulaporEmail_Data(dataBusca,userEmail);
+        List<AulaDto> aulas = aulaService.buscarAulaporEmail_Data(dataBusca,userEmail);
 
         if (aulas.isEmpty()) {
             return ResponseEntity.noContent().build(); // Opcional: retorna 204 se não houver aulas
@@ -39,7 +40,7 @@ public class HorariosAlunoController {
         return ResponseEntity.ok(aulas);
     }
     @GetMapping("/{id}")
-    public ResponseEntity<List<Aula>> horarioDia(@AuthenticationPrincipal String userEmail,@PathVariable Integer id) {
+    public ResponseEntity<AulaDto> horarioDia(@AuthenticationPrincipal String userEmail,@PathVariable String id) {
 
         // Se "data" for null, usa a data de hoje
 

@@ -15,7 +15,7 @@ public class IdHasher {
 
     @PostConstruct
     public void init() {
-        this.hashids = new Hashids(hashSecret, 8);
+        this.hashids = new Hashids(hashSecret, 15);
     }
 
     public String encode(Integer id) {
