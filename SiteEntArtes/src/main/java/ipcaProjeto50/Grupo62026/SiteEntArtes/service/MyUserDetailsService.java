@@ -1,5 +1,6 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
+import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Utilizadore;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.UtilizadoreRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,17 +14,19 @@ import org.springframework.stereotype.Service;
 public class MyUserDetailsService implements UserDetailsService {
 
     private final UtilizadoreRepository repositorio; // O teu repositório de utilizadores
-    public MyUserDetailsService(UtilizadoreRepository repositorio){
+    private final IdHasher idHasher;
+    public MyUserDetailsService(UtilizadoreRepository repositorio,IdHasher idHasher){
         this.repositorio=repositorio;
+        this.idHasher=idHasher;
     }
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        Utilizadore usuario = repositorio.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Utilizador não encontrado"));
+        Utilizadore utilizadore = repositorio.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Utilizador não encontrado com o email: " + email));
         return User.builder()
-                .username(usuario.getEmail())
-                .password(usuario.getPalavraPasse()) // Deve estar encriptada com BCrypt na BD
-                .authorities(usuario.getTipo().getTipoUtilizador())
+                .username(idHasher.encode(utilizadore.getId()))
+                .password(utilizadore.getPalavraPasse())
+                .authorities(utilizadore.getTipo().getTipoUtilizador())
                 .build();
     }
 }

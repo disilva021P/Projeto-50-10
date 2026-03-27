@@ -58,6 +58,7 @@ public class AulaService {
         LocalDate dia = LocalDate.now();
         return aulaRepository.findByDataAula(dia);
     }
+    //TODO: MUDAR TUDO PARA ID E NÃO EMAIL
     public List<AulaDto> buscarAulaporEmail_Data(LocalDate dataAula, String email){
         Optional<Utilizadore> utilizador = utilizadoreRepository.findByEmail(email);
         if(utilizador.isEmpty()) throw new RuntimeException("Erro a encontrar utilizador");

@@ -32,6 +32,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+        String path = request.getServletPath();
+        if (path.startsWith("/api/auth/login")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         String authHeader = request.getHeader("Authorization");
 
@@ -41,13 +46,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String jwt = authHeader.substring(7);
-        String userEmail = jwtService.extractUsername(jwt); // Assume que tens este método no JwtService
+        String userId = jwtService.extractUsername(jwt); // Assume que tens este método no JwtService
 
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             String authority = jwtService.extractAuthorities(jwt);
-            if (jwtService.isTokenValid(jwt, userEmail)) {
+            if (jwtService.isTokenValid(jwt, userId)) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userEmail,
+                        userId,
                         null,
                         Collections.singletonList(new SimpleGrantedAuthority(authority))
                 );

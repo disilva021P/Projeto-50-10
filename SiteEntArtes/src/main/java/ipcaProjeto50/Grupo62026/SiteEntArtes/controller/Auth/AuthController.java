@@ -34,13 +34,20 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody LoginDTO loginData) {
         try {
+            System.out.println("Aqui?");
             Authentication auth = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(loginData.email(), loginData.password())
             );
+            System.out.println("Aqui?1");
+
             UserDetails userDetails = (UserDetails) auth.getPrincipal();
+            if(userDetails==null) throw new RuntimeException("User nulo");
             String token = jwtService.generateToken(userDetails);
+            System.out.println("Aqui?2");
+
             return ResponseEntity.ok(token);
         } catch (AuthenticationException e) {
+            System.out.println(e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Email ou Password incorretos");
         }
     }
