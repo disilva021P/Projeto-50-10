@@ -33,8 +33,8 @@ public class Artigo {
     private Utilizadore donoUtilizador;
 
     @ColumnDefault("0")
-    @Column(name = "para_venda", nullable = false)
-    private Boolean paraVenda;
+    @Column(name = "para_venda", nullable = false, columnDefinition = "TINYINT")
+    private Integer paraVenda;
 
     @ColumnDefault("0")
     @Column(name = "arquivado", nullable = false)
