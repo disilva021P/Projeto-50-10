@@ -7,6 +7,7 @@ import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 @Getter
 @Setter
@@ -33,8 +34,11 @@ public class Artigo {
     private Utilizadore donoUtilizador;
 
     @ColumnDefault("0")
-    @Column(name = "para_venda", nullable = false, columnDefinition = "TINYINT")
-    private Integer paraVenda;
+    @Column(name = "para_venda", nullable = false)
+    private Boolean paraVenda;
+
+    @OneToMany(mappedBy = "artigo", fetch = FetchType.LAZY)
+    private List<InventarioUnidade> unidades;
 
     @ColumnDefault("0")
     @Column(name = "arquivado", nullable = false)
@@ -46,6 +50,5 @@ public class Artigo {
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "criado_em", nullable = false)
     private Instant criadoEm;
-
-
 }
+

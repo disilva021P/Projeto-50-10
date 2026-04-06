@@ -25,7 +25,7 @@ public class MarketplaceController {
             @RequestParam(defaultValue = "12")       int size,
             @RequestParam(defaultValue = "criadoEm") String sortBy,
             @RequestParam(defaultValue = "desc")     String direction,
-            @RequestParam(required = false)          Integer tipo
+            @RequestParam(required = false)          Integer estado   // <-- era "tipo"
     ) {
         Sort sort = direction.equalsIgnoreCase("desc")
                 ? Sort.by(sortBy).descending()
@@ -33,8 +33,8 @@ public class MarketplaceController {
 
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        Page<ArtigoDto> resultado = (tipo != null)
-                ? marketplaceService.listarArtigosPorTipo(tipo, pageable)
+        Page<ArtigoDto> resultado = (estado != null)
+                ? marketplaceService.listarArtigosPorEstado(estado, pageable)
                 : marketplaceService.listarArtigos(pageable);
 
         return ResponseEntity.ok(resultado);

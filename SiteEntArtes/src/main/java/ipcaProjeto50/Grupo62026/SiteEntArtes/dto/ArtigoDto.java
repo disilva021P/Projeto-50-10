@@ -9,7 +9,9 @@ public record ArtigoDto(
         String descricao,
         String tamanho,
         String donoNome,
-        Integer  paraVenda,    // true = venda, false = doação/aluguer?
+        Boolean paraVenda,
         BigDecimal preco,
-        Instant criadoEm
+        Instant criadoEm,
+        Integer estadoUnidadeId,
+        String estadoUnidadeNome
 ) {}
