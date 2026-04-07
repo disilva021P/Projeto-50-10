@@ -35,8 +35,8 @@ public class Artigo {
     private Utilizadore donoUtilizador;
 
     @ColumnDefault("0")
-    @Column(name = "para_venda", nullable = false)
-    private Boolean paraVenda;
+    @Column(name = "tipo_negocio")
+    private Integer tipoNegocio; // 0: Doação, 1: Venda, 2: Aluguer
 
     @OneToMany(mappedBy = "artigo", fetch = FetchType.LAZY)
     private List<InventarioUnidade> unidades = new ArrayList<>();

@@ -9,9 +9,10 @@ public record ArtigoDto(
         String descricao,
         String tamanho,
         String donoNome,
-        Boolean paraVenda,
+        Integer tipoNegocio,
         BigDecimal preco,
         Instant criadoEm,
         Integer estadoUnidadeId,
-        String estadoUnidadeNome
+        String estadoUnidadeNome,
+        Integer imagemId
 ) {}

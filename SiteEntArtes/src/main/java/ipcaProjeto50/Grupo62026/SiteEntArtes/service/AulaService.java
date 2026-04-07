@@ -74,15 +74,12 @@ public class AulaService {
     public AulaDto converterParaDto(Aula aula) {
         return new AulaDto(
                 idHasher.encode(aula.getId()),
-                aula.getModalidade(),
-                aula.getEstudio(),
-                aula.getMaxAlunos(),
                 aula.getDuracaoMinutos(),
                 aula.getDataAula(),
                 aula.getHoraInicio(),
                 aula.getHoraFim(),
-                aula.getEstado(),
-                aula.getTipoAula()
+                aula.getNotas(),
+                aula.getIdHorario()
         );
     }
 

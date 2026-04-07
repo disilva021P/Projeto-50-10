@@ -1,34 +1,47 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.controller.Marketplace;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ArtigoDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ArtigoRequest;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.ImagensUnidadeRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.service.MarketplaceService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ArtigoRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/marketplace")
 public class MarketplaceController {
 
     private final MarketplaceService marketplaceService;
+    private final ImagensUnidadeRepository imagensUnidadeRepository;
 
-    public MarketplaceController(MarketplaceService marketplaceService) {
+    public MarketplaceController(MarketplaceService marketplaceService, ImagensUnidadeRepository imagensUnidadeRepository) {
         this.marketplaceService = marketplaceService;
+        this.imagensUnidadeRepository = imagensUnidadeRepository;
     }
 
+    /**
+     * Listagem com filtros dinâmicos: Tipo Negócio (0,1,2), Tamanho e Range de Preço.
+     */
     @GetMapping
     public ResponseEntity<Page<ArtigoDto>> listarArtigos(
             @RequestParam(defaultValue = "0")        int page,
             @RequestParam(defaultValue = "12")       int size,
             @RequestParam(defaultValue = "criadoEm") String sortBy,
             @RequestParam(defaultValue = "desc")     String direction,
-            @RequestParam(required = false)          Integer estado   // <-- era "tipo"
+            @RequestParam(required = false)          Integer tipoNegocio, // 0: Doação, 1: Venda, 2: Aluguer
+            @RequestParam(required = false)          String tamanho,
+            @RequestParam(required = false)          Double min,
+            @RequestParam(required = false)          Double max
     ) {
         Sort sort = direction.equalsIgnoreCase("desc")
                 ? Sort.by(sortBy).descending()
@@ -36,21 +49,38 @@ public class MarketplaceController {
 
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        Page<ArtigoDto> resultado = (estado != null)
-                ? marketplaceService.listarArtigosPorEstado(estado, pageable)
-                : marketplaceService.listarArtigos(pageable);
+        Page<ArtigoDto> resultado = marketplaceService.filtrarArtigos(
+                tipoNegocio,
+                tamanho,
+                min,
+                max,
+                pageable
+        );
 
         return ResponseEntity.ok(resultado);
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ArtigoDto> inserirArtigo(
-            @RequestBody ArtigoRequest request,
+            @ModelAttribute ArtigoRequest request,
+            @RequestParam("imagem") MultipartFile imagem,
             Authentication authentication
     ) {
-        System.out.println(">>> Nome no token: " + authentication.getName());
-        String id = authentication.getName();
-        ArtigoDto criado = marketplaceService.inserirArtigo(request, id);
-        return ResponseEntity.status(HttpStatus.CREATED).body(criado);
+        try {
+            String utilizadorId = authentication.getName();
+            ArtigoDto criado = marketplaceService.inserirArtigo(request, imagem, utilizadorId);
+            return ResponseEntity.status(HttpStatus.CREATED).body(criado);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/imagem/{id}")
+    public ResponseEntity<byte[]> getImagem(@PathVariable Integer id) {
+        return imagensUnidadeRepository.findById(id)
+                .map(img -> ResponseEntity.ok()
+                        .contentType(MediaType.IMAGE_JPEG)
+                        .body(img.getUrlImagem()))
+                .orElse(ResponseEntity.notFound().build());
     }
 }

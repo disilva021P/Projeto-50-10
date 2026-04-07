@@ -6,6 +6,6 @@ public record ArtigoRequest(
         String nome,
         String descricao,
         String tamanho,
-        Boolean paraVenda,
+        Integer tipoNegocio,
         BigDecimal preco
 ) {}
