@@ -7,6 +7,7 @@ import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -38,7 +39,7 @@ public class Artigo {
     private Boolean paraVenda;
 
     @OneToMany(mappedBy = "artigo", fetch = FetchType.LAZY)
-    private List<InventarioUnidade> unidades;
+    private List<InventarioUnidade> unidades = new ArrayList<>();
 
     @ColumnDefault("0")
     @Column(name = "arquivado", nullable = false)

@@ -8,6 +8,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ArtigoRequest;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 
 @RestController
 @RequestMapping("/api/marketplace")
@@ -38,5 +41,16 @@ public class MarketplaceController {
                 : marketplaceService.listarArtigos(pageable);
 
         return ResponseEntity.ok(resultado);
+    }
+
+    @PostMapping
+    public ResponseEntity<ArtigoDto> inserirArtigo(
+            @RequestBody ArtigoRequest request,
+            Authentication authentication
+    ) {
+        System.out.println(">>> Nome no token: " + authentication.getName());
+        String id = authentication.getName();
+        ArtigoDto criado = marketplaceService.inserirArtigo(request, id);
+        return ResponseEntity.status(HttpStatus.CREATED).body(criado);
     }
 }
