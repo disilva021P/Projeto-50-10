@@ -7,6 +7,7 @@ import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -40,11 +41,11 @@ public class Utilizadore {
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "criado_em", nullable = false)
-    private Instant criadoEm;
+    private LocalDateTime criadoEm;
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "editado_em", nullable = false)
-    private Instant editadoEm;
+    private LocalDateTime editadoEm;
 
     @Column(name = "data_nascimento", nullable = false)
     private LocalDate dataNascimento;
