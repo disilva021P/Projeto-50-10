@@ -30,6 +30,12 @@ public class Artigo {
     @Column(name = "tamanho", nullable = false, length = 50)
     private String tamanho;
 
+    @Column(name = "cor")
+    private String cor;
+
+    @Column(name = "condicao")
+    private String condicao; // 'Novo', 'Como novo', 'Bom estado', 'Usado'
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "dono_utilizador_id", nullable = false)
     private Utilizadore donoUtilizador;

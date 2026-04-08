@@ -8,6 +8,8 @@ public record ArtigoDto(
         String nome,
         String descricao,
         String tamanho,
+        String cor,
+        String condicao,
         String donoNome,
         Integer tipoNegocio,
         BigDecimal preco,

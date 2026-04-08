@@ -38,8 +38,10 @@ public class MarketplaceController {
             @RequestParam(defaultValue = "12")       int size,
             @RequestParam(defaultValue = "criadoEm") String sortBy,
             @RequestParam(defaultValue = "desc")     String direction,
-            @RequestParam(required = false)          Integer tipoNegocio, // 0: Doação, 1: Venda, 2: Aluguer
+            @RequestParam(required = false)          Integer tipoNegocio,
             @RequestParam(required = false)          String tamanho,
+            @RequestParam(required = false)          String cor,
+            @RequestParam(required = false)          String condicao,
             @RequestParam(required = false)          Double min,
             @RequestParam(required = false)          Double max
     ) {
@@ -50,11 +52,7 @@ public class MarketplaceController {
         Pageable pageable = PageRequest.of(page, size, sort);
 
         Page<ArtigoDto> resultado = marketplaceService.filtrarArtigos(
-                tipoNegocio,
-                tamanho,
-                min,
-                max,
-                pageable
+                tipoNegocio, tamanho, cor, condicao, min, max, pageable
         );
 
         return ResponseEntity.ok(resultado);

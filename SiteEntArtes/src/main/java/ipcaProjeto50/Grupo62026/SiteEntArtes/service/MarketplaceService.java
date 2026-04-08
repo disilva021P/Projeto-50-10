@@ -29,8 +29,8 @@ public class MarketplaceService {
     private final IdHasher idHasher;
     private final jakarta.persistence.EntityManager entityManager;
 
-    public Page<ArtigoDto> filtrarArtigos(Integer tipoNegocio, String tamanho, Double min, Double max, Pageable pageable) {
-        return artigoRepository.filtrarMarketplace(tipoNegocio, tamanho, min, max, pageable)
+    public Page<ArtigoDto> filtrarArtigos(Integer tipo, String tam, String cor, String cond, Double min, Double max, Pageable pageable) {
+        return artigoRepository.filtrarMarketplace(tipo, tam, cor, cond, min, max, pageable)
                 .map(this::toDto);
     }
 
@@ -50,6 +50,8 @@ public class MarketplaceService {
         artigo.setNome(request.nome());
         artigo.setDescricao(request.descricao());
         artigo.setTamanho(request.tamanho());
+        artigo.setCor(request.cor());
+        artigo.setCondicao(request.condicao());
         artigo.setTipoNegocio(request.tipoNegocio());
         artigo.setPreco(request.preco());
         artigo.setDonoUtilizador(dono);
@@ -107,6 +109,8 @@ public class MarketplaceService {
                 artigo.getNome(),
                 artigo.getDescricao(),
                 artigo.getTamanho(),
+                artigo.getCor(),
+                artigo.getCondicao(),
                 artigo.getDonoUtilizador().getNome(),
                 artigo.getTipoNegocio(),
                 artigo.getPreco(),
