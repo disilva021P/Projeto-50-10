@@ -12,6 +12,7 @@ import java.time.LocalDate;
 @Setter
 @Entity
 @Table(name = "utilizadores")
+@Inheritance(strategy = InheritanceType.JOINED)
 public class Utilizadore {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -56,13 +57,13 @@ public class Utilizadore {
         return this.tipo.getTipoUtilizador().equals("ROLE_ALUNO");
     }
     public boolean isProfessor(){
-        return this.tipo.getTipoUtilizador().equals("ROLE_PROFESSOR");
+        return tipo != null && "ROLE_ALUNO".equals(tipo.getTipoUtilizador());
     }
     public boolean isCoordenacao(){
-        return this.tipo.getTipoUtilizador().equals("ROLE_COORDENACAO");
+        return tipo != null && this.tipo.getTipoUtilizador().equals("ROLE_COORDENACAO");
     }
     public boolean isEncarregado(){
-        return this.tipo.getTipoUtilizador().equals("ROLE_Encarregado");
+        return tipo != null && this.tipo.getTipoUtilizador().equals("ROLE_Encarregado");
     }
 
 }

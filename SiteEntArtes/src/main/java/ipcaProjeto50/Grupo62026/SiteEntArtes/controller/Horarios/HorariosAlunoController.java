@@ -25,12 +25,12 @@ public class HorariosAlunoController {
     @GetMapping("/dia")
     public ResponseEntity<List<AulaDto>> horarioDia(@AuthenticationPrincipal String userId,
                                                     @RequestParam(value = "data", required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data) {
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data) throws Exception {
 
         // Se "data" for null, usa a data de hoje
         LocalDate dataBusca = (data != null) ? data : LocalDate.now();
 
-        List<AulaDto> aulas = aulaService.buscarAulaporEmail_Data(dataBusca,userId);
+        List<AulaDto> aulas = aulaService.buscarAulaporId_Data(dataBusca,userId);
 
         if (aulas.isEmpty()) {
             return ResponseEntity.noContent().build(); // Opcional: retorna 204 se não houver aulas
@@ -52,7 +52,7 @@ public class HorariosAlunoController {
     Pagina principal de horarios, devolve todas as aulas da semana atual ou seguinte
      */
     @GetMapping
-    public List<AulaDto> buscarHorarioSemanal(@AuthenticationPrincipal String userId, Integer offset) {
+    public List<AulaDto> buscarHorarioSemanal(@AuthenticationPrincipal String userId, Integer offset) throws Exception {
         if (offset == null) offset = 0;
         if (offset!=0 && offset!=1) return null;
         // Agora fazes a query ao banco de dados entre estas duas datas

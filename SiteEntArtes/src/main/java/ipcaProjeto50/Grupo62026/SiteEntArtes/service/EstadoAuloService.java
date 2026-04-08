@@ -2,7 +2,7 @@ package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.EstadoAula;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.EstadoAulaDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.EstadoAulaDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.EstadoAulaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

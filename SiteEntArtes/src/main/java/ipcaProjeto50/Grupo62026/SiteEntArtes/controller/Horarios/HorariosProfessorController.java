@@ -28,7 +28,7 @@ public class HorariosProfessorController {
     @GetMapping
     public ResponseEntity<List<AulaDto>> buscarHorarioSemanal(
             @AuthenticationPrincipal String userId,
-            @RequestParam(required = false) Integer offset) {
+            @RequestParam(required = false) Integer offset) throws Exception {
 
         if (offset == null) offset = 0;
         if (offset != 0 && offset != 1) return ResponseEntity.badRequest().build();

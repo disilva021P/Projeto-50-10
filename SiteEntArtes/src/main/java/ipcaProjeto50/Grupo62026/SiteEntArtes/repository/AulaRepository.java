@@ -49,4 +49,7 @@ public interface AulaRepository extends JpaRepository<Aula, Integer> {
             @Param("horaInicio") LocalTime horaInicio,
             @Param("horaFim") LocalTime horaFim
     );
+    void deleteAllByIdHorario_Id(Integer id);
+    List<Aula> findAllByIdHorario_Id(Integer id);
+
 }

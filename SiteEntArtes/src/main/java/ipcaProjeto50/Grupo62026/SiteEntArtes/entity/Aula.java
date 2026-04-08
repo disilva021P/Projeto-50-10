@@ -38,8 +38,11 @@ public class Aula {
     private LocalTime horaFim;
 
     @Lob
-    @Column(name = "notas")
+    @Column(name = "notas", columnDefinition = "TEXT")
     private String notas;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "id_horario", nullable = false)
+    private HorarioTurma idHorario;
 
 }
