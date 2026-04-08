@@ -1,8 +1,7 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.controller.Pagamentos;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.PagamentoDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.service.PagamentoService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -10,21 +9,41 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/pagamentos")
 public class PagamentosController {
+
+    private final PagamentoService pagamentoService;
+
+    public PagamentosController(PagamentoService pagamentoService) {
+        this.pagamentoService = pagamentoService;
+    }
+
+    // LISTAR TODOS
     @GetMapping
-    public ResponseEntity<String> horarios(Authentication authentication) {
+    public List<PagamentoDto> listarTodos() {
+        return pagamentoService.listarTodos();
+    }
 
-        String username = authentication.getName();
-        var roles = authentication.getAuthorities();
+    // BUSCAR POR ID (O ID aqui é String por causa do IdHasher)
+    @GetMapping("/{id}")
+    public PagamentoDto buscarPorId(@PathVariable String id) {
+        return pagamentoService.buscarPorId(id)
+                .orElseThrow(() -> new RuntimeException("Pagamento não encontrado"));
+    }
 
-        boolean isAdmin = roles.stream()
-                .anyMatch(r -> r.getAuthority().equals("ROLE_COORDENACAO"));
+    // CRIAR (Adicionado @RequestBody para o Java ler o JSON que vem do JS)
+    @PostMapping
+    public PagamentoDto criar(@RequestBody PagamentoDto pagamentoDto) {
+        return pagamentoService.criar(pagamentoDto);
+    }
 
-        if (isAdmin) {
-            System.out.println("Admin a fazer request");
-        } else {
-            System.out.println("User normal");
-        }
+    // CONFIRMAR (Mudei para String para bater certo com o Service)
+    @PatchMapping("/{id}/confirmar")
+    public PagamentoDto confirmar(@PathVariable String id) {
+        return pagamentoService.confirmar(id);
+    }
 
-        return ResponseEntity.ok("Ola Mundo!");
+    // DELETE (Mudei para String para bater certo com o Service)
+    @DeleteMapping("/{id}")
+    public void eliminar(@PathVariable String id) {
+        pagamentoService.eliminar(id);
     }
 }
