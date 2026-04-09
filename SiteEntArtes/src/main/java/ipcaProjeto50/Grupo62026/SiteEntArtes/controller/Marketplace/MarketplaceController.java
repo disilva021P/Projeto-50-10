@@ -43,8 +43,10 @@ public class MarketplaceController {
             @RequestParam(required = false)          String cor,
             @RequestParam(required = false)          String condicao,
             @RequestParam(required = false)          Double min,
-            @RequestParam(required = false)          Double max
-    ) {
+            @RequestParam(required = false)          Double max,
+            @RequestParam(required = false)          Integer donoId
+
+            ) {
         Sort sort = direction.equalsIgnoreCase("desc")
                 ? Sort.by(sortBy).descending()
                 : Sort.by(sortBy).ascending();
@@ -52,7 +54,7 @@ public class MarketplaceController {
         Pageable pageable = PageRequest.of(page, size, sort);
 
         Page<ArtigoDto> resultado = marketplaceService.filtrarArtigos(
-                tipoNegocio, tamanho, cor, condicao, min, max, pageable
+                tipoNegocio, tamanho, cor, condicao, min, max, donoId, pageable
         );
 
         return ResponseEntity.ok(resultado);
@@ -65,8 +67,8 @@ public class MarketplaceController {
             Authentication authentication
     ) {
         try {
-            String utilizadorId = authentication.getName();
-            ArtigoDto criado = marketplaceService.inserirArtigo(request, imagem, utilizadorId);
+            String utilizadorEmailOuUsername = authentication.getName();
+            ArtigoDto criado = marketplaceService.inserirArtigo(request, imagem, utilizadorEmailOuUsername);
             return ResponseEntity.status(HttpStatus.CREATED).body(criado);
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

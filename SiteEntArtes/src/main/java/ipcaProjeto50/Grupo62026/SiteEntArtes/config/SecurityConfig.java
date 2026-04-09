@@ -29,14 +29,19 @@ public class    SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login").permitAll()
 
-                        // --- ACESSO PÚBLICO AO MARKETPLACE ---
-                        // Permite ver a lista de artigos e as imagens sem estar logado
-                        .requestMatchers(HttpMethod.GET, "/api/marketplace/**").permitAll()
+                        // 1. IMAGENS: Geralmente deixamos permitAll para as imagens
+                        // para que as tags <img> do frontend funcionem sem problemas de headers.
+                        .requestMatchers(HttpMethod.GET, "/api/marketplace/imagem/**").permitAll()
+
+                        // 2. LISTAGEM E FILTROS: Agora exigimos autenticação!
+                        // Removemos o permitAll anterior. Agora qualquer GET no marketplace
+                        // cai no "authenticated()" lá em baixo.
 
                         .requestMatchers("/api/coordenacao/**").hasAuthority("COORDENACAO")
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
+                        // Tudo o resto (Marketplace GET/POST, etc) exige LOGIN
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
