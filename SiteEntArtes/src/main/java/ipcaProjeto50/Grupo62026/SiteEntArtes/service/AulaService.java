@@ -33,6 +33,7 @@ public class AulaService {
     private final AulaFixaService aulaFixaService;
     private final HorarioFixoRepository horarioFixoRepository;
     private final EncarregadoAlunoRepository encarregadoAlunoRepository;
+    private final UtilizadorService utilizadorService;
     //region feito
     // -------------------------------------------------------------------------
     // CRUD base
@@ -56,7 +57,18 @@ public class AulaService {
     public Optional<Aula> buscarPorId(String id) {
         return aulaRepository.findById(idHasher.decode(id));
     }
-
+    public Aula bucarPorId(Integer id) throws Exception {
+        return aulaRepository.findById(id).orElseThrow(()-> new Exception("Aula não encontrada"));
+    }
+    public Aula bucarPorId(String id) throws Exception {
+        return aulaRepository.findById(idHasher.decode( id)).orElseThrow(()-> new Exception("Aula não encontrada"));
+    }
+    public AulaDto bucarPorIdDto(Integer id) throws Exception {
+        return converterParaDto(aulaRepository.findById(id).orElseThrow(()-> new Exception("Aula não encontrada")));
+    }
+    public AulaDto bucarPorIdDto(String id) throws Exception {
+        return converterParaDto(aulaRepository.findById(idHasher.decode( id)).orElseThrow(()-> new Exception("Aula não encontrada")));
+    }
     /** Cria ou atualiza uma aula. */
     public Aula salvar(Aula aula) {
         return aulaRepository.save(aula);
@@ -296,7 +308,7 @@ public class AulaService {
                     aulaDto.horaInicio() + " e " + aulaDto.horaFim() +
                     " no dia " + aulaDto.dataAula());
         }
-
+        
         estudioModalidadeRepository
                 .findByEstudio_IdAndModalidade_Id(
                         idHasher.decode(aulaDto.estudio().id()),
@@ -317,7 +329,8 @@ public class AulaService {
                 dia,
                 horario.horaInicio(),
                 horario.horaFim(),
-                horario.criadoPor()
+                horario.criadoPor(),
+                horario
         );
     }
 
@@ -340,35 +353,17 @@ public class AulaService {
         return aula;
     }
 
-    //ENQUANTO N TENHO ACESSO AO SERVICE DE UTILIZADORES
-    public List<UtilizadoreResumoDto> findEducandosdeEducador(Integer idEducador) {
-        return encarregadoAlunoRepository.findAllByEncarregado_Id(idEducador)
-                .stream()
-                .map(ea -> new UtilizadoreResumoDto(
-                        idHasher.encode(ea.getAluno().getId()),
-                        ea.getAluno().getNome()
-                ))
-                .toList();
-    }
-
     public List<AulaDto> devolveAulasEducandos(String id, Integer offset) throws Exception {
-        // 1. Decodificar o ID do Encarregado para Integer
 
 
-        // 2. Obter a lista de resumos dos educandos (usando a tua função anterior)
-        List<UtilizadoreResumoDto> educandos = findEducandosdeEducador(idHasher.decode(id));
+        List<UtilizadoreResumoDto> educandos = utilizadorService.findEducandosdeEducador(idHasher.decode(id));
 
         List<AulaDto> todasAsAulas = new ArrayList<>();
-
-        // 3. Iterar pelos educandos e ir buscar o horário de cada um
         for (UtilizadoreResumoDto educando : educandos) {
             // O id que vem no DTO já está em String/Hash, passamos direto
             List<AulaDto> aulasDosFilho = buscarHorarioSemana(educando.id(), offset);
             todasAsAulas.addAll(aulasDosFilho);
         }
-
-        // 4. (Opcional) Ordenar a lista final por data/hora,
-        // caso o buscarHorarioSemana não garanta a ordem global
         return todasAsAulas;
     }
 }
