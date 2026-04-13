@@ -8,6 +8,9 @@ public record ArtigoRequest(
         String tamanho,
         String cor,
         String condicao,
-        Integer tipoNegocio,
-        BigDecimal preco
+        Boolean isVenda,
+        Boolean isAluguer,
+        Boolean isDoacao,
+        BigDecimal precoVenda,
+        BigDecimal precoAluguer
 ) {}

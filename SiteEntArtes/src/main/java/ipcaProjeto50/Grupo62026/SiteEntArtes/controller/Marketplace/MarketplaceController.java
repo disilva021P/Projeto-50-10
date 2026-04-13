@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/api/marketplace")
@@ -33,20 +34,21 @@ public class MarketplaceController {
      * Listagem com filtros dinâmicos: Tipo Negócio (0,1,2), Tamanho e Range de Preço.
      */
     @GetMapping
-    public ResponseEntity<Page<ArtigoDto>> listarArtigos(
-            @RequestParam(defaultValue = "0")        int page,
-            @RequestParam(defaultValue = "12")       int size,
-            @RequestParam(defaultValue = "criadoEm") String sortBy,
-            @RequestParam(defaultValue = "desc")     String direction,
-            @RequestParam(required = false)          Integer tipoNegocio,
-            @RequestParam(required = false)          String tamanho,
-            @RequestParam(required = false)          String cor,
-            @RequestParam(required = false)          String condicao,
-            @RequestParam(required = false)          Double min,
-            @RequestParam(required = false)          Double max,
-            @RequestParam(required = false)          Integer donoId
+        public ResponseEntity<Page<ArtigoDto>> listarArtigos(
+                @RequestParam(defaultValue = "0")        int page,
+                @RequestParam(defaultValue = "12")       int size,
+                @RequestParam(defaultValue = "criadoEm") String sortBy,
+                @RequestParam(defaultValue = "desc")     String direction,
+                @RequestParam(required = false)          String nome,
+                @RequestParam(required = false)          Integer tipoId,
+                @RequestParam(required = false)          String tamanho,
+                @RequestParam(required = false)          String cor,
+                @RequestParam(required = false)          String condicao,
+                @RequestParam(required = false)          Double min,
+                @RequestParam(required = false)          Double max,
+                @RequestParam(required = false)          Integer donoId
+        ) {
 
-            ) {
         Sort sort = direction.equalsIgnoreCase("desc")
                 ? Sort.by(sortBy).descending()
                 : Sort.by(sortBy).ascending();
@@ -54,7 +56,7 @@ public class MarketplaceController {
         Pageable pageable = PageRequest.of(page, size, sort);
 
         Page<ArtigoDto> resultado = marketplaceService.filtrarArtigos(
-                tipoNegocio, tamanho, cor, condicao, min, max, donoId, pageable
+                nome, tipoId, tamanho, cor, condicao, min, max, donoId, pageable
         );
 
         return ResponseEntity.ok(resultado);
@@ -62,11 +64,24 @@ public class MarketplaceController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ArtigoDto> inserirArtigo(
-            @ModelAttribute ArtigoRequest request,
-            @RequestParam("imagem") MultipartFile imagem,
+            @RequestParam("nome")          String nome,
+            @RequestParam("descricao")     String descricao,
+            @RequestParam(value = "tamanho",      required = false) String tamanho,
+            @RequestParam(value = "cor",          required = false) String cor,
+            @RequestParam(value = "condicao",     required = false) String condicao,
+            @RequestParam(value = "isVenda",      defaultValue = "false") Boolean isVenda,
+            @RequestParam(value = "isAluguer",    defaultValue = "false") Boolean isAluguer,
+            @RequestParam(value = "isDoacao",     defaultValue = "false") Boolean isDoacao,
+            @RequestParam(value = "precoVenda",   required = false) BigDecimal precoVenda,
+            @RequestParam(value = "precoAluguer", required = false) BigDecimal precoAluguer,
+            @RequestParam("imagem")        MultipartFile imagem,
             Authentication authentication
     ) {
         try {
+            ArtigoRequest request = new ArtigoRequest(
+                    nome, descricao, tamanho, cor, condicao,
+                    isVenda, isAluguer, isDoacao, precoVenda, precoAluguer
+            );
             String utilizadorEmailOuUsername = authentication.getName();
             ArtigoDto criado = marketplaceService.inserirArtigo(request, imagem, utilizadorEmailOuUsername);
             return ResponseEntity.status(HttpStatus.CREATED).body(criado);

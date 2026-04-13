@@ -33,8 +33,8 @@ public class MarketplaceService {
     /**
      * Filtra artigos com todos os critérios novos, incluindo o donoId para "Meus Artigos"
      */
-    public Page<ArtigoDto> filtrarArtigos(Integer tipo, String tam, String cor, String cond, Double min, Double max, Integer donoId, Pageable pageable) {
-        return artigoRepository.filtrarMarketplace(tipo, tam, cor, cond, min, max, donoId, pageable)
+    public Page<ArtigoDto> filtrarArtigos(String nome, Integer tipo, String tam, String cor, String cond, Double min, Double max, Integer donoId, Pageable pageable) {
+        return artigoRepository.filtrarMarketplace(nome, tipo, tam, cor, cond, min, max, donoId, pageable)
                 .map(this::toDto);
     }
 
@@ -61,16 +61,26 @@ public class MarketplaceService {
         Artigo artigo = artigoRepository.findById(artigoId)
                 .orElseThrow(() -> new RuntimeException("Artigo não encontrado"));
 
-        // Se o estado for 5 (Removido/Recusado), marcamos o artigo como arquivado
+        // 1. Se o estado for 5 (Removido/Recusado), arquivamos o artigo principal
         if (novoEstadoId == 5) {
             artigo.setArquivado(true);
             artigoRepository.save(artigo);
         }
 
-        // Atualiza também o estado de todas as unidades para manter a consistência
+        // 2. Atualizar as unidades
         artigo.getUnidades().forEach(unidade -> {
+            // Define o novo estado (Ex: 2 para Aceite, 5 para Recusado)
             unidade.setEstado(entityManager.getReference(EstadoUnidade.class, novoEstadoId));
-            unidade.setDisponivel(false); // Se foi removido, não está disponível
+
+            // Lógica de Disponibilidade:
+            if (novoEstadoId == 2) {
+                // Se foi aceite/publicado, fica disponível (1) para aparecer no site
+                unidade.setDisponivel(true);
+            } else {
+                // Para outros estados (como 5 - Removido), fica indisponível (0)
+                unidade.setDisponivel(false);
+            }
+
             inventarioUnidadeRepository.save(unidade);
         });
     }
@@ -99,8 +109,13 @@ public class MarketplaceService {
         artigo.setTamanho(request.tamanho());
         artigo.setCor(request.cor());
         artigo.setCondicao(request.condicao());
-        artigo.setTipoNegocio(request.tipoNegocio());
-        artigo.setPreco(request.preco());
+
+        artigo.setIsVenda(request.isVenda());
+        artigo.setIsAluguer(request.isAluguer());
+        artigo.setIsDoacao(request.isDoacao());
+        artigo.setPrecoVenda(request.precoVenda());
+        artigo.setPrecoAluguer(request.precoAluguer());
+
         artigo.setDonoUtilizador(dono);
         artigo.setCriadoEm(Instant.now());
         artigo.setArquivado(false);
@@ -114,14 +129,13 @@ public class MarketplaceService {
         unidade.setCriadoEm(Instant.now());
 
         // --- LÓGICA DE ESTADO DINÂMICO ---
-        // Se tipoNegocio for 0 (Doação), entra como 8 (Pendente)
-        // Se for outro (Venda/Aluguer), entra como 2 (Publicado) direto
-        int estadoInicial = (request.tipoNegocio() == 0) ? 8 : 2;
+        // Se isDoacao for true, entra como 8 (Pendente) para a coordenação aceitar
+        int estadoInicial = (request.isDoacao() != null && request.isDoacao()) ? 8 : 2;
         unidade.setEstado(entityManager.getReference(EstadoUnidade.class, estadoInicial));
 
         InventarioUnidade unidadeGuardada = inventarioUnidadeRepository.save(unidade);
 
-        // 4. Criar e Guardar a IMAGEM (Mantém-se igual)
+        // 4. Criar e Guardar a IMAGEM
         if (imagem != null && !imagem.isEmpty()) {
             ImagensUnidade imgEntity = new ImagensUnidade();
             imgEntity.setUnidadeId(unidadeGuardada.getId());
@@ -160,8 +174,11 @@ public class MarketplaceService {
                 artigo.getCor(),
                 artigo.getCondicao(),
                 artigo.getDonoUtilizador().getNome(),
-                artigo.getTipoNegocio(),
-                artigo.getPreco(),
+                artigo.getIsVenda(),
+                artigo.getIsAluguer(),
+                artigo.getIsDoacao(),
+                artigo.getPrecoVenda(),
+                artigo.getPrecoAluguer(),
                 artigo.getCriadoEm(),
                 estadoId,
                 estadoNome,

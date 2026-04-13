@@ -15,24 +15,30 @@ public interface ArtigoRepository extends JpaRepository<Artigo, Integer> {
 
     /**
      * Filtro mestre do Marketplace:
-     * Agora inclui a verificação obrigatória de que o estado da unidade deve ser Publicado (2).
-     * Nota: Adicionei o JOIN com unidades para podermos filtrar pelo estado.
      */
     @Query("""
-        SELECT DISTINCT a FROM Artigo a 
-        JOIN a.unidades u 
-        WHERE a.arquivado = false 
-        AND u.estado.id = 2 
-        AND (:tipo IS NULL OR a.tipoNegocio = :tipo) 
+        SELECT DISTINCT a FROM Artigo a
+        JOIN a.unidades u
+        WHERE a.arquivado = false
+        AND u.estado.id = 2
+        AND (:nome IS NULL OR LOWER(a.nome) LIKE LOWER(CONCAT('%', :nome, '%')))
+
+        AND (:tipoId IS NULL 
+             OR (:tipoId = 0 AND a.isDoacao = true)
+             OR (:tipoId = 1 AND a.isVenda = true)
+             OR (:tipoId = 2 AND a.isAluguer = true))
+             
         AND (:tam IS NULL OR a.tamanho = :tam) 
         AND (:cor IS NULL OR a.cor = :cor) 
         AND (:cond IS NULL OR a.condicao = :cond) 
-        AND (:pMin IS NULL OR a.preco >= :pMin) 
-        AND (:pMax IS NULL OR a.preco <= :pMax) 
+        AND (:pMin IS NULL OR (a.isVenda = true AND a.precoVenda >= :pMin) OR (a.isAluguer = true AND a.precoAluguer >= :pMin) OR a.isDoacao = true)
+        AND (:pMax IS NULL OR (a.isVenda = true AND a.precoVenda <= :pMax) OR (a.isAluguer = true AND a.precoAluguer <= :pMax) OR a.isDoacao = true)
+        
         AND (:donoId IS NULL OR a.donoUtilizador.id = :donoId)
     """)
     Page<Artigo> filtrarMarketplace(
-            @Param("tipo") Integer tipoNegocio,
+            @Param("nome") String nome,
+            @Param("tipoId") Integer tipoId, // Mudamos de tipoNegocio para tipoId (0, 1 ou 2)
             @Param("tam")  String tamanho,
             @Param("cor")  String cor,
             @Param("cond") String condicao,

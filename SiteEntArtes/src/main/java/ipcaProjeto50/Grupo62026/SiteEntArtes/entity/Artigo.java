@@ -24,38 +24,45 @@ public class Artigo {
     private String nome;
 
     @Lob
-    @Column(name = "descricao", nullable = false,columnDefinition = "TEXT")
+    @Column(name = "descricao", nullable = false, columnDefinition = "TEXT")
     private String descricao;
 
     @Column(name = "tamanho", nullable = false, length = 50)
     private String tamanho;
 
-    @Column(name = "cor")
+    @Column(name = "cor", length = 50)
     private String cor;
 
     @Column(name = "condicao")
-    private String condicao; // 'Novo', 'Como novo', 'Bom estado', 'Usado'
+    private String condicao;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "dono_utilizador_id", nullable = false)
     private Utilizadore donoUtilizador;
 
-    @ColumnDefault("0")
-    @Column(name = "tipo_negocio")
-    private Integer tipoNegocio; // 0: Doação, 1: Venda, 2: Aluguer
+    @Column(name = "is_venda", nullable = false)
+    private Boolean isVenda = false;
 
-    @OneToMany(mappedBy = "artigo", fetch = FetchType.LAZY)
-    private List<InventarioUnidade> unidades = new ArrayList<>();
+    @Column(name = "is_aluguer", nullable = false)
+    private Boolean isAluguer = false;
+
+    @Column(name = "is_doacao", nullable = false)
+    private Boolean isDoacao = false;
 
     @ColumnDefault("0")
     @Column(name = "arquivado", nullable = false)
-    private Boolean arquivado;
+    private Boolean arquivado = false;
 
-    @Column(name = "preco", precision = 10, scale = 2)
-    private BigDecimal preco;
+    @Column(name = "preco_venda", precision = 10, scale = 2)
+    private BigDecimal precoVenda;
+
+    @Column(name = "preco_aluguer", precision = 10, scale = 2)
+    private BigDecimal precoAluguer;
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "criado_em", nullable = false)
     private Instant criadoEm;
-}
 
+    @OneToMany(mappedBy = "artigo", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<InventarioUnidade> unidades = new ArrayList<>();
+}
