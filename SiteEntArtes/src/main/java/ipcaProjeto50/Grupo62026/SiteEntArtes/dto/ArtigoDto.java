@@ -2,6 +2,7 @@ package ipcaProjeto50.Grupo62026.SiteEntArtes.dto;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 public record ArtigoDto(
         Integer id,
@@ -19,5 +20,6 @@ public record ArtigoDto(
         Instant criadoEm,
         Integer estadoUnidadeId,
         String estadoUnidadeNome,
-        Integer imagemId
+        Integer imagemId,
+        List<Integer> imagemIds
 ) {}

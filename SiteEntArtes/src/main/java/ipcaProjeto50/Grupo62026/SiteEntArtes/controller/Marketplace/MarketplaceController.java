@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/marketplace")
@@ -74,7 +75,7 @@ public class MarketplaceController {
             @RequestParam(value = "isDoacao",     defaultValue = "false") Boolean isDoacao,
             @RequestParam(value = "precoVenda",   required = false) BigDecimal precoVenda,
             @RequestParam(value = "precoAluguer", required = false) BigDecimal precoAluguer,
-            @RequestParam("imagem")        MultipartFile imagem,
+            @RequestParam("imagens") List<MultipartFile> imagens,
             Authentication authentication
     ) {
         try {
@@ -83,9 +84,10 @@ public class MarketplaceController {
                     isVenda, isAluguer, isDoacao, precoVenda, precoAluguer
             );
             String utilizadorEmailOuUsername = authentication.getName();
-            ArtigoDto criado = marketplaceService.inserirArtigo(request, imagem, utilizadorEmailOuUsername);
+            ArtigoDto criado = marketplaceService.inserirArtigo(request, imagens, utilizadorEmailOuUsername);
             return ResponseEntity.status(HttpStatus.CREATED).body(criado);
         } catch (IOException e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

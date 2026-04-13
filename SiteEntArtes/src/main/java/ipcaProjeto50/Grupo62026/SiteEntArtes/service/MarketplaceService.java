@@ -86,7 +86,7 @@ public class MarketplaceService {
     }
 
     @Transactional
-    public ArtigoDto inserirArtigo(ArtigoRequest request, MultipartFile imagem, String identifier) throws IOException {
+    public ArtigoDto inserirArtigo(ArtigoRequest request, List<MultipartFile> imagens, String identifier) throws IOException {
         // 1. Encontrar o Dono
         Utilizadore dono;
         if (identifier.contains("@")) {
@@ -136,11 +136,15 @@ public class MarketplaceService {
         InventarioUnidade unidadeGuardada = inventarioUnidadeRepository.save(unidade);
 
         // 4. Criar e Guardar a IMAGEM
-        if (imagem != null && !imagem.isEmpty()) {
-            ImagensUnidade imgEntity = new ImagensUnidade();
-            imgEntity.setUnidadeId(unidadeGuardada.getId());
-            imgEntity.setUrlImagem(imagem.getBytes());
-            imagensUnidadeRepository.save(imgEntity);
+        if (imagens != null) {
+            for (MultipartFile imagem : imagens) {
+                if (!imagem.isEmpty()) {
+                    ImagensUnidade imgEntity = new ImagensUnidade();
+                    imgEntity.setUnidadeId(unidadeGuardada.getId());
+                    imgEntity.setUrlImagem(imagem.getBytes());
+                    imagensUnidadeRepository.save(imgEntity);
+                }
+            }
         }
 
         return toDto(artigoGuardado);
@@ -150,20 +154,31 @@ public class MarketplaceService {
         InventarioUnidade unidade = null;
 
         if (artigo.getUnidades() != null) {
+            // Tentamos encontrar a unidade disponível, se não houver, pegamos a primeira qualquer
             unidade = artigo.getUnidades().stream()
                     .filter(u -> u.getDisponivel() != null && u.getDisponivel())
                     .findFirst()
-                    .orElse(null);
+                    .orElse(artigo.getUnidades().isEmpty() ? null : artigo.getUnidades().get(0));
         }
 
         Integer estadoId = (unidade != null && unidade.getEstado() != null) ? unidade.getEstado().getId() : null;
         String estadoNome = (unidade != null && unidade.getEstado() != null) ? unidade.getEstado().getEstado() : null;
 
-        Integer imagemId = null;
+        // 1. Manter o imagemId (para a miniatura do card)
+        Integer imagemPrincipalId = null;
+        // 2. Criar a lista de todos os IDs (para o modal de detalhes)
+        List<Integer> todosImagemIds = List.of();
+
         if (unidade != null) {
-            imagemId = imagensUnidadeRepository.findFirstByUnidadeId(unidade.getId())
+            List<ImagensUnidade> imagens = imagensUnidadeRepository.findByUnidadeId(unidade.getId());
+
+            todosImagemIds = imagens.stream()
                     .map(ImagensUnidade::getId)
-                    .orElse(null);
+                    .toList();
+
+            if (!todosImagemIds.isEmpty()) {
+                imagemPrincipalId = todosImagemIds.get(0);
+            }
         }
 
         return new ArtigoDto(
@@ -182,7 +197,8 @@ public class MarketplaceService {
                 artigo.getCriadoEm(),
                 estadoId,
                 estadoNome,
-                imagemId
+                imagemPrincipalId,
+                todosImagemIds
         );
     }
 }
