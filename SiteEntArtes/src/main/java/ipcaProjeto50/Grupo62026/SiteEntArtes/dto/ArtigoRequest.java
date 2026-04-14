@@ -1,6 +1,9 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.dto;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import java.math.BigDecimal;
+import java.util.List;
 
 public record ArtigoRequest(
         String nome,
@@ -12,5 +15,6 @@ public record ArtigoRequest(
         Boolean isAluguer,
         Boolean isDoacao,
         BigDecimal precoVenda,
-        BigDecimal precoAluguer
+        BigDecimal precoAluguer,
+        List<MultipartFile> imagens
 ) {}

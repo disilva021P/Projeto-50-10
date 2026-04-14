@@ -54,7 +54,7 @@ public class MarketplaceService {
     }
 
     /**
-     * Altera o estado de todas as unidades de um artigo
+     * Altera o estado de todas as unidades de um artigo (Doacao de artigo, coordencacao aceita/recusa)
      */
     @Transactional
     public void alterarEstadoArtigo(Integer artigoId, Integer novoEstadoId) {
@@ -148,6 +148,111 @@ public class MarketplaceService {
         }
 
         return toDto(artigoGuardado);
+    }
+
+    /**
+     * Arquiva um artigo (Remoção lógica)
+     */
+    @Transactional
+    public void arquivarArtigo(Integer artigoId) {
+        Artigo artigo = artigoRepository.findById(artigoId)
+                .orElseThrow(() -> new RuntimeException("Artigo não encontrado"));
+
+        // 1. Arquivar o artigo
+        artigo.setArquivado(true);
+        artigoRepository.save(artigo);
+
+        // 2. Tornar todas as unidades associadas indisponíveis
+        if (artigo.getUnidades() != null) {
+            artigo.getUnidades().forEach(unidade -> {
+                unidade.setDisponivel(false);
+                inventarioUnidadeRepository.save(unidade);
+            });
+        }
+    }
+
+    /**
+     * Edita os dados de um artigo existente e adiciona novas imagens
+     */
+    @Transactional
+    public ArtigoDto editarArtigo(Integer id, ArtigoRequest request) {
+        Artigo artigo = artigoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Artigo não encontrado"));
+
+        // 1. Validar existência de imagens (Regra de Negócio)
+        InventarioUnidade unidade = (artigo.getUnidades() != null && !artigo.getUnidades().isEmpty())
+                ? artigo.getUnidades().getFirst()
+                : null;
+
+        if (unidade == null) {
+            throw new RuntimeException("Erro crítico: Artigo sem unidade de inventário.");
+        }
+
+        // Contamos as imagens que já existem na BD
+        long imagensExistentes = imagensUnidadeRepository.countByUnidadeId(unidade.getId());
+
+        // Contamos quantas imagens válidas estão a chegar no request
+        long novasImagensValidas = (request.imagens() != null)
+                ? request.imagens().stream().filter(img -> !img.isEmpty()).count()
+                : 0;
+
+        // Se o total for zero, bloqueamos a edição
+        if (imagensExistentes == 0 && novasImagensValidas == 0) {
+            throw new RuntimeException("O artigo deve ter pelo menos uma imagem.");
+        }
+
+        // 2. Guardar o estado anterior para comparar a doação
+        boolean jaEraDoacao = artigo.getIsDoacao() != null && artigo.getIsDoacao();
+
+        // 3. Atualizar campos básicos e lógica de negócio
+        artigo.setNome(request.nome());
+        artigo.setDescricao(request.descricao());
+        artigo.setTamanho(request.tamanho());
+        artigo.setCor(request.cor());
+        artigo.setCondicao(request.condicao());
+        artigo.setIsVenda(request.isVenda());
+        artigo.setIsAluguer(request.isAluguer());
+        artigo.setIsDoacao(request.isDoacao());
+        artigo.setPrecoVenda(request.precoVenda());
+        artigo.setPrecoAluguer(request.precoAluguer());
+
+        // 4. Lógica de Aprovação de Doação
+        if (request.isDoacao() != null && request.isDoacao() && !jaEraDoacao) {
+            unidade.setEstado(entityManager.getReference(EstadoUnidade.class, 8));
+            unidade.setDisponivel(false);
+            inventarioUnidadeRepository.save(unidade);
+        }
+
+        // 5. Processar novas imagens
+        if (novasImagensValidas > 0) {
+            for (MultipartFile imagem : request.imagens()) {
+                if (!imagem.isEmpty()) {
+                    try {
+                        ImagensUnidade imgEntity = new ImagensUnidade();
+                        imgEntity.setUnidadeId(unidade.getId());
+                        imgEntity.setUrlImagem(imagem.getBytes());
+                        imagensUnidadeRepository.save(imgEntity);
+                    } catch (IOException e) {
+                        throw new RuntimeException("Erro ao processar imagem", e);
+                    }
+                }
+            }
+        }
+
+        Artigo atualizado = artigoRepository.save(artigo);
+        return toDto(atualizado);
+    }
+
+    /**
+     * Remove uma imagem específica permanentemente
+     */
+    @Transactional
+    public void removerImagem(Integer imagemId) {
+        if (imagensUnidadeRepository.existsById(imagemId)) {
+            imagensUnidadeRepository.deleteById(imagemId);
+        } else {
+            throw new RuntimeException("Imagem não encontrada");
+        }
     }
 
     private ArtigoDto toDto(Artigo artigo) {

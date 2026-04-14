@@ -9,9 +9,21 @@ import java.util.Optional;
 @Repository
 public interface ImagensUnidadeRepository extends JpaRepository<ImagensUnidade, Integer> {
 
-    // Adiciona esta linha para permitir procurar todas as imagens de uma unidade
+    /**
+     * Retorna a lista completa de imagens de uma unidade.
+     * Útil para a galeria de detalhes.
+     */
     List<ImagensUnidade> findByUnidadeId(Integer unidadeId);
 
-    // Este tu já deves ter ou estar a usar algo semelhante para a miniatura
+    /**
+     * Retorna apenas a primeira imagem encontrada.
+     * Útil para miniaturas (thumbnails).
+     */
     Optional<ImagensUnidade> findFirstByUnidadeId(Integer unidadeId);
+
+    /**
+     * Conta quantas imagens existem para uma determinada unidade.
+     * Usado para a validação de "pelo menos 1 imagem" na edição.
+     */
+    long countByUnidadeId(Integer unidadeId);
 }

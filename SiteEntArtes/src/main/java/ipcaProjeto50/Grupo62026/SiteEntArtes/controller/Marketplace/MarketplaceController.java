@@ -81,7 +81,7 @@ public class MarketplaceController {
         try {
             ArtigoRequest request = new ArtigoRequest(
                     nome, descricao, tamanho, cor, condicao,
-                    isVenda, isAluguer, isDoacao, precoVenda, precoAluguer
+                    isVenda, isAluguer, isDoacao, precoVenda, precoAluguer, imagens
             );
             String utilizadorEmailOuUsername = authentication.getName();
             ArtigoDto criado = marketplaceService.inserirArtigo(request, imagens, utilizadorEmailOuUsername);
@@ -99,5 +99,28 @@ public class MarketplaceController {
                         .contentType(MediaType.IMAGE_JPEG)
                         .body(img.getUrlImagem()))
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    //Remover artigo (Arquivar)
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> arquivar(@PathVariable Integer id) {
+        marketplaceService.arquivarArtigo(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    //Apagar imagem
+    @DeleteMapping("/imagem/{imagemId}")
+    public ResponseEntity<Void> apagarImagem(@PathVariable Integer imagemId) {
+        marketplaceService.removerImagem(imagemId);
+        return ResponseEntity.noContent().build();
+    }
+
+    //Editar artigo
+    @PutMapping(value = "/{id}", consumes = {"multipart/form-data"})
+    public ResponseEntity<ArtigoDto> editar(
+            @PathVariable Integer id,
+            @ModelAttribute ArtigoRequest request // Alterado de @RequestBody para @ModelAttribute
+    ) {
+        return ResponseEntity.ok(marketplaceService.editarArtigo(id, request));
     }
 }
