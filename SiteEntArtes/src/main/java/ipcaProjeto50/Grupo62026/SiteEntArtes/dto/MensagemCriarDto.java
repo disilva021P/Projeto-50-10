@@ -7,5 +7,5 @@ import java.io.Serializable;
 /**
  * DTO for {@link Mensagen}
  */
-public record MensagemCriarDto(String destinatario, String conteudo) implements Serializable {
+public record MensagemCriarDto(String destinatario  , String conteudo) implements Serializable {
 }
