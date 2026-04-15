@@ -293,6 +293,7 @@ public class MarketplaceService {
                 artigo.getTamanho(),
                 artigo.getCor(),
                 artigo.getCondicao(),
+                idHasher.encode(artigo.getDonoUtilizador().getId()),
                 artigo.getDonoUtilizador().getNome(),
                 artigo.getIsVenda(),
                 artigo.getIsAluguer(),

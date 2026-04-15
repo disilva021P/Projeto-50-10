@@ -11,6 +11,7 @@ public record ArtigoDto(
         String tamanho,
         String cor,
         String condicao,
+        String donoId,
         String donoNome,
         Boolean isVenda,
         Boolean isAluguer,

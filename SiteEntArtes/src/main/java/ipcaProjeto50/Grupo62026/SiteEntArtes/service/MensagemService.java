@@ -4,50 +4,53 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Aula;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Mensagen;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.MensagensTurma;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Utilizadore;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.MensagenRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.UtilizadorLogRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.UtilizadoreRepository;
 import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
-
+@RequiredArgsConstructor
 @Service
 public class MensagemService {
+    private final MensagensTurmaService mensagensTurmaService;
     private final UtilizadoreRepository utilizadoreRepository;
     private final MensagenRepository mensagenRepository;
     private final IdHasher idHasher;
     private final UtilizadorLogRepository utilizadorLogRepository;
 
-    public  MensagemService(MensagenRepository mensagenRepository,IdHasher idHasher, UtilizadoreRepository utilizadoreRepository,
-                            UtilizadorLogRepository utilizadorLogRepository){
-        this.mensagenRepository =mensagenRepository;
-        this.idHasher = idHasher;
-        this.utilizadorLogRepository = utilizadorLogRepository;
-        this.utilizadoreRepository = utilizadoreRepository;
-    }
-    public List<MensagenPreviewDto> buscarPreviewMensagens(String idUser){
+    public List<MensagenPreviewDto> buscarPreviewMensagens(String idUser) {
         Integer id = idHasher.decode(idUser);
-        boolean exists = utilizadoreRepository.existsById(id);
 
-        if(!exists) throw new EntityNotFoundException("Utilizador não encontrado com o ID fornecido.");
+        if (!utilizadoreRepository.existsById(id))
+            throw new EntityNotFoundException("Utilizador não encontrado com o ID fornecido.");
 
-        List<Mensagen> mensagens = mensagenRepository.findAllByRemetenteIdOrDestinatarioIdOrderByEnviadaEmDesc(id, id);
-        // Usamos um Map para filtrar: a chave é o "par de IDs", o valor é a Mensagem
+        List<MensagenPreviewDto> previews = new ArrayList<>();
+
+        // ── 1. Conversas individuais (lógica original) ────────────────────────────
+        List<Mensagen> mensagens = mensagenRepository
+                .findAllByRemetenteIdOrDestinatarioIdOrderByEnviadaEmDesc(id, id);
+
         Map<String, Mensagen> conversasUnicas = new LinkedHashMap<>();
         for (Mensagen m : mensagens) {
-            // Cria uma identificação única para a conversa (ex: "1-5")
             int id1 = m.getRemetente().getId();
             int id2 = m.getDestinatario().getId();
             String chave = Math.min(id1, id2) + "-" + Math.max(id1, id2);
-            // .putIfAbsent só adiciona se a conversa ainda não estiver no mapa
             conversasUnicas.putIfAbsent(chave, m);
         }
-        return conversasUnicas.values().stream()
+
+        conversasUnicas.values().stream()
                 .map(m -> converterParaPreviewDto(m, id))
-                .toList();    }
+                .forEach(previews::add)
+        ;
+        previews.addAll(mensagensTurmaService.buscarPreviewGrupos(idUser));
+        return previews.stream().sorted(Comparator.comparing(MensagenPreviewDto::horas).reversed()).toList();
+    }
     public MensagenDto criar(String idUser, MensagemCriarDto mensagenDto){
         Utilizadore remetente = utilizadoreRepository.findById(idHasher.decode(idUser))
                 .orElseThrow(() -> new EntityNotFoundException("Remetente com o id fornecido não encontrado"));
@@ -60,8 +63,7 @@ public class MensagemService {
                 destinatario,
                 mensagenDto.conteudo(),
                 LocalDateTime.now()
-                )));
-        //TODO: CRIA NOTIFICAÇÃO
+        )));
     }
     public void eliminar(String id){
         mensagenRepository.deleteById(idHasher.decode(id));
@@ -83,7 +85,8 @@ public class MensagemService {
                 idHasher.encode(outro.getId()),
                 outro.getNome(),
                 mensagen.getConteudo(),
-                mensagen.getEnviadaEm()
+                mensagen.getEnviadaEm(),
+                false
         );
     }
     public MensagenDto converterParaDto(Mensagen mensagen) {
