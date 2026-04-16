@@ -123,4 +123,18 @@ public class MarketplaceController {
     ) {
         return ResponseEntity.ok(marketplaceService.editarArtigo(id, request));
     }
+
+
+    /**
+     * Endpoint para a coordenação aprovar, recusar ou enviar para inventário.
+     * PUT /api/marketplace/artigos/{id}/estado/{novoEstadoId}
+     */
+    @PutMapping("/artigos/{id}/estado/{novoEstadoId}")
+    public ResponseEntity<Void> alterarEstado(
+            @PathVariable Integer id,
+            @PathVariable Integer novoEstadoId
+    ) {
+        marketplaceService.alterarEstadoArtigo(id, novoEstadoId);
+        return ResponseEntity.ok().build();
+    }
 }

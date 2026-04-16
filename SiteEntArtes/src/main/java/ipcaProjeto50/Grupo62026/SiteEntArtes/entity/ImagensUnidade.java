@@ -15,8 +15,8 @@ public class ImagensUnidade {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "unidade_id", nullable = false)
-    private Integer unidadeId;
+    @Column(name = "artigo_id", nullable = false)
+    private Integer artigoId;
 
     @Lob
     @Column(name = "url_imagem", columnDefinition = "MEDIUMBLOB")

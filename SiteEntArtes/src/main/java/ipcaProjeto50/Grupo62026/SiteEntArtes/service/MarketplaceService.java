@@ -67,6 +67,12 @@ public class MarketplaceService {
             artigoRepository.save(artigo);
         }
 
+        // Se for 9 (Inventário Interno), aceitamos, mas mantemos 'disponivel = false'
+        // para não aparecer no marketplace público
+        else if (novoEstadoId == 9) {
+            artigo.setArquivado(false);
+        }
+
         // 2. Atualizar as unidades
         artigo.getUnidades().forEach(unidade -> {
             // Define o novo estado (Ex: 2 para Aceite, 5 para Recusado)
@@ -87,7 +93,7 @@ public class MarketplaceService {
 
     @Transactional
     public ArtigoDto inserirArtigo(ArtigoRequest request, List<MultipartFile> imagens, String identifier) throws IOException {
-        // 1. Encontrar o Dono
+        // 1. Encontrar o Dono (Mantém igual)
         Utilizadore dono;
         if (identifier.contains("@")) {
             dono = utilizadoreRepository.findByEmail(identifier)
@@ -109,38 +115,37 @@ public class MarketplaceService {
         artigo.setTamanho(request.tamanho());
         artigo.setCor(request.cor());
         artigo.setCondicao(request.condicao());
-
         artigo.setIsVenda(request.isVenda());
         artigo.setIsAluguer(request.isAluguer());
         artigo.setIsDoacao(request.isDoacao());
         artigo.setPrecoVenda(request.precoVenda());
         artigo.setPrecoAluguer(request.precoAluguer());
-
         artigo.setDonoUtilizador(dono);
         artigo.setCriadoEm(Instant.now());
         artigo.setArquivado(false);
 
         Artigo artigoGuardado = artigoRepository.save(artigo);
 
-        // 3. Criar e Guardar a UNIDADE com lógica de Aprovação
-        InventarioUnidade unidade = new InventarioUnidade();
-        unidade.setArtigo(artigoGuardado);
-        unidade.setDisponivel(true);
-        unidade.setCriadoEm(Instant.now());
+        // 3. Lógica de Inventário (APENAS SE FOR DOAÇÃO)
+        if (Boolean.TRUE.equals(request.isDoacao())) {
+            InventarioUnidade unidade = new InventarioUnidade();
+            unidade.setArtigo(artigoGuardado);
+            unidade.setDisponivel(false); // Fica falso até a coordenação aprovar
+            unidade.setCriadoEm(Instant.now());
 
-        // --- LÓGICA DE ESTADO DINÂMICO ---
-        // Se isDoacao for true, entra como 8 (Pendente) para a coordenação aceitar
-        int estadoInicial = (request.isDoacao() != null && request.isDoacao()) ? 8 : 2;
-        unidade.setEstado(entityManager.getReference(EstadoUnidade.class, estadoInicial));
+            // Estado 8 = Pendente
+            unidade.setEstado(entityManager.getReference(EstadoUnidade.class, 8));
 
-        InventarioUnidade unidadeGuardada = inventarioUnidadeRepository.save(unidade);
+            inventarioUnidadeRepository.save(unidade);
+        }
 
-        // 4. Criar e Guardar a IMAGEM
+        // 4. Guardar as IMAGENS (Ligadas diretamente ao ARTIGO)
         if (imagens != null) {
             for (MultipartFile imagem : imagens) {
-                if (!imagem.isEmpty()) {
+                // MUITO IMPORTANTE: Verificar se não está vazio
+                if (imagem != null && !imagem.isEmpty() && imagem.getSize() > 0) {
                     ImagensUnidade imgEntity = new ImagensUnidade();
-                    imgEntity.setUnidadeId(unidadeGuardada.getId());
+                    imgEntity.setArtigoId(artigoGuardado.getId());
                     imgEntity.setUrlImagem(imagem.getBytes());
                     imagensUnidadeRepository.save(imgEntity);
                 }
@@ -184,12 +189,8 @@ public class MarketplaceService {
                 ? artigo.getUnidades().getFirst()
                 : null;
 
-        if (unidade == null) {
-            throw new RuntimeException("Erro crítico: Artigo sem unidade de inventário.");
-        }
-
         // Contamos as imagens que já existem na BD
-        long imagensExistentes = imagensUnidadeRepository.countByUnidadeId(unidade.getId());
+        long imagensExistentes = imagensUnidadeRepository.countByArtigoId(artigo.getId());
 
         // Contamos quantas imagens válidas estão a chegar no request
         long novasImagensValidas = (request.imagens() != null)
@@ -229,7 +230,7 @@ public class MarketplaceService {
                 if (!imagem.isEmpty()) {
                     try {
                         ImagensUnidade imgEntity = new ImagensUnidade();
-                        imgEntity.setUnidadeId(unidade.getId());
+                        imgEntity.setArtigoId(artigo.getId());
                         imgEntity.setUrlImagem(imagem.getBytes());
                         imagensUnidadeRepository.save(imgEntity);
                     } catch (IOException e) {
@@ -256,35 +257,29 @@ public class MarketplaceService {
     }
 
     private ArtigoDto toDto(Artigo artigo) {
+        // 1. Estado (Mantém a tua lógica que está correta)
         InventarioUnidade unidade = null;
-
-        if (artigo.getUnidades() != null) {
-            // Tentamos encontrar a unidade disponível, se não houver, pegamos a primeira qualquer
+        if (artigo.getUnidades() != null && !artigo.getUnidades().isEmpty()) {
             unidade = artigo.getUnidades().stream()
                     .filter(u -> u.getDisponivel() != null && u.getDisponivel())
                     .findFirst()
-                    .orElse(artigo.getUnidades().isEmpty() ? null : artigo.getUnidades().get(0));
+                    .orElse(artigo.getUnidades().get(0));
         }
 
-        Integer estadoId = (unidade != null && unidade.getEstado() != null) ? unidade.getEstado().getId() : null;
-        String estadoNome = (unidade != null && unidade.getEstado() != null) ? unidade.getEstado().getEstado() : null;
+        Integer estadoId = (unidade != null && unidade.getEstado() != null)
+                ? unidade.getEstado().getId() : 2;
+        String estadoNome = (unidade != null && unidade.getEstado() != null)
+                ? unidade.getEstado().getEstado() : "Publicado";
 
-        // 1. Manter o imagemId (para a miniatura do card)
-        Integer imagemPrincipalId = null;
-        // 2. Criar a lista de todos os IDs (para o modal de detalhes)
-        List<Integer> todosImagemIds = List.of();
+        // 2. Imagens (Independente da Unidade)
+        List<ImagensUnidade> imagens = imagensUnidadeRepository.findByArtigoId(artigo.getId());
 
-        if (unidade != null) {
-            List<ImagensUnidade> imagens = imagensUnidadeRepository.findByUnidadeId(unidade.getId());
+        List<Integer> todosImagemIds = imagens.stream()
+                .map(ImagensUnidade::getId)
+                .toList();
 
-            todosImagemIds = imagens.stream()
-                    .map(ImagensUnidade::getId)
-                    .toList();
-
-            if (!todosImagemIds.isEmpty()) {
-                imagemPrincipalId = todosImagemIds.get(0);
-            }
-        }
+        // Ajuste de segurança para evitar NoSuchElementException
+        Integer imagemPrincipalId = todosImagemIds.isEmpty() ? null : todosImagemIds.get(todosImagemIds.size() - 1);
 
         return new ArtigoDto(
                 artigo.getId(),

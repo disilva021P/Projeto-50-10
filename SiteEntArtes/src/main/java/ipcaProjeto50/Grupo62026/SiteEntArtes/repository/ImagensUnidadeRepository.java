@@ -13,17 +13,17 @@ public interface ImagensUnidadeRepository extends JpaRepository<ImagensUnidade, 
      * Retorna a lista completa de imagens de uma unidade.
      * Útil para a galeria de detalhes.
      */
-    List<ImagensUnidade> findByUnidadeId(Integer unidadeId);
+    List<ImagensUnidade> findByArtigoId(Integer artigoId);
 
     /**
      * Retorna apenas a primeira imagem encontrada.
      * Útil para miniaturas (thumbnails).
      */
-    Optional<ImagensUnidade> findFirstByUnidadeId(Integer unidadeId);
+    Optional<ImagensUnidade> findFirstByArtigoId(Integer artigoId);
 
     /**
      * Conta quantas imagens existem para uma determinada unidade.
      * Usado para a validação de "pelo menos 1 imagem" na edição.
      */
-    long countByUnidadeId(Integer unidadeId);
+    long countByArtigoId(Integer artigoId);
 }

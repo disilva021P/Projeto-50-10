@@ -18,9 +18,9 @@ public interface ArtigoRepository extends JpaRepository<Artigo, Integer> {
      */
     @Query("""
         SELECT DISTINCT a FROM Artigo a
-        JOIN a.unidades u
+        LEFT JOIN a.unidades u
         WHERE a.arquivado = false
-        AND u.estado.id = 2
+        AND (u IS NULL OR u.estado.id = 2)
         AND (:nome IS NULL OR LOWER(a.nome) LIKE LOWER(CONCAT('%', :nome, '%')))
 
         AND (:tipoId IS NULL 
