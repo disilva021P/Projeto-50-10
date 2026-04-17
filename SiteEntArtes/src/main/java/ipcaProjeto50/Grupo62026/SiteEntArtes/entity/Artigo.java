@@ -31,13 +31,13 @@ public class Artigo {
     @Column(name = "descricao", nullable = false, columnDefinition = "TEXT")
     private String descricao;
 
-    @Column(name = "tamanho", nullable = false, length = 50)
+    @Column(name = "tamanho", nullable = true, length = 50)
     private String tamanho;
 
-    @Column(name = "cor", length = 50)
+    @Column(name = "cor", nullable = true, length = 50)
     private String cor;
 
-    @Column(name = "condicao")
+    @Column(name = "condicao", nullable = true)
     private String condicao;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -57,6 +57,9 @@ public class Artigo {
     @Column(name = "arquivado", nullable = false)
     private Boolean arquivado = false;
 
+    @Column(name = "aprovado", nullable = false)
+    private Boolean aprovado = true;
+
     @Column(name = "preco_venda", precision = 10, scale = 2)
     private BigDecimal precoVenda;
 
@@ -66,7 +69,4 @@ public class Artigo {
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "criado_em", nullable = false)
     private Instant criadoEm;
-
-    @OneToMany(mappedBy = "artigo", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<InventarioUnidade> unidades = new ArrayList<>();
 }
