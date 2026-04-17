@@ -11,5 +11,5 @@ import java.time.LocalTime;
 public record AulaDto(
         String id, EstudioDto estudio, Integer duracaoMinutos,
         LocalDate dataAula, LocalTime horaInicio, LocalTime horaFim,
-        UtilizadoreResumoDto criadoPo, HorarioTurmaDto idHorario) implements Serializable {
+        String criadoPo, HorarioTurmaDto idHorario, EstadoAulaDto estado) implements Serializable {
 }

@@ -18,10 +18,11 @@ import java.util.stream.Collectors;
 public class UtilizadorService {
 
     private final UtilizadoreRepository utilizadoreRepository;
-    private final EncarregadoAluno encarregadoAluno;
+    private final EncarregadoAlunoRepository encarregadoAluno;
     private final TipoUtilizadorRepository tipoUtilizadorRepository;
     private final PasswordEncoder passwordEncoder;
     private final IdHasher idHasher;
+
     // ─── Listar todos, com filtro opcional por tipo ───────────────────────────
     public List<UtilizadorResponseDto> listarTodos(String tipoFiltro) {
         List<Utilizadore> lista;
@@ -53,7 +54,7 @@ public class UtilizadorService {
 
         // Buscar tipo na base de dados (ex: ROLE_COORDENACAO)
         TipoUtilizador tipo = tipoUtilizadorRepository
-                .findByTipoUtilizador(tipoNome)
+                .findAllByTipoUtilizador(tipoNome)
                 .orElseThrow(() -> new Exception("Tipo de utilizador não encontrado"));
 
         // Criar entidade Utilizador
@@ -98,9 +99,10 @@ public class UtilizadorService {
         utilizador.setEditadoEm(LocalDateTime.now());
         utilizadoreRepository.save(utilizador);
     }
+
     // ─── Desativar / Ativar utilizador ────────────────────────────────────────
     public UtilizadorResponseDto toggleAtivo(String id) {
-        Utilizadore utilizador = utilizadoreRepository.findById(idHasher.decode( id))
+        Utilizadore utilizador = utilizadoreRepository.findById(idHasher.decode(id))
                 .orElseThrow(() -> new UtilizadorNaoEncontradoException(id));
 
         utilizador.setAtivo(!utilizador.getAtivo());
@@ -143,7 +145,6 @@ public class UtilizadorService {
     }
 
 
-
     // ─── Ver próprio perfil ───────────────────────────────────────────────────
     public UtilizadorResponseDto verMeuPerfil(String email) {
         Utilizadore utilizador = utilizadoreRepository.findByEmail(email)
@@ -164,20 +165,26 @@ public class UtilizadorService {
                 u.getCriadoEm()
         );
     }
-    private TipoUtilizadorDto FindTipoById(String id){
+
+    private TipoUtilizadorDto FindTipoById(String id) {
         TipoUtilizador tipo = tipoUtilizadorRepository
                 .findById(idHasher.decode(id))
                 .orElseThrow(() -> new RuntimeException("Tipo de utilizador não encontrado"));
-        return new TipoUtilizadorDto(id,tipo.getTipoUtilizador());
+        return new TipoUtilizadorDto(id, tipo.getTipoUtilizador());
 
     }
+
     public List<UtilizadoreResumoDto> findEducandosdeEducador(Integer idEducador) {
-        return encarregadoAlunoRepository.findAllByEncarregado_Id(idEducador)
+        return encarregadoAluno.findAllByEncarregado_Id(idEducador)
                 .stream()
                 .map(ea -> new UtilizadoreResumoDto(
                         idHasher.encode(ea.getAluno().getId()),
                         ea.getAluno().getNome()
                 ))
                 .toList();
+    }
+
+    public List<UtilizadoreResumoDto> findEducandosdeEducador(String idEducador) {
+        return findEducandosdeEducador(idHasher.decode(idEducador));
     }
 }

@@ -15,7 +15,11 @@ public class EstadoAuloService {
     private final EstadoAulaRepository estadoAulaRepository;
     private final IdHasher idHasher;
 
-    EstadoAulaDto findbyId(Integer id){
+    EstadoAula findbyId(Integer id) throws Exception {
+        Optional<EstadoAula> estadoAula = estadoAulaRepository.findById(id);
+        return estadoAula.orElseThrow(()-> new Exception("Estado não encontrado"));
+    }
+    EstadoAulaDto findbyIdDto(Integer id){
         Optional<EstadoAula> estadoAula = estadoAulaRepository.findById(id);
         return estadoAula.map(this::converterParaDto).orElse(null);
     }

@@ -1,9 +1,7 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.HorarioTurmaDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.TurmaDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.UtilizadoreResumoDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.EstudioRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.HorarioFixoRepository;
@@ -32,6 +30,7 @@ public class AulaFixaService {
     private final TurmaRepository turmaRepository;
     private final ModalidadeService modalidadeService;
     private final EstudioService estudioService;
+    private final UtilizadorService utilizadorService;
 
     public PagedModel<HorarioTurmaDto> findAll(Pageable paginacao) {
         Page<HorarioTurmaDto> page = horarioFixoRepository.findAll(paginacao).map(this::convertToDto);
@@ -50,7 +49,7 @@ public class AulaFixaService {
                 .toList();
         List<HorarioTurmaDto> todosOsHorarios = horarioFixoRepository.findAllByIdturma_IdIn(idsDecoded).stream().map(this::convertToDto).toList();
         return todosOsHorarios.stream()
-                .collect(Collectors.groupingBy(HorarioTurmaDto::idturma));
+                .collect(Collectors.groupingBy(HorarioTurmaDto::idturmaId));
     }
 
     @Transactional
@@ -101,8 +100,8 @@ public class AulaFixaService {
     }
     public HorarioTurma fromDtoToHorarioTurma(HorarioTurmaDto h) throws Exception {
         if (h==null) return null;
-        Utilizadore utilizadore = utilizadoreRepository.findById(idHasher.decode(h.criadoPor().id())).orElseThrow(()-> new Exception("Erro a encontrar utilizador"));
-        Turma turma = turmaRepository.findById(idHasher.decode(h.idturma().id())).orElseThrow(()-> new Exception("Erro a encontrar turma"));
+        Utilizadore utilizadore = utilizadoreRepository.findById(idHasher.decode(h.idcriadoPor().id())).orElseThrow(()-> new Exception("Erro a encontrar utilizador"));
+        Turma turma = turmaRepository.findById(idHasher.decode(h.idturmaId().id())).orElseThrow(()-> new Exception("Erro a encontrar turma"));
         Estudio estudio = estudioRepository.findById(idHasher.decode(h.estudioId().id())).orElseThrow(()-> new Exception("Erro a encontrar estudio"));
         return new HorarioTurma(
                 null,
@@ -130,6 +129,24 @@ public class AulaFixaService {
                 horarioTurma.getHoraInicio(),
                 horarioTurma.getHoraFim(),
                 estudioService.converterParaDto(horarioTurma.getEstudioId())
+        );
+    }
+    public HorarioTurmaDto convertRequestToDto(HorarioTurmaRequestDto horarioTurmaRequestDto) throws Exception {
+        if (horarioTurmaRequestDto==null) return null;
+        UtilizadorResponseDto u = utilizadorService.verDetalhe(idHasher.decode(horarioTurmaRequestDto.idcriadoPor()));
+        return new HorarioTurmaDto(
+                horarioTurmaRequestDto.id(),
+                new UtilizadoreResumoDto(u.id(),u.nome()),
+                turmaService.findById(horarioTurmaRequestDto.idturma()),
+                horarioTurmaRequestDto.dataInicio(),
+                horarioTurmaRequestDto.dataValidade(),
+                horarioTurmaRequestDto.diaSemana(),
+                horarioTurmaRequestDto.duracaoMinutos(),
+                horarioTurmaRequestDto.horaInicio(),
+                horarioTurmaRequestDto.horaFim(),
+                estudioService.findEstudioDtobyId(idHasher.decode(horarioTurmaRequestDto.estudioId()))
+
+
         );
     }
 }

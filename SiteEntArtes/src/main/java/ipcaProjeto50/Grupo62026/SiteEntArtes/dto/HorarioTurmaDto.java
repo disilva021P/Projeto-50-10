@@ -7,7 +7,7 @@ import java.time.LocalTime;
 /**
  * DTO for {@link ipcaProjeto50.Grupo62026.SiteEntArtes.entity.HorarioTurma}
  */
-public record HorarioTurmaDto(String id, UtilizadoreResumoDto criadoPor, TurmaDto idturma, LocalDate dataInicio, LocalDate dataValidade,
+public record HorarioTurmaDto(String id, UtilizadoreResumoDto idcriadoPor, TurmaDto idturmaId, LocalDate dataInicio, LocalDate dataValidade,
                               Integer diaSemana, Integer duracaoMinutos, LocalTime horaInicio,
                               LocalTime horaFim, EstudioDto estudioId) implements Serializable {
 
