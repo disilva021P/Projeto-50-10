@@ -7,6 +7,7 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.ModalidadeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 @RequiredArgsConstructor
@@ -14,11 +15,19 @@ import java.util.Optional;
 public class ModalidadeService {
     private final IdHasher idHasher;
     private final ModalidadeRepository modalidadeRepository;
-    ModalidadeDto findbyId(Integer id) throws Exception {
+    Modalidade findbyId(Integer id) throws Exception {
+        Optional<Modalidade> modalidade = modalidadeRepository.findById(id);
+        return (modalidade.orElseThrow(() -> new Exception("Não existe nenhum!")));
+    }
+    Modalidade findbyId(String id) throws Exception {
+        Optional<Modalidade> modalidade = modalidadeRepository.findById(idHasher.decode(id));
+        return (modalidade.orElseThrow(() -> new Exception("Não existe nenhum!")));
+    }
+    ModalidadeDto findbyIdDto(Integer id) throws Exception {
         Optional<Modalidade> modalidade = modalidadeRepository.findById(id);
         return converterParaDto(modalidade.orElseThrow(() -> new Exception("Não existe nenhum!")));
     }
-    ModalidadeDto findbyId(String id) throws Exception {
+    ModalidadeDto findbyIdDto(String id) throws Exception {
         Optional<Modalidade> modalidade = modalidadeRepository.findById(idHasher.decode(id));
         return converterParaDto(modalidade.orElseThrow(() -> new Exception("Não existe nenhum!")));
     }
@@ -27,5 +36,8 @@ public class ModalidadeService {
             return null;
         }
         return new ModalidadeDto(idHasher.encode(modalidade.getId()),modalidade.getNome());
+    }
+    public List<ModalidadeDto> findAll(){
+        return modalidadeRepository.findAll().stream().map(this::converterParaDto).toList();
     }
 }

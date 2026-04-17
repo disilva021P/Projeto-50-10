@@ -1,13 +1,10 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.entity;
 
-import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.AulaDto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -18,16 +15,20 @@ import java.time.LocalTime;
 @Setter
 @Entity
 @Table(name = "aulas")
+@Inheritance(strategy = InheritanceType.JOINED)
 public class Aula {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false)
     private Integer id;
 
-    @Column(name = "estudio_id", nullable = false)
-    private Integer estudioId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "estudio_id", nullable = false)
+    private Estudio estudio;
 
-    @Column(name = "criado_por", nullable = false)
-    private Integer criadoPor;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "criado_por", nullable = false)
+    private Utilizadore criadoPor;
 
     @Column(name = "duracao_minutos", nullable = false)
     private Integer duracaoMinutos;
@@ -41,9 +42,14 @@ public class Aula {
     @Column(name = "hora_fim", nullable = false)
     private LocalTime horaFim;
 
-    @Column(name = "notas")
+    @Lob
+    @Column(name = "notas", columnDefinition = "TEXT")
     private String notas;
 
-    @Column(name = "id_horario")
-    private Integer idHorario;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "id_horario", nullable = true)
+    private HorarioTurma idHorario;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "estado", nullable = false)
+    private EstadoAula estado;
 }

@@ -1,5 +1,6 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.dto;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -8,11 +9,7 @@ import java.time.LocalTime;
  */
 
 public record AulaDto(
-        String id,
-        Integer duracaoMinutos,
-        LocalDate dataAula,
-        LocalTime horaInicio,
-        LocalTime horaFim,
-        String notas,
-        Integer idHorario
-) {}
+        String id, EstudioDto estudio, Integer duracaoMinutos,
+        LocalDate dataAula, LocalTime horaInicio, LocalTime horaFim,
+        String criadoPo, HorarioTurmaDto idHorario, EstadoAulaDto estado) implements Serializable {
+}
