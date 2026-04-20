@@ -1,11 +1,15 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
+@AllArgsConstructor
+@NoArgsConstructor
 @Getter
 @Setter
 @Entity
@@ -13,16 +17,12 @@ import org.hibernate.annotations.OnDeleteAction;
 public class ImagensUnidade {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", nullable = false)
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "unidade_id", nullable = false)
-    private InventarioUnidade unidade;
+    @Column(name = "artigo_id", nullable = false)
+    private Integer artigoId;
 
-    @Column(name = "url_imagem", nullable = false)
-    private String urlImagem;
-
-
+    @Lob
+    @Column(name = "url_imagem", columnDefinition = "MEDIUMBLOB")
+    private byte[] urlImagem;
 }

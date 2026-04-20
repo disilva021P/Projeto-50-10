@@ -15,7 +15,9 @@
 	<description>Este projeto foi desenvolvido com vista na solução de um software para o Projeto 50+10 realizado em 2026 no IPCA (LESI)</description>
 
 	<properties>
-		<java.version>21</java.version>
+		<java.version>26</java.version>
+		<maven.compiler.release>26</maven.compiler.release>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
 	<dependencies>
@@ -37,7 +39,12 @@
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
-
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+			<version>4.1.0-M4</version>
+			<scope>compile</scope>
+		</dependency>
 		<!-- Dependências de teste corrigidas -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -92,6 +99,10 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-json</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -99,15 +110,22 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<configuration>
-					<annotationProcessorPaths>
-						<path>
-							<groupId>org.projectlombok</groupId>
-							<artifactId>lombok</artifactId>
-						</path>
-					</annotationProcessorPaths>
-				</configuration>
+				<version>3.11.0</version> <configuration>
+				<source>26</source>
+				<target>26</target>
+				<compilerArgs>
+					<arg>--enable-preview</arg>
+				</compilerArgs>
+				<annotationProcessorPaths>
+					<path>
+						<groupId>org.projectlombok</groupId>
+						<artifactId>lombok</artifactId>
+						<version>${lombok.version}</version>
+					</path>
+				</annotationProcessorPaths>
+			</configuration>
 			</plugin>
+
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
@@ -118,6 +136,7 @@
 							<artifactId>lombok</artifactId>
 						</exclude>
 					</excludes>
+					<jvmArguments>--enable-preview</jvmArguments>
 				</configuration>
 			</plugin>
 		</plugins>

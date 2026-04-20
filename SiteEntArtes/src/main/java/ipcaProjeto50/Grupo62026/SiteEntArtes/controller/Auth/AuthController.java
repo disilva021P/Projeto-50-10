@@ -1,11 +1,9 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.controller.Auth;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.LoginDTO;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.TipoUtilizador;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Utilizadore;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.AulaRepository;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.TipoUtilizadorRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.UtilizadoreRepository;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.service.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,40 +13,62 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.service.JwtService;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.util.List;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final UtilizadoreRepository utilizadoreRepository;
+
     @Autowired
-    public AuthController(JwtService jwtService,AuthenticationManager authenticationManager) {
+    public AuthController(JwtService jwtService,
+                          AuthenticationManager authenticationManager,
+                          UtilizadoreRepository utilizadoreRepository) {
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
+        this.utilizadoreRepository = utilizadoreRepository;
     }
+
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginDTO loginData) {
+    public ResponseEntity<?> login(@RequestBody LoginDTO loginData) {
         try {
-            System.out.println("Aqui?");
+            // 1. Autenticar as credenciais
             Authentication auth = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(loginData.email(), loginData.password())
             );
-            System.out.println("Aqui?1");
 
+            // 2. Obter UserDetails e Gerar Token
             UserDetails userDetails = (UserDetails) auth.getPrincipal();
-            if(userDetails==null) throw new RuntimeException("User nulo");
             String token = jwtService.generateToken(userDetails);
-            System.out.println("Aqui?2");
 
-            return ResponseEntity.ok(token);
+            // 3. Buscar os dados do utilizador na BD
+            Utilizadore user = utilizadoreRepository.findByEmail(loginData.email())
+                    .orElseThrow(() -> new RuntimeException("Utilizador não encontrado após login"));
+
+            // 4. Criar um mapa com a resposta estruturada para o Frontend
+            Map<String, Object> response = new HashMap<>();
+            response.put("token", token);
+            response.put("id", user.getId());
+            response.put("nome", user.getNome());
+            response.put("email", user.getEmail());
+
+            // ADICIONADO: Envia o ID do tipo de utilizador (ex: 1 para coordenação, 2 para aluno)
+            // Isto permite ao Next.js saber para que página redirecionar
+            if (user.getTipo() != null) {
+                response.put("tipoId", user.getTipo().getId());
+            }
+
+            return ResponseEntity.ok(response);
+
         } catch (AuthenticationException e) {
-            System.out.println(e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Email ou Password incorretos");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro interno no servidor");
         }
     }
 }

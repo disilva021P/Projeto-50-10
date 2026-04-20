@@ -1,16 +1,21 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 
+@AllArgsConstructor
+@NoArgsConstructor
 @Getter
 @Setter
 @Entity
 @Table(name = "aulas")
+@Inheritance(strategy = InheritanceType.JOINED)
 public class Aula {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,7 +49,14 @@ public class Aula {
     private String modalidade;  // ou um Enum
 
     @Lob
-    @Column(name = "notas")
+    @Column(name = "notas", columnDefinition = "TEXT")
     private String notas;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "id_horario", nullable = true)
+    private HorarioTurma idHorario;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "estado", nullable = false)
+    private EstadoAula estado;
 }

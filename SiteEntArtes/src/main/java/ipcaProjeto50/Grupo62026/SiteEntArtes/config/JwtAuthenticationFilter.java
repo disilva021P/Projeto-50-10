@@ -22,10 +22,9 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserDetailsService userDetailsService;
+
     public JwtAuthenticationFilter(JwtService jwtService,UserDetailsService userDetailsService) {
         this.jwtService = jwtService;
-        this.userDetailsService=userDetailsService;
     }
 
     @Override
@@ -46,7 +45,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String jwt = authHeader.substring(7);
-        String userId = jwtService.extractUsername(jwt); // JwtService
+        String userId = jwtService.extractUsername(jwt);
 
         if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             String authority = jwtService.extractAuthorities(jwt);
