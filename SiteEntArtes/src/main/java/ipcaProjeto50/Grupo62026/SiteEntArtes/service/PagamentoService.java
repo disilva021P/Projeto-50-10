@@ -1,41 +1,57 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.PagamentoDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.EncarregadoAluno;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Pagamento;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Utilizadore;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.AulaRepository;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.EncarregadoAlunoRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.PagamentoRepository;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.UtilizadoreRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.io.PrintWriter;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import static org.springframework.data.jpa.domain.AbstractPersistable_.id;
+
 
 @Service
+@RequiredArgsConstructor
 public class PagamentoService {
 
     private final PagamentoRepository pagamentoRepository;
     private final IdHasher idHasher;
-
-    @Autowired
-    public PagamentoService(PagamentoRepository pagamentoRepository,IdHasher idHasher) {
-        this.pagamentoRepository = pagamentoRepository;
-        this.idHasher=idHasher;
-    }
+    private final EncarregadoAlunoRepository encarregadoAlunoRepository;
+    private final UtilizadoreRepository utilizadoreRepository;
 
     // Listar todos os pagamentos ,
-    public List<PagamentoDto> listarTodos(){return pagamentoRepository.findAll().stream().map(this::converterParaDto).toList();}
+    public List<PagamentoDto> listarTodos() {
+        return pagamentoRepository.findAll().stream().map(this::converterParaDto).toList();
+    }
 
     // Procurar uma pagamento por ID
     public Optional<PagamentoDto> buscarPorId(String id) {
-           return pagamentoRepository.findById(idHasher.decode(id)).map(this::converterParaDto);
+        return pagamentoRepository.findById(idHasher.decode(id)).map(this::converterParaDto);
     }
+
     // Criar pagamento
     public PagamentoDto criar(PagamentoDto dto) {
+
         //  Criamos uma Entity vazia
         Pagamento entidade = new Pagamento();
+
+        String idHashed = dto.utilizadoreResumoDto().id();
+        Integer idReal = idHasher.decode(idHashed);
+
+        Utilizadore donoDoPagamento = utilizadoreRepository.findById(idReal)
+                .orElseThrow(() -> new RuntimeException("Utilizador nao encontrado"));
 
         //  Passamos os dados do DTO (que veio do JS) para a Entity
         entidade.setValorPagamento(dto.valorPagamento());
@@ -45,6 +61,7 @@ public class PagamentoService {
         entidade.setIdTipoPagamento(dto.idTipoPagamento());
         entidade.setAula(dto.aula());
 
+        entidade.setIdutilizador(donoDoPagamento);
         //  Mandamos o Repository gravar a Entity na BD
         Pagamento gravado = pagamentoRepository.save(entidade);
 
@@ -52,18 +69,33 @@ public class PagamentoService {
         return converterParaDto(gravado);
     }
 
-    // Atualizar pagamento VERIFICAR MELHOR DEPOIS
-    public Pagamento atualizar(Integer id, Pagamento pagamentoAtualizado) {
+    // Atualizar pagamento
+    public PagamentoDto atualizar(String idHashed, PagamentoDto dto) {
 
-        Pagamento pagamento = pagamentoRepository.findById(id)
+        Integer idReal = idHasher.decode(idHashed);
+
+        Pagamento pagamento = pagamentoRepository.findById(idReal)
                 .orElseThrow(() -> new RuntimeException("Pagamento não encontrado"));
 
-        pagamento.setValorPagamento(pagamentoAtualizado.getValorPagamento());
-        pagamento.setDescricao(pagamentoAtualizado.getDescricao());
-        pagamento.setDataPagamento(pagamentoAtualizado.getDataPagamento());
+        pagamento.setValorPagamento(dto.valorPagamento());
+        pagamento.setDescricao(dto.descricao());
+        pagamento.setDataPagamento(dto.dataPagamento());
 
-        return pagamentoRepository.save(pagamento);
+        if (dto.idTipoPagamento() != null) {
+            pagamento.setIdTipoPagamento(dto.idTipoPagamento());
+        }
+
+        // 4. Se precisares de mudar o dono do pagamento (Utilizador)
+        if (dto.utilizadoreResumoDto() != null) {
+            Integer novoUserId = idHasher.decode(dto.utilizadoreResumoDto().id());
+            Utilizadore novoDono = utilizadoreRepository.findById(novoUserId)
+                    .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
+            pagamento.setIdutilizador(novoDono);
+        }
+        Pagamento gravado = pagamentoRepository.save(pagamento);
+        return converterParaDto(gravado);
     }
+
     // Confirmar pagamento
     public PagamentoDto confirmar(String idHashed) {
 
@@ -85,8 +117,7 @@ public class PagamentoService {
         return converterParaDto(pagamentoGuardado);
     }
 
-    //  Eliminar um pagamento
-    // Agora o JS pode mandar o ID seguro ("abc123")
+    //  Eliminar um pagamento   
     public void eliminar(String idHashed) {
         //  Descodificamos para o número real da BD
         Integer idReal = idHasher.decode(idHashed);
@@ -109,6 +140,12 @@ public class PagamentoService {
                 ? pagamento.getIdTipoPagamento().getTipoPagamento()
                 : "Não definido";
 
+        UtilizadoreResumoDto resumo = null;
+        if (pagamento.getIdutilizador() != null) {
+            resumo = new UtilizadoreResumoDto(idHasher.encode(pagamento.getIdutilizador().getId()),
+                    pagamento.getIdutilizador().getNome());
+        }
+
         return new PagamentoDto(
                 idHasher.encode(pagamento.getId()), // ID seguro para o JS
                 pagamento.getValorPagamento(),
@@ -119,9 +156,76 @@ public class PagamentoService {
                 pagamento.getAula(),
                 pagamento.getDataPagamento(),
                 pagamento.getDataConfirmado(),
-                null // Aqui podes depois criar um UtilizadorResumoDto se precisares
+                resumo // associa o utilizador ao pagamento
         );
     }
 
+    // encontrar os filhos dos encarregados de educacao
+    public List<UtilizadoreResumoDto> findEducandosdeEducador(Integer idEducador) {
+        return encarregadoAlunoRepository.findAllByEncarregado_Id(idEducador).stream()
+                .map(ea -> new UtilizadoreResumoDto(
+                        idHasher.encode(ea.getAluno().getId()),
+                        ea.getAluno().getUtilizadores().getNome()
+                ))
+                .toList();
+    }
+
+
+    public PagamentosEstatisiticaCoordenacao EstatisticasCoordenacao() {
+        return pagamentoRepository.getEstatisticas();
+    }
+
+    public DespesasEstatisticaDto DespesasEstatistica() {
+        return pagamentoRepository.getEstatisticasDespesas(List.of(5, 6));
+    }
+
+    public ProfessorEstatisticaDto EstatisticaProfessor(String idHashed) {
+        Integer idReal = idHasher.decode(idHashed);
+
+        return pagamentoRepository.getEstatisticasProfessor(idReal);
+    }
+
+    public String escreverPagamentosCsv( List<PagamentoDto> pagamentos) {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("sep=;\n");
+        sb.append("Utilizador;Descricao;Valor;Data;Estado");
+
+        for (PagamentoDto p : pagamentos) {
+            String nome = (p.utilizadoreResumoDto() != null) ? p.utilizadoreResumoDto().nome() : "N/A";
+            sb.append(nome).append(";");
+            sb.append(p.descricao()).append(";");
+            sb.append(p.valorPagamento()).append(";");
+            sb.append(p.dataPagamento()).append(";");
+            sb.append(p.pago() ? "Pago" : "Pendente").append("\n");
+        }
+        return sb.toString();
+    }
+
+    public String exportarRelatorioMensalTexto(int mes, int ano) {
+        List<Pagamento> pagamentos = pagamentoRepository.findByMesEAno(mes, ano);
+
+        List<PagamentoDto> dtos = pagamentos.stream()
+                .map(this::converterParaDto)
+                .toList();
+
+        return escreverPagamentosCsv(dtos);
+    }
+    public AlunoEstatisiticaDto obterEstatisticasAluno(String idHashed) {
+        Integer idReal = idHasher.decode(idHashed);
+
+        // Chamamos as queries que criamos acima
+        BigDecimal totalPago = pagamentoRepository.somarPagoPorUtilizador(idReal);
+        BigDecimal totalPendente = pagamentoRepository.somarPendentePorUtilizador(idReal);
+
+        // Histórico convertido para DTO
+        List<PagamentoDto> historico = pagamentoRepository.findAllByIdutilizador_Id(idReal)
+                .stream()
+                .map(this::converterParaDto)
+                .toList();
+
+        return new AlunoEstatisiticaDto(totalPago,totalPendente,historico);
+    }
 }
+
 
