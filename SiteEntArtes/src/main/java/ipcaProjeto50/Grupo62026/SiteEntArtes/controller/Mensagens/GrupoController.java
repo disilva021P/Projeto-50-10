@@ -31,4 +31,30 @@ public class GrupoController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @PutMapping("/{grupoId}/adicionar/{membroId}")
+    public ResponseEntity<String> adicionarMembro(
+            @AuthenticationPrincipal String adminIdHashed,
+            @PathVariable String grupoId,
+            @PathVariable String membroId) {
+        try {
+            grupoService.adicionarMembro(adminIdHashed, grupoId, membroId);
+            return ResponseEntity.ok("Membro adicionado com sucesso.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{grupoId}/remover/{membroId}")
+    public ResponseEntity<String> removerMembro(
+            @AuthenticationPrincipal String adminIdHashed,
+            @PathVariable String grupoId,
+            @PathVariable String membroId) {
+        try {
+            grupoService.removerMembro(adminIdHashed, grupoId, membroId);
+            return ResponseEntity.ok("Membro removido com sucesso.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

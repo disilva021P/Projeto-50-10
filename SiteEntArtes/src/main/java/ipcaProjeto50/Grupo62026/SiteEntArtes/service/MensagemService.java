@@ -5,10 +5,7 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Mensagen;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.MensagensGrupo;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Utilizadore;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.MensagenRepository;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.MensagensGrupoRepository;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.UtilizadorLogRepository;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.UtilizadoreRepository;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +18,7 @@ public class MensagemService {
     private final MensagensGrupoService mensagensTurmaService;
     private final UtilizadoreRepository utilizadoreRepository;
     private final MensagensGrupoRepository mensagensGrupoRepository;
+    private final GrupoRepository grupoRepository;
     private final MensagenRepository mensagenRepository;
     private final IdHasher idHasher;
     private final UtilizadorLogRepository utilizadorLogRepository;
@@ -48,18 +46,40 @@ public class MensagemService {
                 .map(m -> converterParaPreviewDto(m, id))
                 .forEach(previews::add);
 
-        // ── 2. Grupos e Turmas (Unificados) ──
-        // Aqui usamos o novo repository que criámos para as mensagens de grupo
-        List<MensagensGrupo> ultimasMsgGrupos = mensagensGrupoRepository.findUltimasMensagensPorMembro(id);
+        // ── 2. Grupos (Corrigido para incluir grupos sem mensagens) ──
 
-        for (MensagensGrupo mg : ultimasMsgGrupos) {
-            previews.add(new MensagenPreviewDto(
-                    "GRUPO_" + idHasher.encode(mg.getGrupo().getId()), // Prefixo para o Front saber que é grupo
-                    mg.getGrupo().getNome(),
-                    mg.getConteudo(),
-                    mg.getEnviadaEm(),
-                    true // isTurma/isGrupo = true
-            ));
+        // Injetar o GrupoRepository no teu Service para usar aqui:
+        // List<Grupo> meusGrupos = grupoRepository.findAllByMembrosId(id);
+
+        // Como alternativa, se o teu mensagensGrupoRepository conseguir buscar grupos:
+        List<ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Grupo> meusGrupos =
+                grupoRepository.findByMembros_Id(id); // Precisas de criar este método no GrupoRepository
+
+        for (ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Grupo g : meusGrupos) {
+            // Tenta encontrar a última mensagem deste grupo específico
+            Optional<MensagensGrupo> ultimaMsg = mensagensGrupoRepository
+                    .findFirstByGrupoIdOrderByEnviadaEmDesc(g.getId());
+
+            if (ultimaMsg.isPresent()) {
+                // Se tem mensagem, mostra a mensagem
+                previews.add(new MensagenPreviewDto(
+                        "GRUPO_" + idHasher.encode(g.getId()),
+                        g.getNome(),
+                        ultimaMsg.get().getConteudo(),
+                        ultimaMsg.get().getEnviadaEm(),
+                        true
+                ));
+            } else {
+                // SE NÃO TEM MENSAGEM: Mostra o grupo com texto de boas-vindas
+                // Usamos a data de criação do grupo ou a data atual para não dar erro no DTO
+                previews.add(new MensagenPreviewDto(
+                        "GRUPO_" + idHasher.encode(g.getId()),
+                        g.getNome(),
+                        "Novo grupo criado!",
+                        LocalDateTime.now(), // Ou g.getCriadoEm() se tiveres esse campo
+                        true
+                ));
+            }
         }
 
         // ── 3. Ordenação Final ──
@@ -135,32 +155,33 @@ public class MensagemService {
 
     // --- MÉTODOS PARA GRUPOS ---
 
-    public List<MensagenDto> mensagensConversaGrupo(String emailUser, String idGrupoHashed) {
-        // 1. Buscar o utilizador pelo email (principal do token)
-        Utilizadore utilizadore = utilizadoreRepository.findByEmail(emailUser)
-                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
-
+    public List<MensagenDto> mensagensConversaGrupo(String idUserHashed, String idGrupoHashed) {
+        // 1. Descodificar IDs
+        Integer userId = idHasher.decode(idUserHashed);
         Integer grupoId = idHasher.decode(idGrupoHashed);
 
-        // 2. Opcional: Validar se o utilizador pertence ao grupo antes de mostrar as mensagens
-        // (Isso dá segurança extra ao teu sistema)
+        // 2. Buscar o utilizador pelo ID real
+        Utilizadore utilizadore = utilizadoreRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
 
-        // 3. Buscar mensagens do grupo ordenadas por data
+        // 3. Buscar mensagens do grupo
         return mensagensGrupoRepository.findByGrupoIdOrderByEnviadaEmAsc(grupoId)
                 .stream()
                 .map(this::converterGrupoParaDto)
                 .toList();
     }
 
-    public MensagenDto criarMensagemGrupo(String emailUser, MensagemGrupoCriarDto dto) {
-        Utilizadore remetente = utilizadoreRepository.findByEmail(emailUser)
-                .orElseThrow(() -> new EntityNotFoundException("Remetente não encontrado"));
-
+    public MensagenDto criarMensagemGrupo(String idUserHashed, MensagemGrupoCriarDto dto) {
+        // 1. Descodificar IDs
+        Integer userId = idHasher.decode(idUserHashed);
         Integer grupoId = idHasher.decode(dto.grupoId());
 
-        // Buscar o Grupo (podes injetar o GrupoRepository ou usar o do MensagensGrupo)
-        ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Grupo grupo = new ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Grupo();
-        grupo.setId(grupoId); // Criação de referência rápida ou busca no repo
+        Utilizadore remetente = utilizadoreRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Remetente não encontrado"));
+
+        // 2. Buscar/Referenciar o Grupo
+        ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Grupo grupo = grupoRepository.findById(grupoId)
+                .orElseThrow(() -> new EntityNotFoundException("Grupo não encontrado"));
 
         MensagensGrupo novaMensagem = new MensagensGrupo();
         novaMensagem.setGrupo(grupo);

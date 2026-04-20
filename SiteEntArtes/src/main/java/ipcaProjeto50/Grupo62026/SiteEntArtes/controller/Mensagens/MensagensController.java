@@ -36,10 +36,12 @@ public class MensagensController {
     // --- NOVOS ENDPOINTS PARA GRUPOS ---
 
     @GetMapping("/conversa-grupo")
-    public ResponseEntity<List<MensagenDto>> getMensagensConversaGrupo(
-            @AuthenticationPrincipal String userEmail,
-            @RequestParam String grupoId) {
-        return ResponseEntity.ok(mensagemService.mensagensConversaGrupo(userEmail, grupoId));
+    public ResponseEntity<?> getMensagensGrupo(@AuthenticationPrincipal String userIdHashed, @RequestParam String grupoId) {
+        try {
+            return ResponseEntity.ok(mensagemService.mensagensConversaGrupo(userIdHashed, grupoId));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(e.getMessage());
+        }
     }
 
     @PostMapping("/grupo")

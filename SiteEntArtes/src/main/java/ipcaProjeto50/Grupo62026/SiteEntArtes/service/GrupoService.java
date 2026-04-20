@@ -81,4 +81,49 @@ public class GrupoService {
 
         grupoRepository.save(novoGrupo);
     }
+
+
+    @Transactional
+    public void adicionarMembro(String idAdminHashed, String grupoIdHashed, String novoMembroHashed) {
+        // 1. Validar se quem está a tentar adicionar é Coordenação (ID 1)
+        Integer adminId = idHasher.decode(idAdminHashed);
+        Utilizadore admin = utilizadoreRepository.findById(adminId)
+                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado."));
+
+        if (admin.getTipo().getId() != 1) {
+            throw new RuntimeException("Apenas a coordenação pode editar membros de grupos.");
+        }
+
+        // 2. Buscar o grupo e o novo membro
+        Grupo grupo = grupoRepository.findById(idHasher.decode(grupoIdHashed))
+                .orElseThrow(() -> new RuntimeException("Grupo não encontrado."));
+
+        Utilizadore novoMembro = utilizadoreRepository.findById(idHasher.decode(novoMembroHashed))
+                .orElseThrow(() -> new RuntimeException("Utilizador a adicionar não encontrado."));
+
+        // 3. Adicionar se não existir
+        if (!grupo.getMembros().contains(novoMembro)) {
+            grupo.getMembros().add(novoMembro);
+            grupoRepository.save(grupo);
+        }
+    }
+
+    @Transactional
+    public void removerMembro(String idAdminHashed, String grupoIdHashed, String membroARemoverHashed) {
+        Integer adminId = idHasher.decode(idAdminHashed);
+        Utilizadore admin = utilizadoreRepository.findById(adminId)
+                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado."));
+
+        if (admin.getTipo().getId() != 1) {
+            throw new RuntimeException("Apenas a coordenação pode remover membros.");
+        }
+
+        Grupo grupo = grupoRepository.findById(idHasher.decode(grupoIdHashed))
+                .orElseThrow(() -> new RuntimeException("Grupo não encontrado."));
+
+        // Evitar que o grupo fique sem o criador se necessário, ou permitir remoção total
+        grupo.getMembros().removeIf(m -> idHasher.encode(m.getId()).equals(membroARemoverHashed));
+
+        grupoRepository.save(grupo);
+    }
 }
