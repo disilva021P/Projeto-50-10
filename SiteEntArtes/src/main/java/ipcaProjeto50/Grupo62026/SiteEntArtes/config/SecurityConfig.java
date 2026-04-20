@@ -32,7 +32,7 @@ public class    SecurityConfig {
                 .csrf(csrf -> csrf.disable()) // desativar CSRF para API REST
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/login","/api/utilizadores/geraTokenEmail","/api/utilizadores/esqueceuPassword").permitAll()
                         .requestMatchers("/api/coordenacao/**").hasAuthority("COORDENACAO")
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()

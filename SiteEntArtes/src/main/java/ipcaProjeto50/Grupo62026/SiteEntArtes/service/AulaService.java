@@ -515,6 +515,7 @@ public class AulaService {
             LocalDateTime momentoDaAula = LocalDateTime.of(aula.dataAula(), aula.horaInicio());
             if(!LocalDateTime.now().isBefore(momentoDaAula.minusHours(48))){
                 //TODO:APLICAR CONSEQUENCIAS, FALTAS ETC
+                aplicaSancoes(alunoId);
             }
         }
         aulaAlunoRepository.deleteById(id);
@@ -523,5 +524,7 @@ public class AulaService {
     public long contarInscritos(String aulaId) {
         return aulaAlunoRepository.countByAulaId(idHasher.decode(aulaId));
     }
-
+    public void aplicaSancoes(String alunoId){
+        return;
+    }
 }

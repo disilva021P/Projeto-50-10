@@ -5,6 +5,7 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.service.UtilizadorService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.repository.query.Param;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,13 +19,34 @@ import java.util.Objects;
 @RestController
 @RequestMapping("/api/utilizadores")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class UtilizadorController {
     private String getUserId() {
         return (String) Objects.requireNonNull(SecurityContextHolder.getContext()
                 .getAuthentication()).getPrincipal();
     }
     private final UtilizadorService utilizadorService;
+    // 1. Gerar o Token
+    @PostMapping("/geraTokenEmail") // Alterado para POST
+    public ResponseEntity<?> geraTokenEmail(@RequestParam String email) {
+        try {
+            utilizadorService.geraToken(email);
+            return ResponseEntity.ok("Token enviado para o e-mail");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 
+    // 2. Alterar a Senha
+    @PostMapping("/esqueceuPassword") // Alterado para POST
+    public ResponseEntity<?> esqueceuPassword(@RequestBody AlterarPasswordSemLoginDto dto) {
+        try {
+            utilizadorService.atualizaPassSemLogin(dto);
+            return ResponseEntity.ok("Palavra-passe alterada com sucesso!");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
     // ─── GET /api/utilizadores?tipo=ROLE_ALUNO ────────────────────────────────
     // Lista todos os utilizadores, com filtro opcional por tipo
     // Só coordenação tem acesso
@@ -90,9 +112,8 @@ public class UtilizadorController {
     // Qualquer utilizador autenticado tem acesso
     @PatchMapping("/minha-password")
     public ResponseEntity<Void> alterarPalavraPasse(
-            @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody AlterarPasswordDto dto) {
-        utilizadorService.alterarPalavraPasse(userDetails.getUsername(), dto);
+        utilizadorService.alterarPalavraPasse(getUserId(), dto);
         return ResponseEntity.noContent().build();
     }
 

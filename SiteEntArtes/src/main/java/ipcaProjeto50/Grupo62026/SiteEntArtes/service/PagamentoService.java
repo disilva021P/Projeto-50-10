@@ -6,6 +6,7 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Pagamento;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.AulaRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.PagamentoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -121,6 +122,10 @@ public class PagamentoService {
                 pagamento.getDataConfirmado(),
                 null // Aqui podes depois criar um UtilizadorResumoDto se precisares
         );
+    }
+    @Scheduled(cron = "0 0 0 1 * *")
+    public void tarefaInicioDoMes() {
+        System.out.println("Executando no primeiro dia do mês às 00:00");
     }
 
 }

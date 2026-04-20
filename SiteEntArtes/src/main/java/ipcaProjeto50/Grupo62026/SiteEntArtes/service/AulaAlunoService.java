@@ -37,12 +37,11 @@ public class AulaAlunoService {
                 .orElseThrow(() -> new Exception("Aluno não encontrado"));
 
         // 3. Instanciar a entidade de associação
-        // O construtor personalizado já cria o AulaAlunoId internamente
+        // O construtor personalizado já cria   o AulaAlunoId internamente
         AulaAluno aulaAluno = new AulaAluno(aula, aluno);
 
         // 4. Salvar e retornar como DTO
-        AulaAluno salvo = aulaAlunoRepository.save(aulaAluno);
-        return salvo;
+        return aulaAlunoRepository.save(aulaAluno);
     }
 
     // READ (Todos)
