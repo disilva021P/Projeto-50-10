@@ -137,12 +137,17 @@ public class AulaService {
     public AulaDto converterParaDto(Aula aula) {
         return new AulaDto(
                 idHasher.encode(aula.getId()),
-                aula.getEstudio(),
+                aula.getModalidade(),
+                converterEstudioParaDto(aula.getEstudio()),
                 aula.getDuracaoMinutos(),
                 aula.getDataAula(),
                 aula.getHoraInicio(),
-                aula.getHoraFim()
+                aula.getHoraFim(),
+                aula.getEstado(),
+                aula.getCriadoPor(),
+                aula.getNotas()
         );
+
     }
 
     // -------------------------------------------------------------------------

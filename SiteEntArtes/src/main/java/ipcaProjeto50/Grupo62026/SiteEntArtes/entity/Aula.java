@@ -37,9 +37,14 @@ public class Aula {
     @Column(name = "hora_fim", nullable = false)
     private LocalTime horaFim;
 
+    @Column(name = "estado", nullable = false)
+    private String estado;  // ou um Enum se preferires
+
+    @Column(name = "modalidade", nullable = false)
+    private String modalidade;  // ou um Enum
+
     @Lob
     @Column(name = "notas")
     private String notas;
-
 
 }

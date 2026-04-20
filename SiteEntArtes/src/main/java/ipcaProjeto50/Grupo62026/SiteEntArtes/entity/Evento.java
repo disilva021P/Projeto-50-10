@@ -3,6 +3,8 @@ package ipcaProjeto50.Grupo62026.SiteEntArtes.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import java.time.Instant;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDate;
 
@@ -20,7 +22,7 @@ public class Evento {
     private String nome;
 
     @Lob
-    @Column(name = "descricao", nullable = false,columnDefinition = "TEXT")
+    @Column(name = "descricao", nullable = false, columnDefinition = "TEXT")
     private String descricao;
 
     @Column(name = "data_evento", nullable = false)
@@ -33,5 +35,7 @@ public class Evento {
     @JoinColumn(name = "criado_por", nullable = false)
     private Utilizadore criadoPor;
 
-
+    @ColumnDefault("CURRENT_TIMESTAMP")
+    @Column(name = "criado_em", nullable = false)
+    private Instant criadoEm;
 }
