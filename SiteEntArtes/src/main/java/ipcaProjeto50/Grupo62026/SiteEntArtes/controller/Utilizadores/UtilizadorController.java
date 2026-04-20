@@ -19,7 +19,10 @@ import java.util.Objects;
 @RequestMapping("/api/utilizadores")
 @RequiredArgsConstructor
 public class UtilizadorController {
-
+    private String getUserId() {
+        return (String) Objects.requireNonNull(SecurityContextHolder.getContext()
+                .getAuthentication()).getPrincipal();
+    }
     private final UtilizadorService utilizadorService;
 
     // ─── GET /api/utilizadores?tipo=ROLE_ALUNO ────────────────────────────────
@@ -37,7 +40,7 @@ public class UtilizadorController {
     // Só coordenação tem acesso
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('COORDENACAO')")
-    public ResponseEntity<UtilizadorResponseDto> verDetalhe(@PathVariable Integer id) {
+    public ResponseEntity<UtilizadorResponseDto> verDetalhe(@PathVariable String id) {
         return ResponseEntity.ok(utilizadorService.verDetalhe(id));
     }
 
@@ -103,6 +106,11 @@ public class UtilizadorController {
             @Valid @RequestBody ReporPasswordDto dto) {
         utilizadorService.reporPalavraPasse(id, dto);
         return ResponseEntity.noContent().build();
+    }
+    @GetMapping("/meus-educandos")
+    @PreAuthorize("hasAuthority('ENCARREGADO')")
+    public ResponseEntity<List<UtilizadoreResumoDto>> educandosEncarregado(){
+        return ResponseEntity.ok(utilizadorService.findEducandosdeEducador(getUserId()));
     }
 
 }

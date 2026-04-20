@@ -20,7 +20,7 @@ public interface AulaRepository extends JpaRepository<Aula, Integer> {
 
     @Query(value = "SELECT a.* FROM aulas a " +
             "JOIN aula_alunos al ON a.id = al.aula_id " +
-            "WHERE al.aluno_id = :id AND a.data_aula = :data",
+            "WHERE al.aluno_id =:id AND a.data_aula =:data",
             nativeQuery = true)
     List<Aula> findByDataEAluno(
             @Param("data") LocalDate data,
@@ -28,11 +28,9 @@ public interface AulaRepository extends JpaRepository<Aula, Integer> {
     );
 
     @Query("SELECT DISTINCT a FROM Aula a " +
-            "LEFT JOIN AulaAluno aa ON aa.aula.id = a.id " +
-            "LEFT JOIN HorarioTurma h ON a.idHorario.id = h.id " +
-            "LEFT JOIN Turma t ON h.idturma.id = t.id " +
-            "LEFT JOIN TurmaAluno ta ON ta.id.turmaId = t.id " + // Ajustado: ta.id.turmaId
-            "WHERE (aa.aluno.id = :alunoId OR ta.id.alunoId = :alunoId) " + // Ajustado: ta.id.alunoId
+            "JOIN AulaAluno aa ON aa.aula.id = a.id " +
+            " JOIN HorarioTurma h ON a.idHorario.id = h.id " +
+            "WHERE aa.aluno.id=:alunoId "+
             "AND a.dataAula BETWEEN :inicio AND :fim " +
             "ORDER BY a.dataAula ASC, a.horaInicio ASC")
     List<Aula> buscarHorarioDoAluno(
@@ -56,10 +54,27 @@ public interface AulaRepository extends JpaRepository<Aula, Integer> {
     void deleteAllByIdHorario_Id(Integer id);
     List<Aula> findAllByIdHorario_Id(Integer id);
 
-    @Query("SELECT a FROM Aula a WHERE a.dataAula < :dataLimite " +
-            "OR (a.dataAula = :dataLimite AND a.horaFim <= :horaLimite)")
+    @Query("SELECT a FROM Aula a WHERE a.estado.id not in (4,7,8,9) AND (a.dataAula < :dataLimite " +
+            "OR (a.dataAula = :dataLimite AND a.horaFim <= :horaLimite))")
     List<Aula> findAulasPassadasHa48Horas(
             @Param("dataLimite") LocalDate dataLimite,
             @Param("horaLimite") LocalTime horaLimite
+    );
+    @Query("SELECT a FROM Aula a WHERE a.estado.id=3 AND (a.dataAula < :dataLimite " +
+            "OR (a.dataAula = :dataLimite AND a.horaFim <= :horaLimite))")
+    List<Aula> findAulasRealizadas(
+            @Param("dataLimite") LocalDate dataLimite,
+            @Param("horaLimite") LocalTime horaLimite
+    );
+    @Query("""
+    SELECT a FROM Aula a
+    JOIN AulaProfessore ap ON ap.aula.id = a.id
+    WHERE ap.professor.id = :professorId
+    AND a.dataAula BETWEEN :inicio AND :fim
+""")
+    List<Aula> findAulasByProfessorAndSemana(
+            @Param("professorId") Integer professorId,
+            @Param("inicio") LocalDate inicio,
+            @Param("fim") LocalDate fim
     );
 }

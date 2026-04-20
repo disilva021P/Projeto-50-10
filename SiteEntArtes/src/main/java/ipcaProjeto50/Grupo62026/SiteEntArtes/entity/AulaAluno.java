@@ -25,6 +25,11 @@ public class AulaAluno {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "aluno_id", nullable = false)
     private Aluno aluno;
-
+    public AulaAluno(Aula aula, Aluno aluno) {
+        this.aula = aula;
+        this.aluno = aluno;
+        // Importante: Inicializar o ID composto com os IDs das entidades
+        this.id = new AulaAlunoId(aula.getId(), aluno.getId());
+    }
 
 }
