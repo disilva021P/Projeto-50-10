@@ -3,6 +3,7 @@ package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ArtigoDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ArtigoRequest;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ConversaoInventarioRequest;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.ArtigoRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.UtilizadoreRepository;
@@ -24,6 +25,7 @@ import java.util.List;
 public class MarketplaceService {
 
     private final ArtigoRepository artigoRepository;
+    private final InventarioUnidadeRepository unidadeRepository;
     private final UtilizadoreRepository utilizadoreRepository;
     private final InventarioUnidadeRepository inventarioUnidadeRepository;
     private final ImagensUnidadeRepository imagensUnidadeRepository;
@@ -232,5 +234,58 @@ public class MarketplaceService {
                 imagemPrincipalId,
                 todosImagemIds
         );
+    }
+
+    @Transactional
+    public void converterUnidadeParaMarketplace(ConversaoInventarioRequest request, Integer coordenadorId) {
+        // 1. Verificar se a unidade existe (Usa getUnidadeId)
+        var unidade = unidadeRepository.findById(request.getUnidadeId())
+                .orElseThrow(() -> new RuntimeException("Item de inventário não encontrado."));
+
+        // 2. Criar o novo Artigo no Marketplace (Usa os Getters)
+        Artigo novoArtigo = new Artigo();
+        novoArtigo.setNome(request.getNome());
+        novoArtigo.setDescricao(request.getDescricao());
+        novoArtigo.setTamanho(request.getTamanho());
+        novoArtigo.setCor(request.getCor());
+        novoArtigo.setCondicao(request.getCondicao());
+
+        // Configurações de negócio
+        novoArtigo.setIsVenda(request.getIsVenda());
+        novoArtigo.setIsAluguer(request.getIsAluguer());
+        novoArtigo.setIsDoacao(request.getIsDoacao());
+        novoArtigo.setPrecoVenda(request.getPrecoVenda());
+        novoArtigo.setPrecoAluguer(request.getPrecoAluguer());
+
+        novoArtigo.setArquivado(false);
+        novoArtigo.setAprovado(true);
+        novoArtigo.setCriadoEm(Instant.now());
+
+        Utilizadore dono = utilizadoreRepository.findById(coordenadorId)
+                .orElseThrow(() -> new RuntimeException("Coordenador não encontrado."));
+        novoArtigo.setDonoUtilizador(dono);
+
+        artigoRepository.save(novoArtigo);
+
+        // 3. Salvar o Artigo para gerar o ID
+        Artigo artigoSalvo = artigoRepository.save(novoArtigo);
+
+        // 4. Processar e salvar as imagens que vieram no request (CORREÇÃO AQUI)
+        if (request.getImagens() != null) {
+            for (MultipartFile imagem : request.getImagens()) {
+                if (imagem != null && !imagem.isEmpty()) {
+                    try {
+                        ImagensUnidade imgEntity = new ImagensUnidade();
+                        imgEntity.setArtigoId(artigoSalvo.getId());
+                        imgEntity.setUrlImagem(imagem.getBytes()); // Converte o ficheiro para bytes
+                        imagensUnidadeRepository.save(imgEntity);
+                    } catch (IOException e) {
+                        throw new RuntimeException("Erro ao processar imagem vinda do inventário", e);
+                    }
+                }
+            }
+        }
+
+        unidadeRepository.delete(unidade);
     }
 }

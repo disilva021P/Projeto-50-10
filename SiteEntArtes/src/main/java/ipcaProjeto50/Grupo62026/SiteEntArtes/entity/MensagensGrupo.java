@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Getter
@@ -15,27 +14,23 @@ import java.time.LocalDateTime;
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "mensagens_turma")
-public class MensagensTurma {
+@Table(name = "mensagens_grupo")
+public class MensagensGrupo {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", nullable = false)
     private Integer id;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "turma_id", nullable = false)
-    private Turma turma;
+    @JoinColumn(name = "grupo_id", nullable = false)
+    private Grupo grupo;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "remetente_id", nullable = false)
     private Utilizadore remetente;
 
-    @Lob
-    @Column(name = "conteudo", nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String conteudo;
 
-    @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "enviada_em", nullable = false)
-    private LocalDateTime enviadaEm;
-
-
+    private LocalDateTime enviadaEm = LocalDateTime.now();
 }

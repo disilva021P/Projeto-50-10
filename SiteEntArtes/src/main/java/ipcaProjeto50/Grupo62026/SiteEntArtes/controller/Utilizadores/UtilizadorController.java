@@ -105,4 +105,13 @@ public class UtilizadorController {
         return ResponseEntity.noContent().build();
     }
 
+
+    @GetMapping("/disponiveis-grupo")
+    public ResponseEntity<List<UtilizadoreResumoDto>> getUtilizadoresParaGrupo(
+            @AuthenticationPrincipal String emailLogado) {
+
+        // CORREÇÃO: Usar 'utilizadorService' (a variável) e não 'UtilizadorService' (a classe)
+        return ResponseEntity.ok(utilizadorService.listarContactosDisponiveis(emailLogado));
+    }
+
 }

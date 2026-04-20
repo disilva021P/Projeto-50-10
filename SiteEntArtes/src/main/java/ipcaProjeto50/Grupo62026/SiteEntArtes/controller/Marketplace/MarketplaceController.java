@@ -2,6 +2,7 @@ package ipcaProjeto50.Grupo62026.SiteEntArtes.controller.Marketplace;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ArtigoDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ArtigoRequest;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ConversaoInventarioRequest;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.ImagensUnidadeRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.service.MarketplaceService;
 import org.springframework.data.domain.Page;
@@ -136,5 +137,19 @@ public class MarketplaceController {
     ) {
         marketplaceService.alterarEstadoArtigo(id, novoEstadoId);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping(value = "/importar-inventario", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> importarDoInventario(
+            @ModelAttribute ConversaoInventarioRequest request
+    ) {
+        // 1. Obter o ID do coordenador (Exemplo: fixo ou via Security)
+        // Se tiveres Security: Integer coordenadorId = ((Utilizadore) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getId();
+        Integer coordenadorId = 1; // Temporário para testes
+
+        // 2. Passar os DOIS argumentos como o Service espera
+        marketplaceService.converterUnidadeParaMarketplace(request, coordenadorId);
+
+        return ResponseEntity.ok("Artigo importado com sucesso!");
     }
 }

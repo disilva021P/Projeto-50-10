@@ -187,4 +187,14 @@ public class UtilizadorService {
     public List<UtilizadoreResumoDto> findEducandosdeEducador(String idEducador) {
         return findEducandosdeEducador(idHasher.decode(idEducador));
     }
+
+    public List<UtilizadoreResumoDto> listarContactosDisponiveis(String emailLogado) {
+        return utilizadoreRepository.findAll().stream()
+                .filter(u -> !u.getEmail().equals(emailLogado)) // Não se listar a si próprio
+                .map(u -> new UtilizadoreResumoDto(
+                        idHasher.encode(u.getId()),
+                        u.getNome()
+                ))
+                .toList();
+    }
 }
