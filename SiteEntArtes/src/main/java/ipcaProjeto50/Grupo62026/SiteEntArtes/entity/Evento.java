@@ -1,10 +1,16 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jdk.jfr.Unsigned;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDate;
 
@@ -24,7 +30,7 @@ public class Evento {
     private String nome;
 
     @Lob
-    @Column(name = "descricao", nullable = false,columnDefinition = "TEXT")
+    @Column(name = "descricao", nullable = false, columnDefinition = "TEXT")
     private String descricao;
 
     @Column(name = "data_evento", nullable = false)
@@ -37,5 +43,14 @@ public class Evento {
     @JoinColumn(name = "criado_por", nullable = false)
     private Utilizadore criadoPor;
 
-
+    @NotNull
+    @ColumnDefault("0.00")
+    @Column(name = "preco", nullable = false, precision = 10, scale = 2)
+    private BigDecimal preco;
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "estado", nullable = false)
+    EstadoAula estadoAula;
+    @Column(name = "max_participantes", columnDefinition = "int UNSIGNED")
+    private Integer maxParticipantes;
 }

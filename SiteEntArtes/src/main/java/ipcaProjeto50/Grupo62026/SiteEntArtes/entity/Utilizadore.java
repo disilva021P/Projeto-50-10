@@ -1,22 +1,20 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-@AllArgsConstructor
-@NoArgsConstructor
+
 @Getter
 @Setter
 @Entity
-@Table(name = "utilizadores")
 @Inheritance(strategy = InheritanceType.JOINED)
+
+@Table(name = "utilizadores")
 public class Utilizadore {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -61,13 +59,13 @@ public class Utilizadore {
         return this.tipo.getTipoUtilizador().equals("ROLE_ALUNO");
     }
     public boolean isProfessor(){
-        return tipo != null && "ROLE_ALUNO".equals(tipo.getTipoUtilizador());
+        return this.tipo.getTipoUtilizador().equals("ROLE_PROFESSOR");
     }
     public boolean isCoordenacao(){
-        return tipo != null && this.tipo.getTipoUtilizador().equals("ROLE_COORDENACAO");
+        return this.tipo.getTipoUtilizador().equals("ROLE_COORDENACAO");
     }
     public boolean isEncarregado(){
-        return tipo != null && this.tipo.getTipoUtilizador().equals("ROLE_Encarregado");
+        return this.tipo.getTipoUtilizador().equals("ROLE_Encarregado");
     }
 
 }

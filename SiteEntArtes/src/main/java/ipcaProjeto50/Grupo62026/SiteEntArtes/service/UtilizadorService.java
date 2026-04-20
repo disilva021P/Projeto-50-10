@@ -40,8 +40,8 @@ public class UtilizadorService {
     }
 
     // ─── Ver detalhe de um utilizador ────────────────────────────────────────
-    public UtilizadorResponseDto verDetalhe(Integer id) {
-        Utilizadore utilizador = utilizadoreRepository.findById(id)
+    public UtilizadorResponseDto verDetalhe(String id) {
+        Utilizadore utilizador = utilizadoreRepository.findById(idHasher.decode(id))
                 .orElseThrow(() -> new UtilizadorNaoEncontradoException(id));
         return toResponseDTO(utilizador);
     }
