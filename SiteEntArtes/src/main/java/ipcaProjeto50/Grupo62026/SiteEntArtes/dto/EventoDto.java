@@ -10,6 +10,5 @@ public record EventoDto(
         String descricao,
         LocalDate dataEvento,
         String local,
-        UtilizadoreResumoDto criadoPor,
-        Instant criadoEm
+        UtilizadoreResumoDto criadoPor
 ) implements Serializable {}

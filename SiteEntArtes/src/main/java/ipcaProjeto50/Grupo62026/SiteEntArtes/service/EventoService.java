@@ -40,8 +40,7 @@ public class EventoService {
                 new UtilizadoreResumoDto(
                         idHasher.encode(evento.getCriadoPor().getId()),
                         evento.getCriadoPor().getNome()
-                ),
-                evento.getCriadoEm()
+                )
         );
     }
 
@@ -74,8 +73,6 @@ public class EventoService {
         evento.setDataEvento(dto.dataEvento());
         evento.setLocal(dto.local());
         evento.setCriadoPor(criador);
-        evento.setCriadoEm(Instant.now());
-
         Evento saved = eventoRepository.save(evento);
 
         // Adiciona participantes se existirem
