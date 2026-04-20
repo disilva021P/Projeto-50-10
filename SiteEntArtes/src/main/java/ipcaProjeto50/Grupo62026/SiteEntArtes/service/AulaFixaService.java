@@ -133,7 +133,7 @@ public class AulaFixaService {
     }
     public HorarioTurmaDto convertRequestToDto(HorarioTurmaRequestDto horarioTurmaRequestDto) throws Exception {
         if (horarioTurmaRequestDto==null) return null;
-        UtilizadorResponseDto u = utilizadorService.verDetalhe(idHasher.decode(horarioTurmaRequestDto.idcriadoPor()));
+        UtilizadorResponseDto u = utilizadorService.verDetalhe(horarioTurmaRequestDto.idcriadoPor());
         return new HorarioTurmaDto(
                 horarioTurmaRequestDto.id(),
                 new UtilizadoreResumoDto(u.id(),u.nome()),

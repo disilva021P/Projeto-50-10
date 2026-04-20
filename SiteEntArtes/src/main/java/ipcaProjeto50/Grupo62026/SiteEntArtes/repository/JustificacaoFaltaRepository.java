@@ -14,5 +14,4 @@ public interface JustificacaoFaltaRepository extends JpaRepository<JustificacaoF
     Optional<JustificacaoFalta> findByIdfalta_Id(Integer cancelamentoId);
 
     // Justificações pendentes (ainda não aceites)
-    List<JustificacaoFalta> findByAceite(Boolean aceite);
 }

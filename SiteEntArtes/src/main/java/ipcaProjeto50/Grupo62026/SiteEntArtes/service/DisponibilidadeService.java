@@ -2,6 +2,7 @@ package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.DisponibilidadeProfessorDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.DisponibilidadeProfessorDtoRequest;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Aula;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.AulaCoaching;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.DisponibilidadeProfessor;
@@ -25,23 +26,21 @@ public class DisponibilidadeService {
     private final IdHasher idHasher;
     private final AulaProfessoreRepository aulaProfessoreRepository;
     private final ProfessorService professorService;
+
     public DisponibilidadeProfessor findById(Integer id) throws Exception{
         return disponibilidadeProfessorRepository.findById(id).orElseThrow(()-> new Exception("Disponibilidade não encontrada"));
     }
     public DisponibilidadeProfessor findById(String id) throws Exception{
         return disponibilidadeProfessorRepository.findById(idHasher.decode( id)).orElseThrow(()-> new Exception("Disponibilidade não encontrada"));
     }
-    public List<DisponibilidadeProfessor> disponibilidadesByProfessorId(String id){
-        return disponibilidadeProfessorRepository.findAllByProfessor_Id(idHasher.decode(id));
+    public List<DisponibilidadeProfessorDto> disponibilidadesByProfessorId(String id){
+        return disponibilidadeProfessorRepository.findAllByProfessor_Id(idHasher.decode(id)).stream().map(this::converterParaDto).toList();
     }
 
     private boolean verificaDisponibilidade(String id, LocalDate data, LocalTime horaInicio, LocalTime horaFim){
         int diaSemana = data.getDayOfWeek().getValue();
-        Optional<DisponibilidadeProfessor> resultado = disponibilidadeProfessorRepository.verificarDisponibilidade(idHasher.decode(id), diaSemana,horaInicio,horaFim );
-        if(resultado.isEmpty()) return false;
-        LocalDate inicio = resultado.get().getValidoDe();
-        LocalDate fim = resultado.get().getValidoAte();
-        return !data.isBefore(inicio) && !data.isAfter(fim);
+        Optional<DisponibilidadeProfessor> resultado = disponibilidadeProfessorRepository.verificarDisponibilidade(idHasher.decode(id), diaSemana,data,horaInicio,horaFim );
+        return resultado.isPresent();
     }
 
     private boolean verificaProfessorJaPossuiAulas(String idProfessor, LocalDate data, LocalTime horaInicio, LocalTime horaFim) {
@@ -61,11 +60,11 @@ public class DisponibilidadeService {
 
     // --- MÉTODOS CRUD ---
 
-    public DisponibilidadeProfessorDto inserirDisponibilidade(DisponibilidadeProfessorDto dto) throws Exception {
+    public DisponibilidadeProfessorDto inserirDisponibilidade(DisponibilidadeProfessorDtoRequest dto) throws Exception {
         DisponibilidadeProfessor nova = new DisponibilidadeProfessor();
 
         // Mapeamento manual (ou usa ModelMapper/MapStruct)
-        nova.setProfessor(professorService.findById(idHasher.decode(dto.professor().utilizadores().id())));
+        nova.setProfessor(professorService.findById(idHasher.decode(dto.professor())));
         nova.setDiaSemana(dto.diaSemana());
         nova.setHoraInicio(dto.horaInicio());
         nova.setHoraFim(dto.horaFim());

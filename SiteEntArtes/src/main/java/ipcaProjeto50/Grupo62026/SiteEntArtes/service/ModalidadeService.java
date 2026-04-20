@@ -13,31 +13,71 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Service
 public class ModalidadeService {
+
     private final IdHasher idHasher;
     private final ModalidadeRepository modalidadeRepository;
-    Modalidade findbyId(Integer id) throws Exception {
-        Optional<Modalidade> modalidade = modalidadeRepository.findById(id);
-        return (modalidade.orElseThrow(() -> new Exception("Não existe nenhum!")));
+
+    // --- READ (Leitura) ---
+
+    public Modalidade findById(Integer id) throws Exception {
+        return modalidadeRepository.findById(id)
+                .orElseThrow(() -> new Exception("Modalidade não encontrada com o ID: " + id));
     }
-    Modalidade findbyId(String id) throws Exception {
-        Optional<Modalidade> modalidade = modalidadeRepository.findById(idHasher.decode(id));
-        return (modalidade.orElseThrow(() -> new Exception("Não existe nenhum!")));
+
+    public Modalidade findById(String hashedId) throws Exception {
+        return findById(idHasher.decode(hashedId));
     }
-    ModalidadeDto findbyIdDto(Integer id) throws Exception {
-        Optional<Modalidade> modalidade = modalidadeRepository.findById(id);
-        return converterParaDto(modalidade.orElseThrow(() -> new Exception("Não existe nenhum!")));
+
+    public ModalidadeDto findByIdDto(String hashedId) throws Exception {
+        return converterParaDto(findById(hashedId));
     }
-    ModalidadeDto findbyIdDto(String id) throws Exception {
-        Optional<Modalidade> modalidade = modalidadeRepository.findById(idHasher.decode(id));
-        return converterParaDto(modalidade.orElseThrow(() -> new Exception("Não existe nenhum!")));
+
+    public List<ModalidadeDto> findAll() {
+        return modalidadeRepository.findAll().stream()
+                .map(this::converterParaDto)
+                .toList();
     }
-    ModalidadeDto converterParaDto(Modalidade modalidade){
-        if (modalidade==null){
-            return null;
+
+    // --- CREATE (Criação) ---
+
+    public ModalidadeDto create(ModalidadeDto dto) {
+        Modalidade novaModalidade = new Modalidade();
+        novaModalidade.setNome(dto.nome());
+        Modalidade salva = modalidadeRepository.save(novaModalidade);
+        return converterParaDto(salva);
+    }
+
+    // --- UPDATE (Atualização) ---
+
+    public ModalidadeDto update(String hashedId, ModalidadeDto dto) throws Exception {
+        // 1. Localizar a modalidade existente
+        Modalidade modalidadeExistente = findById(hashedId);
+
+        // 2. Atualizar os campos (neste caso, apenas o nome)
+        modalidadeExistente.setNome(dto.nome());
+
+        // 3. Guardar as alterações
+        Modalidade atualizada = modalidadeRepository.save(modalidadeExistente);
+        return converterParaDto(atualizada);
+    }
+
+    // --- DELETE (Remoção) ---
+
+    public void delete(String hashedId) throws Exception {
+        Integer idOriginal = idHasher.decode(hashedId);
+        if (!modalidadeRepository.existsById(idOriginal)) {
+            throw new Exception("Impossível remover: Modalidade não existe.");
         }
-        return new ModalidadeDto(idHasher.encode(modalidade.getId()),modalidade.getNome());
+        modalidadeRepository.deleteById(idOriginal);
     }
-    public List<ModalidadeDto> findAll(){
-        return modalidadeRepository.findAll().stream().map(this::converterParaDto).toList();
+
+    // --- HELPER (Conversão) ---
+
+    public ModalidadeDto converterParaDto(Modalidade modalidade) {
+        if (modalidade == null) return null;
+        return new ModalidadeDto(
+                idHasher.encode(modalidade.getId()),
+                modalidade.getNome()
+        );
     }
 }

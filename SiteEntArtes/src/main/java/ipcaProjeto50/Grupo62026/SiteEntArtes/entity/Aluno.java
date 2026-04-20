@@ -17,6 +17,4 @@ public class Aluno extends Utilizadore {
     @Lob
     @Column(name = "notas", columnDefinition = "TEXT")
     private String notas;
-
-
 }

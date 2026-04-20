@@ -1,10 +1,7 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.AulaDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.HorarioTurmaDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.HorarioTurmaRequestDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.UtilizadoreResumoDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.*;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -40,6 +37,21 @@ public class AulaService {
     private final EncarregadoAlunoRepository encarregadoAlunoRepository;
     private final UtilizadorService utilizadorService;
     private final TurmaService turmaService;
+
+
+    public static final int ID_ESTADO_PENDENTE   = 2;
+    public static final int ID_ESTADO_AGENDADA = 3;
+    public static final int ID_ESTADO_REALIZADA  = 5;
+    public static final int ID_ESTADO_CANCELADA  = 4;
+    public static final int ID_ESTADO_PENDENTEVALIDACAO= 6;
+    public static final int ID_ESTADO_AUTOMATICO = 7;
+    public static final int ID_ESTADO_VALIDADA  = 8;
+    public static final int ID_ESTADO_CONTABILIZADO  = 9;
+    private final AulaCoachingRepository aulaCoachingRepository;
+    private final AulaProfessorService aulaProfessorService;
+    private final ProfessorService professorService;
+    private final AulaAlunoRepository aulaAlunoRepository;
+    private final AlunoRepository alunoRepository;
     //region feito
     // -------------------------------------------------------------------------
     // CRUD base
@@ -209,7 +221,7 @@ public class AulaService {
      * @throws Exception
      */
     @Transactional(rollbackFor = Exception.class)
-    public List<AulaDto> GerarAulasComHorario(HorarioTurmaRequestDto horario) throws Exception {
+    public List<AulaDto> GerarAulasComHorario(HorarioTurmaRequestDto horario,String idProfessor) throws Exception {
         if (horario.dataInicio().isAfter(horario.dataValidade())) {
             throw new Exception("Data de início superior à Data final");
         }
@@ -243,6 +255,7 @@ public class AulaService {
                 // Associar o horário à aula antes de adicionar à lista
                 aulaGuardada.setIdHorario(horarioTurma);
                           adicionados.add(aulaGuardada);
+
             } catch (Exception e) {
                 erros.add(novaAula);
                 System.out.println("Erro "+ e.getMessage());
@@ -254,10 +267,10 @@ public class AulaService {
             // O @Transactional fará o rollback do horarioTurma guardado acima
             throw new Exception("Erro: Nenhuma aula pôde ser criada no intervalo selecionado.");
         }
-
-        // 3. Gravação em lote (muito mais rápido)
-        aulaRepository.saveAll(adicionados);
-
+        List<Aula> aulas= aulaRepository.saveAll(adicionados);
+        for(Aula aula : aulas){
+            aulaProfessorService.save(new AulaProfessorDto(idProfessor,idHasher.encode( aula.getId())));
+        }
         return erros;
     }
     @Transactional
@@ -271,7 +284,7 @@ public class AulaService {
         aulaRepository.deleteAllByIdHorario_Id(idHasher.decode(idHorario));
     }
     @Transactional
-    public List<AulaDto> atualizaPorHorario(HorarioTurmaRequestDto horarioTurmaDto,String id) throws Exception {
+    public List<AulaDto> atualizaPorHorario(HorarioTurmaRequestDto horarioTurmaDto,String id,String idProfessor) throws Exception {
 
         HorarioTurma horarioTurma = horarioFixoRepository
                 .findById(idHasher.decode(id))
@@ -293,7 +306,7 @@ public class AulaService {
         List<Aula> aulasAtualizadas = new ArrayList<>();
         if(!Objects.equals(horarioComId.diaSemana(), horarioTurma.getDiaSemana())){
             EliminarAulasComHorario(horarioComId.id());
-            return GerarAulasComHorario(horarioTurmaDto);
+            return GerarAulasComHorario(horarioTurmaDto,idProfessor);
         }
         List<Aula> aulas = aulaRepository.findAllByIdHorario_Id(horarioTurma.getId());
         if (aulas.isEmpty()) return new ArrayList<>();
@@ -318,21 +331,16 @@ public class AulaService {
                 .map(this::converterParaDto)
                 .toList();
     }
+
     @Transactional
     public Aula criarAula(AulaDto aulaDto, Integer modalidade) throws Exception {
-        boolean conflito = aulaRepository.existeConflitoNoEstudio(
-                idHasher.decode(aulaDto.estudio().id()),
-                aulaDto.dataAula(),
-                aulaDto.horaInicio(),
-                aulaDto.horaFim()
-        );
+        boolean conflito = estudioService.conflitoestudio(aulaDto.id());
         if (conflito) {
             throw new Exception("Conflito de horário: O estúdio '" +
                     aulaDto.estudio().nome() + "' já tem uma aula agendada entre " +
                     aulaDto.horaInicio() + " e " + aulaDto.horaFim() +
                     " no dia " + aulaDto.dataAula());
         }
-
         estudioModalidadeRepository
                 .findByEstudio_IdAndModalidade_Id(
                         idHasher.decode(aulaDto.estudio().id()),
@@ -388,10 +396,25 @@ public class AulaService {
         return todasAsAulas;
     }
     @Scheduled(fixedRate = 60*60*1000) // 1 hora em milissegundos
-    public void checkAutomatico() throws Exception {
+    public void checkAutomaticoExpiradas() throws Exception {
         verificarEAtualizarAulasExpiradas();
-    }
 
+    }
+    @Scheduled(fixedRate = 15*60*1000) // 15 MIN em milissegundos
+    public void checkAutomaticoRealizadas() throws Exception {
+        aulasRealizadasNaoMarcadas();
+    }
+    private void aulasRealizadasNaoMarcadas() throws Exception {
+        LocalDateTime limite = LocalDateTime.now();
+        List<Aula> aulas = aulaRepository.findAulasRealizadas(
+                limite.toLocalDate(),
+                limite.toLocalTime()
+        );
+        for (Aula aula : aulas) {
+            EstadoAula estadoCancelado = estadoAuloService.findbyId(ID_ESTADO_REALIZADA);
+            aula.setEstado(estadoCancelado);
+        }
+    }
     private void verificarEAtualizarAulasExpiradas() throws Exception {
         LocalDateTime limite = LocalDateTime.now().minusHours(48);
 
@@ -408,4 +431,97 @@ public class AulaService {
         // 4. Gravar todas de uma vez
         aulaRepository.saveAll(aulas);
     }
+    public AulaDto atualizaEstado(String id, String idEstado) throws Exception {
+        Aula aula= this.bucarPorId(id);
+        aula.setEstado(estadoAuloService.findbyId(idHasher.decode(idEstado)));
+        return  converterParaDto(aulaRepository.save(aula));
+    }
+
+    @Transactional
+    public AulaDto validarRealizacao(String aulaId) throws Exception {
+        Aula coaching = aulaRepository.findById(idHasher.decode(aulaId))
+                .orElseThrow(() -> new Exception("Aula de coaching não encontrada"));
+
+        int estadoAtual = coaching.getEstado().getId();
+        if (estadoAtual == ID_ESTADO_CANCELADA) {
+            throw new Exception("Não é possível validar um coaching cancelado.");
+        }
+        if (estadoAtual == ID_ESTADO_VALIDADA) {
+            throw new Exception("O coaching já foi validada.");
+        }
+        if (estadoAtual == ID_ESTADO_AUTOMATICO) {
+            throw new Exception("O coaching já foi validada automaticamente.");
+        }
+        if (estadoAtual == ID_ESTADO_REALIZADA) {
+            throw new Exception("O coaching já foi marcado como realizado.");
+        }
+
+        EstadoAula estadoRealizada = estadoAuloService.findbyId(ID_ESTADO_AUTOMATICO);
+        coaching.setEstado(estadoRealizada);
+        return converterParaDto(aulaRepository.save(coaching));
+    }
+    public List<AulaDto> buscarAulasProfessorSemana(String professorId, int offset) throws Exception {
+
+        Integer profId = idHasher.decode(professorId);
+
+        // validar se professor existe
+        professorService.findById(professorId);
+
+        LocalDate inicioSemana = calcularInicioSemana(offset);
+        LocalDate fimSemana = inicioSemana.plusDays(6);
+
+        return aulaRepository.findAulasByProfessorAndSemana(profId, inicioSemana, fimSemana)
+                .stream()
+                .map(this::converterParaDto)
+                .toList();
+    }
+    // No AulaService
+
+    @Transactional
+    public void inscreverAluno(String alunoId, String aulaId) throws Exception {
+        Integer aulaIdDecoded = idHasher.decode(aulaId);
+        Integer alunoIdDecoded = idHasher.decode(alunoId);
+
+        // Verifica se já está inscrito
+        boolean jaInscrito = aulaAlunoRepository
+                .existsById(new AulaAlunoId(aulaIdDecoded, alunoIdDecoded));
+        if (jaInscrito) {
+            throw new Exception("Aluno já está inscrito nesta aula");
+        }
+
+        Aula aula = aulaRepository.findById(aulaIdDecoded)
+                .orElseThrow(() -> new Exception("Aula não encontrada"));
+        Aluno aluno = alunoRepository.findById(alunoIdDecoded)
+                .orElseThrow(() -> new Exception("Aluno não encontrado"));
+
+        AulaAluno aulaAluno = new AulaAluno();
+        aulaAluno.setId(new AulaAlunoId(aulaIdDecoded, alunoIdDecoded));
+        aulaAluno.setAula(aula);
+        aulaAluno.setAluno(aluno);
+
+        aulaAlunoRepository.save(aulaAluno);
+    }
+
+    @Transactional
+    public void cancelarInscricaoAluno(String alunoId, String aulaId) throws Exception {
+        AulaAlunoId id = new AulaAlunoId(idHasher.decode(aulaId), idHasher.decode(alunoId));
+
+        if (!aulaAlunoRepository.existsById(id)) {
+            throw new Exception("Aluno não está inscrito nesta aula");
+        }
+        if (aulaAlunoRepository.countByAulaId(idHasher.decode(aulaId)) == 1) {
+            AulaDto aula = atualizaEstado(aulaId, idHasher.encode(ID_ESTADO_CANCELADA));
+
+            LocalDateTime momentoDaAula = LocalDateTime.of(aula.dataAula(), aula.horaInicio());
+            if(!LocalDateTime.now().isBefore(momentoDaAula.minusHours(48))){
+                //TODO:APLICAR CONSEQUENCIAS, FALTAS ETC
+            }
+        }
+        aulaAlunoRepository.deleteById(id);
+    }
+
+    public long contarInscritos(String aulaId) {
+        return aulaAlunoRepository.countByAulaId(idHasher.decode(aulaId));
+    }
+
 }

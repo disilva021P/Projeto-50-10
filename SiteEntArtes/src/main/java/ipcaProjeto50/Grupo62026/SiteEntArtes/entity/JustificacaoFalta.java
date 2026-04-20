@@ -27,22 +27,5 @@ public class JustificacaoFalta {
     @JoinColumn(name = "idfalta", nullable = false)
     private Cancelamento idfalta;
 
-    // Quem submeteu a justificação
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "submetido_por", nullable = false)
-    private Utilizadore submetidoPor;
-
-    // Se foi aceite ou rejeitada pela coordenação
-    @ColumnDefault("0")
-    @Column(name = "aceite", nullable = false)
-    private Boolean aceite = false;
-
-    @Column(name = "criado_em", nullable = false)
-    private Instant criadoEm;
-
-    @PrePersist
-    public void prePersist() {
-        this.criadoEm = Instant.now();
-    }
 }
 

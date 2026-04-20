@@ -12,6 +12,8 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Entity
+@Inheritance(strategy = InheritanceType.JOINED)
+
 @Table(name = "utilizadores")
 public class Utilizadore {
     @Id

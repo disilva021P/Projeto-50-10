@@ -1,5 +1,6 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.controller.Utilizadores;
 
+import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.service.UtilizadorService;
 import jakarta.validation.Valid;
@@ -7,16 +8,21 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/utilizadores")
 @RequiredArgsConstructor
 public class UtilizadorController {
-
+    private String getUserId() {
+        return (String) Objects.requireNonNull(SecurityContextHolder.getContext()
+                .getAuthentication()).getPrincipal();
+    }
     private final UtilizadorService utilizadorService;
 
     // ─── GET /api/utilizadores?tipo=ROLE_ALUNO ────────────────────────────────
@@ -34,7 +40,7 @@ public class UtilizadorController {
     // Só coordenação tem acesso
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('COORDENACAO')")
-    public ResponseEntity<UtilizadorResponseDto> verDetalhe(@PathVariable Integer id) {
+    public ResponseEntity<UtilizadorResponseDto> verDetalhe(@PathVariable String id) {
         return ResponseEntity.ok(utilizadorService.verDetalhe(id));
     }
 
@@ -101,4 +107,10 @@ public class UtilizadorController {
         utilizadorService.reporPalavraPasse(id, dto);
         return ResponseEntity.noContent().build();
     }
+    @GetMapping("/meus-educandos")
+    @PreAuthorize("hasAuthority('ENCARREGADO')")
+    public ResponseEntity<List<UtilizadoreResumoDto>> educandosEncarregado(){
+        return ResponseEntity.ok(utilizadorService.findEducandosdeEducador(getUserId()));
+    }
+
 }
