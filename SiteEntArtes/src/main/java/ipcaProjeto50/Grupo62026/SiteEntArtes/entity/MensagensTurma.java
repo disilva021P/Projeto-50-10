@@ -22,7 +22,7 @@ public class MensagensTurma {
     @Column(name = "id", nullable = false)
     private Integer id;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "turma_id", nullable = false) // Esta é a coluna que aparece na imagem!
+    @JoinColumn(name = "turma_id", nullable = false)
     private Turma turma;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

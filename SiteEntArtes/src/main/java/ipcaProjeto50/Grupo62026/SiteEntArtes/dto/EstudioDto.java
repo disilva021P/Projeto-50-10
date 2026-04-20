@@ -1,4 +1,6 @@
-package ipcaProjeto50.Grupo62026.SiteEntArtes.entity;
+package ipcaProjeto50.Grupo62026.SiteEntArtes.dto;
+
+import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Estudio;
 
 import java.io.Serializable;
 
