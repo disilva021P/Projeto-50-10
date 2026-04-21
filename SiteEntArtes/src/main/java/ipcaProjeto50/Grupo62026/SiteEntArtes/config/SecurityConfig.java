@@ -32,21 +32,18 @@ public class    SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/utilizadores/geraTokenEmail",  // novo
+                                "/api/utilizadores/esqueceuPassword" // novo
+                        ).permitAll()
 
-                        // 1. IMAGENS: Geralmente deixamos permitAll para as imagens
-                        // para que as tags <img> do frontend funcionem sem problemas de headers.
                         .requestMatchers(HttpMethod.GET, "/api/marketplace/imagem/**").permitAll()
-
-                        // 2. LISTAGEM E FILTROS: Agora exigimos autenticação!
-                        // Removemos o permitAll anterior. Agora qualquer GET no marketplace
-                        // cai no "authenticated()" lá em baixo.
 
                         .requestMatchers("/api/coordenacao/**").hasAuthority("COORDENACAO")
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Tudo o resto (Marketplace GET/POST, etc) exige LOGIN
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
@@ -55,14 +52,12 @@ public class    SecurityConfig {
 
         return http.build();
     }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-
-        // ATENÇÃO AQUI: Adicionámos os headers do HTMX
         configuration.setAllowedHeaders(List.of(
                 "Authorization",
                 "Content-Type",
@@ -72,17 +67,17 @@ public class    SecurityConfig {
                 "hx-target",
                 "hx-trigger"
         ));
-
         configuration.setAllowCredentials(true);
-
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();

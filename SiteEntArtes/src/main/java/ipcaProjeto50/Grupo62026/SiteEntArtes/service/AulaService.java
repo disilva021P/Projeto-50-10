@@ -186,7 +186,6 @@ public class AulaService {
                 aulaFixaService.convertToDto(aula.getIdHorario()),
                 estadoAuloService.converterParaDto(aula.getEstado())
         );
-
     }
 
     // -------------------------------------------------------------------------
@@ -255,7 +254,7 @@ public class AulaService {
 
                 // Associar o horário à aula antes de adicionar à lista
                 aulaGuardada.setIdHorario(horarioTurma);
-                          adicionados.add(aulaGuardada);
+                adicionados.add(aulaGuardada);
 
             } catch (Exception e) {
                 erros.add(novaAula);
@@ -516,6 +515,7 @@ public class AulaService {
             LocalDateTime momentoDaAula = LocalDateTime.of(aula.dataAula(), aula.horaInicio());
             if(!LocalDateTime.now().isBefore(momentoDaAula.minusHours(48))){
                 //TODO:APLICAR CONSEQUENCIAS, FALTAS ETC
+                aplicaSancoes(alunoId);
             }
         }
         aulaAlunoRepository.deleteById(id);
@@ -524,5 +524,7 @@ public class AulaService {
     public long contarInscritos(String aulaId) {
         return aulaAlunoRepository.countByAulaId(idHasher.decode(aulaId));
     }
-
+    public void aplicaSancoes(String alunoId){
+        return;
+    }
 }

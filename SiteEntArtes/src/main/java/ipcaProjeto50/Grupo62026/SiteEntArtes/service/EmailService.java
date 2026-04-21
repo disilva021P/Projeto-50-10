@@ -1,23 +1,39 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.MailSender;
-import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender; // Alterado aqui
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 @RequiredArgsConstructor
 @Service
 public class EmailService {
-    private final MailSender mailSender;
-    @Value("spring.mail.username")
+
+    // Use JavaMailSender para ter acesso ao createMimeMessage()
+    private final JavaMailSender mailSender;
+
+    // Adicionado o ${} para buscar o valor real nas configurações
+    @Value("${spring.mail.username}")
     private String emailGeral;
-    public void enviaEmail(String emailDestino, String cabecalho, String corpo){
-        SimpleMailMessage email = new SimpleMailMessage();
-        email.setFrom(emailGeral);
-        email.setTo(emailDestino);
-        email.setSubject(cabecalho);
-        email.setText(corpo);
-        mailSender.send(email);
+
+    public void enviaEmail(String emailDestino, String cabecalho, String corpo) {
+        System.out.println("Passei aqui!");
+        try {
+            MimeMessage mensagem = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mensagem, true, "UTF-8");
+
+            helper.setFrom(emailGeral);
+            helper.setTo(emailDestino);
+            helper.setSubject(cabecalho);
+            helper.setText(corpo, true);
+
+            mailSender.send(mensagem);
+        } catch (MessagingException e) {
+            // Log do erro e possivelmente lançar uma exceção personalizada de negócio
+            System.err.println("Falha ao enviar e-mail: " + e.getMessage());
+        }
     }
 }

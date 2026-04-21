@@ -5,6 +5,7 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Grupo;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Utilizadore;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.GrupoRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.UtilizadoreRepository;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.UtilizadoreResumoDto;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -125,5 +127,21 @@ public class GrupoService {
         grupo.getMembros().removeIf(m -> idHasher.encode(m.getId()).equals(membroARemoverHashed));
 
         grupoRepository.save(grupo);
+    }
+
+    public List<UtilizadoreResumoDto> listarMembrosDoGrupo(String grupoIdHashed) {
+        // 1. Descodificar o ID e procurar o grupo
+        Integer idReal = idHasher.decode(grupoIdHashed);
+        Grupo grupo = grupoRepository.findById(idReal)
+                .orElseThrow(() -> new RuntimeException("Grupo não encontrado."));
+
+        // 2. Converter a lista de entidades Utilizadore para UtilizadoreResumoDto
+        // Usamos o Stream para mapear cada membro e codificar o ID de volta para Hash (para o frontend)
+        return grupo.getMembros().stream()
+                .map(membro -> new UtilizadoreResumoDto(
+                        idHasher.encode(membro.getId()),
+                        membro.getNome()
+                ))
+                .collect(Collectors.toList());
     }
 }

@@ -6,9 +6,11 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.exception.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -16,13 +18,14 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class UtilizadorService {
-
+    private final SecureRandom GeneradorRandomico = new SecureRandom();
     private final UtilizadoreRepository utilizadoreRepository;
     private final EncarregadoAlunoRepository encarregadoAluno;
     private final TipoUtilizadorRepository tipoUtilizadorRepository;
     private final PasswordEncoder passwordEncoder;
     private final IdHasher idHasher;
-
+    private final TokenRecuperacaoRepository tokenRecuperacaoRepository;
+    private final EmailService emailService;
     // ─── Listar todos, com filtro opcional por tipo ───────────────────────────
     public List<UtilizadorResponseDto> listarTodos(String tipoFiltro) {
         List<Utilizadore> lista;
@@ -80,16 +83,15 @@ public class UtilizadorService {
     // O utilizador fornece a password atual para confirmar que é ele
     // e define uma nova password
 
-    public void alterarPalavraPasse(String email, AlterarPasswordDto dto) {
+    public void alterarPalavraPasse(String id, AlterarPasswordDto dto) {
 
-        Utilizadore utilizador = utilizadoreRepository.findByEmail(email)
-                .orElseThrow(() -> new UtilizadorNaoEncontradoException(email));
+        Utilizadore utilizador = utilizadoreRepository.findById(idHasher.decode(id))
+                .orElseThrow(() -> new UtilizadorNaoEncontradoException("Utilizador não logado"));
 
         // Confirmar que a password atual está correta
         if (!passwordEncoder.matches(dto.passwordAtual(), utilizador.getPalavraPasse())) {
             throw new RuntimeException();
         }
-
         // Confirmar que a nova password e a confirmação coincidem
         if (!dto.novaPassword().equals(dto.confirmarNovaPassword())) {
             throw new RuntimeException();
@@ -187,14 +189,66 @@ public class UtilizadorService {
     public List<UtilizadoreResumoDto> findEducandosdeEducador(String idEducador) {
         return findEducandosdeEducador(idHasher.decode(idEducador));
     }
+    private void removeTokensExpirados(){
+        tokenRecuperacaoRepository.deleteAllByExpiraEmBefore(LocalDateTime.now());
+    }
+    public String geraToken(String email) throws Exception {
+        removeTokensExpirados();
+        Utilizadore utilizador = utilizadoreRepository.findByEmail(email)
+                .orElseThrow(() -> new UtilizadorNaoEncontradoException("Email não encontrado"));
+        String token = String.valueOf(100000 + GeneradorRandomico.nextInt(900000));
+        while (tokenRecuperacaoRepository.existsByToken(token) ){
+            token = String.valueOf(100000 + GeneradorRandomico.nextInt(900000));
+        }
+        // Aplica o BCrypt (Gera o Hash único com Salt)
+        String hash = BCrypt.hashpw(token, BCrypt.gensalt());
+        //ACEITA ATÉ 15 MIN
+        TokenRecuperacao tokenSalvo = tokenRecuperacaoRepository.save(new TokenRecuperacao(null, utilizador, hash,LocalDateTime.now().plusMinutes(15)));
 
-    public List<UtilizadoreResumoDto> listarContactosDisponiveis(String emailLogado) {
-        return utilizadoreRepository.findAll().stream()
-                .filter(u -> !u.getEmail().equals(emailLogado)) // Não se listar a si próprio
-                .map(u -> new UtilizadoreResumoDto(
-                        idHasher.encode(u.getId()),
-                        u.getNome()
-                ))
-                .toList();
+        if (tokenSalvo.getId() != null) {
+            // O token foi persistido com sucesso!
+            // AGORA: Envie o 'tokenOriginal' por e-mail (nunca envie o hash)
+            String mensagem = "<p>Caro/a utilizador(a),</p>"
+                    + "<p>Recebemos um pedido de recuperação de acesso.</p>"
+                    + "<p>O seu token de recuperação é:</p>"
+                    + "<h2 style='background:#f4f4f4; padding:10px; display:inline-block; border-radius:5px;'>"
+                    + token +
+                    "</h2>"
+                    + "<p>Este código é válido por 15 minutos</p>"
+                    + "<p>Se não solicitou esta operação, ignore este email.</p>"
+                    + "<p>Cumprimentos,<br>Equipa de Suporte</p>";
+
+            emailService.enviaEmail(utilizador.getEmail(), "Token de Recuperação", mensagem);
+            System.out.println("Token gerado e salvo com sucesso.");
+        } else {
+            throw new Exception("Erro ao gerar token de recuperação.");
+        }
+        return token;
+    }
+    public void atualizaPassSemLogin(AlterarPasswordSemLoginDto dto) throws Exception {
+        // 1. Procurar o token no banco pelo ID do utilizador (ou apenas pelo hash se preferir)
+        // Aqui assumo que o DTO traz o token digitado e a nova senha
+        TokenRecuperacao recuperacao = tokenRecuperacaoRepository.findFirstByIdUtilizador_EmailOrderByExpiraEmDesc(dto.email()).orElseThrow(() -> new Exception("Token inválido ou inexistente"));
+
+        // 2. Verificar se expirou
+        if (recuperacao.getExpiraEm().isBefore(LocalDateTime.now())) {
+            tokenRecuperacaoRepository.delete(recuperacao);
+            throw new RuntimeException("O token expirou!");
+        }
+
+        // 3. O BCrypt NÃO permite buscar por "token" direto se for hash.
+        // Você deve buscar o registro e usar o checkpw:
+
+        if (!BCrypt.checkpw(dto.token(), recuperacao.getToken())) {
+            throw new RuntimeException("Token incorreto!");
+        }
+
+        // 4. Se chegou aqui, é válido! Atualizar a senha do utilizador
+        Utilizadore user = recuperacao.getIdUtilizador();
+        user.setPalavraPasse(passwordEncoder.encode(dto.novaPassword()));
+        utilizadoreRepository.save(user);
+
+        // 5. Apagar o token para não ser usado de novo
+        tokenRecuperacaoRepository.delete(recuperacao);
     }
 }
