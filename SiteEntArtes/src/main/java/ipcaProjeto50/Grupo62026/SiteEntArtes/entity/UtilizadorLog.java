@@ -8,6 +8,7 @@ import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -23,13 +24,13 @@ public class UtilizadorLog {
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "ultimo_login", nullable = false)
-    private Instant ultimoLogin;
+    private LocalDateTime ultimoLogin;
 
     @Column(name = "endereco_ip", nullable = false, length = 45)
     private String enderecoIp;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_utilizador", nullable = false)
+    @JoinColumn(name = "id_utilizador")
     private Utilizadore idUtilizador;
 
     @Column(name = "sucesso", nullable = false)

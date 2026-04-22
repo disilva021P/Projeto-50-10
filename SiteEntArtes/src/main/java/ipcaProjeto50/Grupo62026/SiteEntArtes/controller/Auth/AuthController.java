@@ -6,6 +6,11 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Utilizadore;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.AulaRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.TipoUtilizadorRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.UtilizadoreRepository;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.service.LoginService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,28 +27,21 @@ import java.time.LocalDate;
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/auth")
 public class AuthController {
-    private final JwtService jwtService;
-    private final AuthenticationManager authenticationManager;
-    @Autowired
-    public AuthController(JwtService jwtService,AuthenticationManager authenticationManager) {
-        this.jwtService = jwtService;
-        this.authenticationManager = authenticationManager;
-    }
+    private final LoginService loginService;
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginDTO loginData) {
+    public ResponseEntity<String> login(@Valid @RequestBody LoginDTO loginData, HttpServletRequest request) {
+        String ip = request.getRemoteAddr();
         try {
-            Authentication auth = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(loginData.email(), loginData.password())
-            );
-
-            UserDetails userDetails = (UserDetails) auth.getPrincipal();
-            if(userDetails==null) throw new RuntimeException("User nulo");
-            String token = jwtService.generateToken(userDetails);
-            return ResponseEntity.ok(token);
-        } catch (AuthenticationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Email ou Password incorretos");
+            String token = loginService.login(loginData,ip);
+            return (token == null || token.isBlank()) ? ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Erro inesperado") : ResponseEntity.ok().body(token);
+        }catch (Exception e) {
+        if (e.getMessage().contains("bloqueado")) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(e.getMessage());
         }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+    }
     }
 }

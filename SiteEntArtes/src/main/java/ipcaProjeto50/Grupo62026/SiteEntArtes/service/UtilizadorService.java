@@ -251,4 +251,5 @@ public class UtilizadorService {
         // 5. Apagar o token para não ser usado de novo
         tokenRecuperacaoRepository.delete(recuperacao);
     }
+
 }
