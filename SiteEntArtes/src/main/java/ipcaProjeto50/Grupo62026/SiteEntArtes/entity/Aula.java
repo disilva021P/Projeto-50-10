@@ -42,6 +42,7 @@ public class Aula {
     @Column(name = "hora_fim", nullable = false)
     private LocalTime horaFim;
 
+
     @Lob
     @Column(name = "notas", columnDefinition = "TEXT")
     private String notas;
@@ -49,6 +50,7 @@ public class Aula {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_horario", nullable = true)
     private HorarioTurma idHorario;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "estado", nullable = false)
     private EstadoAula estado;

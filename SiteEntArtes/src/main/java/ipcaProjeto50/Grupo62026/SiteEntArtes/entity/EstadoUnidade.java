@@ -20,6 +20,4 @@ public class EstadoUnidade {
 
     @Column(name = "estado", nullable = false, length = 50)
     private String estado;
-
-
 }

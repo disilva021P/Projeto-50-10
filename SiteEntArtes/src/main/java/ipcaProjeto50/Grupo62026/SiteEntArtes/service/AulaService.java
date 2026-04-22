@@ -257,7 +257,7 @@ public class AulaService {
 
                 // Associar o horário à aula antes de adicionar à lista
                 aulaGuardada.setIdHorario(horarioTurma);
-                          adicionados.add(aulaGuardada);
+                adicionados.add(aulaGuardada);
 
             } catch (Exception e) {
                 erros.add(novaAula);

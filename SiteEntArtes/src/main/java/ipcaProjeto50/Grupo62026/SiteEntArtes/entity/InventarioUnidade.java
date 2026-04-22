@@ -16,17 +16,20 @@ import java.time.Instant;
 @Entity
 @Table(name = "inventario_unidades")
 public class InventarioUnidade {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "artigo_id", nullable = false)
-    private Artigo artigo;
+    @Column(name = "nome", nullable = false, length = 150)
+    private String nome;
+
+    @Lob
+    @Column(name = "descricao", columnDefinition = "TEXT")
+    private String descricao;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @ColumnDefault("1")
     @JoinColumn(name = "estado_id", nullable = false)
     private EstadoUnidade estado;
 
@@ -38,12 +41,9 @@ public class InventarioUnidade {
     private String localizacao;
 
     @Lob
-    @Column(name = "notas",columnDefinition = "TEXT")
+    @Column(name = "notas", columnDefinition = "TEXT")
     private String notas;
 
-    @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "criado_em", nullable = false)
     private Instant criadoEm;
-
-
 }

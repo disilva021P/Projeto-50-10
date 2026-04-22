@@ -8,6 +8,7 @@ import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
@@ -21,8 +22,12 @@ public class Notificacoe {
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "utilizador_id", nullable = false)
-    private Utilizadore utilizador;
+    @JoinColumn(name = "destinatario_id", nullable = false)
+    private Utilizadore destinatario;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "remetente_id")
+    private Utilizadore remetente;
 
     @Column(name = "titulo", nullable = false, length = 150)
     private String titulo;
@@ -31,13 +36,16 @@ public class Notificacoe {
     @Column(name = "mensagem", nullable = false, columnDefinition = "TEXT")
     private String mensagem;
 
+    @Column(name = "tipo", length = 50)
+    private String tipo;
+
+    @Column(name = "referencia_id", length = 100)
+    private String referenciaId;
+
     @ColumnDefault("0")
     @Column(name = "lida", nullable = false)
-    private Boolean lida;
+    private Boolean lida = false;
 
-    @ColumnDefault("CURRENT_TIMESTAMP")
-    @Column(name = "criada_em", nullable = false)
-    private Instant criadaEm;
-
-
+    @Column(name = "criada_em", nullable = false, updatable = false)
+    private Instant criadaEm = Instant.now();
 }

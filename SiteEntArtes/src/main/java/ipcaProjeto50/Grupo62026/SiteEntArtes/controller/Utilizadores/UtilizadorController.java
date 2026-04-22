@@ -134,4 +134,17 @@ public class UtilizadorController {
         return ResponseEntity.ok(utilizadorService.findEducandosdeEducador(getUserId()));
     }
 
+    @GetMapping("/disponiveis-grupo")
+    public ResponseEntity<List<UtilizadoreResumoDto>> getUtilizadoresParaGrupo() {
+        // Pegar o sub do token (que no teu caso é o ID Hasheado)
+        String idLogadoHashed = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication().getName();
+
+        if (idLogadoHashed == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        return ResponseEntity.ok(utilizadorService.listarContactosDisponiveis(idLogadoHashed));
+    }
+
 }
