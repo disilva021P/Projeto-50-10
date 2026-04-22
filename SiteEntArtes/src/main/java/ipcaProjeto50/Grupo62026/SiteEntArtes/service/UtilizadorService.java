@@ -189,10 +189,12 @@ public class UtilizadorService {
     public List<UtilizadoreResumoDto> findEducandosdeEducador(String idEducador) {
         return findEducandosdeEducador(idHasher.decode(idEducador));
     }
+
     private void removeTokensExpirados(){
         tokenRecuperacaoRepository.deleteAllByExpiraEmBefore(LocalDateTime.now());
     }
-    public String geraToken(String email) throws Exception {
+
+    public void geraToken(String email) throws Exception {
         removeTokensExpirados();
         Utilizadore utilizador = utilizadoreRepository.findByEmail(email)
                 .orElseThrow(() -> new UtilizadorNaoEncontradoException("Email não encontrado"));
@@ -205,26 +207,26 @@ public class UtilizadorService {
         //ACEITA ATÉ 15 MIN
         TokenRecuperacao tokenSalvo = tokenRecuperacaoRepository.save(new TokenRecuperacao(null, utilizador, hash,LocalDateTime.now().plusMinutes(15)));
 
-        if (tokenSalvo.getId() != null) {
-            // O token foi persistido com sucesso!
-            // AGORA: Envie o 'tokenOriginal' por e-mail (nunca envie o hash)
-            String mensagem = "<p>Caro/a utilizador(a),</p>"
-                    + "<p>Recebemos um pedido de recuperação de acesso.</p>"
-                    + "<p>O seu token de recuperação é:</p>"
-                    + "<h2 style='background:#f4f4f4; padding:10px; display:inline-block; border-radius:5px;'>"
-                    + token +
-                    "</h2>"
-                    + "<p>Este código é válido por 15 minutos</p>"
-                    + "<p>Se não solicitou esta operação, ignore este email.</p>"
-                    + "<p>Cumprimentos,<br>Equipa de Suporte</p>";
+            if (tokenSalvo.getId() != null) {
+                // O token foi persistido com sucesso!
+                // AGORA: Envie o 'tokenOriginal' por e-mail (nunca envie o hash)
+                String mensagem = "<p>Caro/a utilizador(a),</p>"
+                        + "<p>Recebemos um pedido de recuperação de acesso.</p>"
+                        + "<p>O seu token de recuperação é:</p>"
+                        + "<h2 style='background:#f4f4f4; padding:10px; display:inline-block; border-radius:5px;'>"
+                        + token +
+                        "</h2>"
+                        + "<p>Este código é válido por 15 minutos</p>"
+                        + "<p>Se não solicitou esta operação, ignore este email.</p>"
+                        + "<p>Cumprimentos,<br>Equipa de Suporte</p>";
 
-            emailService.enviaEmail(utilizador.getEmail(), "Token de Recuperação", mensagem);
-            System.out.println("Token gerado e salvo com sucesso.");
-        } else {
-            throw new Exception("Erro ao gerar token de recuperação.");
-        }
-        return token;
+                emailService.enviaEmail(email, "Token de Recuperação", mensagem);
+                System.out.println("Token gerado e salvo com sucesso.");
+            } else {
+                throw new Exception("Erro ao gerar token de recuperação.");
+            }
     }
+
     public void atualizaPassSemLogin(AlterarPasswordSemLoginDto dto) throws Exception {
         // 1. Procurar o token no banco pelo ID do utilizador (ou apenas pelo hash se preferir)
         // Aqui assumo que o DTO traz o token digitado e a nova senha
@@ -251,4 +253,20 @@ public class UtilizadorService {
         // 5. Apagar o token para não ser usado de novo
         tokenRecuperacaoRepository.delete(recuperacao);
     }
+
+    // ─── Grupos ───────────────────────────────────────────────────
+
+    public List<UtilizadoreResumoDto> listarContactosDisponiveis(String idLogadoHashed) {
+        // Descodificamos o ID para saber quem é o utilizador atual
+        Integer idRealLogado = idHasher.decode(idLogadoHashed);
+
+        return utilizadoreRepository.findAll().stream()
+                .filter(u -> !u.getId().equals(idRealLogado)) // Filtra pelo ID numérico
+                .map(u -> new UtilizadoreResumoDto(
+                        idHasher.encode(u.getId()),
+                        u.getNome()
+                ))
+                .toList();
+    }
+
 }

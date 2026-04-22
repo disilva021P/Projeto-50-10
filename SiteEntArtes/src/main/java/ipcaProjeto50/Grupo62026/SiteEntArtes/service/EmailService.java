@@ -20,7 +20,6 @@ public class EmailService {
     private String emailGeral;
 
     public void enviaEmail(String emailDestino, String cabecalho, String corpo) {
-        System.out.println("Passei aqui!");
         try {
             MimeMessage mensagem = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mensagem, true, "UTF-8");
@@ -31,6 +30,7 @@ public class EmailService {
             helper.setText(corpo, true);
 
             mailSender.send(mensagem);
+
         } catch (MessagingException e) {
             // Log do erro e possivelmente lançar uma exceção personalizada de negócio
             System.err.println("Falha ao enviar e-mail: " + e.getMessage());

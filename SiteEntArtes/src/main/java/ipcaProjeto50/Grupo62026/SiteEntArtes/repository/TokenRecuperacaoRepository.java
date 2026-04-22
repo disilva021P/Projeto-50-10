@@ -5,6 +5,7 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.TokenRecuperacao;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -13,8 +14,7 @@ public interface TokenRecuperacaoRepository extends JpaRepository<TokenRecuperac
     TokenRecuperacao findByIdUtilizador_Id(Integer idUtilizadorId);
 
     boolean existsByToken(@Size(max = 127) @NotNull String token);
-
+    @Transactional
     void deleteAllByExpiraEmBefore(LocalDateTime now);
 
-    Optional<TokenRecuperacao> findFirstByIdUtilizador_EmailOrderByExpiraEmDesc(String email);
-}
+    Optional<TokenRecuperacao> findFirstByIdUtilizador_EmailOrderByExpiraEmDesc(String email);}

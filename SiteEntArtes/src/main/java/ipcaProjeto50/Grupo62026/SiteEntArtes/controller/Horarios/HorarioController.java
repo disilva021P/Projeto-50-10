@@ -20,7 +20,6 @@ import java.util.Objects;
 @RestController
 @RequestMapping("/api/horario")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class HorarioController {
 
     private final AulaService aulaService;

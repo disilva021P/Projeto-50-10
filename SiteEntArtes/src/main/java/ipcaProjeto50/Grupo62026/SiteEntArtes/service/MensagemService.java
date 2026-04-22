@@ -22,6 +22,7 @@ public class MensagemService {
     private final MensagenRepository mensagenRepository;
     private final IdHasher idHasher;
     private final UtilizadorLogRepository utilizadorLogRepository;
+    private final NotificacoesService notificacoesService;
 
     public List<MensagenPreviewDto> buscarPreviewMensagens(String idUser) {
         Integer id = idHasher.decode(idUser);
@@ -95,13 +96,25 @@ public class MensagemService {
         Utilizadore destinatario = utilizadoreRepository.findById(idHasher.decode(mensagenDto.destinatario()))
                 .orElseThrow(() -> new EntityNotFoundException("Destinatario com o id devolvido, não encontrado"));
 
-        return this.converterParaDto(mensagenRepository.save(new Mensagen(
+        Mensagen novaMensagem = mensagenRepository.save(new Mensagen(
                 null,
                 remetente,
                 destinatario,
                 mensagenDto.conteudo(),
                 LocalDateTime.now()
-        )));
+        ));
+
+        // --- DISPARAR NOTIFICAÇÃO ---
+        notificacoesService.criarNotificacao(
+                destinatario.getId(),
+                remetente.getId(),
+                "Nova Mensagem",
+                mensagenDto.conteudo(),
+                "MENSAGEM",
+                idHasher.encode(remetente.getId())
+        );
+
+        return this.converterParaDto(novaMensagem);
     }
 
 
@@ -172,14 +185,12 @@ public class MensagemService {
     }
 
     public MensagenDto criarMensagemGrupo(String idUserHashed, MensagemGrupoCriarDto dto) {
-        // 1. Descodificar IDs
         Integer userId = idHasher.decode(idUserHashed);
         Integer grupoId = idHasher.decode(dto.grupoId());
 
         Utilizadore remetente = utilizadoreRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Remetente não encontrado"));
 
-        // 2. Buscar/Referenciar o Grupo
         ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Grupo grupo = grupoRepository.findById(grupoId)
                 .orElseThrow(() -> new EntityNotFoundException("Grupo não encontrado"));
 
@@ -189,7 +200,24 @@ public class MensagemService {
         novaMensagem.setConteudo(dto.conteudo());
         novaMensagem.setEnviadaEm(LocalDateTime.now());
 
-        return converterGrupoParaDto(mensagensGrupoRepository.save(novaMensagem));
+        MensagensGrupo salva = mensagensGrupoRepository.save(novaMensagem);
+
+        // --- DISPARAR NOTIFICAÇÕES PARA O GRUPO ---
+        grupo.getMembros().forEach(membro -> {
+            // Não notificar a própria pessoa que enviou
+            if (!membro.getId().equals(userId)) {
+                notificacoesService.criarNotificacao(
+                        membro.getId(),
+                        remetente.getId(),
+                        "Grupo: " + grupo.getNome(),
+                        remetente.getNome() + ": " + dto.conteudo(),
+                        "MENSAGEM_GRUPO",
+                        "GRUPO_" + idHasher.encode(grupo.getId()) // Referência para abrir o grupo
+                );
+            }
+        });
+
+        return converterGrupoParaDto(salva);
     }
 
     // Mapper específico para Mensagens de Grupo -> MensagenDto
