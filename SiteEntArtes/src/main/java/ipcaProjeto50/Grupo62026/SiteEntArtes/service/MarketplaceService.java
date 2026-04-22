@@ -12,7 +12,9 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.InventarioUnidadeReposit
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -31,15 +33,21 @@ public class MarketplaceService {
     private final ImagensUnidadeRepository imagensUnidadeRepository;
     private final IdHasher idHasher;
     private final jakarta.persistence.EntityManager entityManager;
+    private final NotificacoesService notificacoesService;
 
-    public Page<ArtigoDto> filtrarArtigos(String nome, Integer tipo, String tam, String cor, String cond, Double min, Double max, Integer donoId, Pageable pageable) {
-        return artigoRepository.filtrarMarketplace(nome, tipo, tam, cor, cond, min, max, donoId, pageable)
-                .map(this::toDto);
+    public Page<ArtigoDto> filtrarArtigos(String nome, Integer tipo, String tam, String cor, String cond, Double min, Double max, String donoIdHash, Pageable pageable) {
+        Integer donoIdOriginal = null;
+        if (donoIdHash != null && !donoIdHash.isEmpty()) {
+            donoIdOriginal = idHasher.decode(donoIdHash);
+        }
+
+        return artigoRepository.filtrarMarketplace(nome, tipo, tam, cor, cond, min, max, donoIdOriginal, pageable
+        ).map(this::toDto);
     }
 
-    public Page<ArtigoDto> listarArtigos(Pageable pageable) {
-        return artigoRepository.findByArquivadoFalse(pageable)
-                .map(this::toDto);
+    public Page<ArtigoDto> listarArtigos(int page, int size, String nome, Integer tipo, String donoIdHash) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("criadoEm").descending());
+        return filtrarArtigos(nome, tipo, null, null, null, null, null, donoIdHash, pageable);
     }
 
     public List<ArtigoDto> listarArtigosPendentes() {
@@ -58,11 +66,14 @@ public class MarketplaceService {
         Artigo artigo = artigoRepository.findById(artigoId)
                 .orElseThrow(() -> new RuntimeException("Artigo não encontrado"));
 
+        String mensagemNotif = "";
+
         // CENÁRIO 1: Recusado ou Removido (Estado 5)
         if (novoEstadoId == 5) {
             artigo.setAprovado(false);
             artigo.setArquivado(true); // Sai da lista de pendentes e não aparece no marketplace
             artigoRepository.save(artigo);
+            mensagemNotif = "O seu artigo '" + artigo.getNome() + "' foi recusado pela coordenação.";
         }
 
         // CENÁRIO 2: Aceite para o Marketplace Público (Estado 2)
@@ -71,6 +82,7 @@ public class MarketplaceService {
             artigo.setAprovado(true);  // Agora passa no filtro 'aprovado = true'
             artigo.setArquivado(false); // Garante que está visível
             artigoRepository.save(artigo);
+            mensagemNotif = "O seu artigo '" + artigo.getNome() + "' foi aprovado!";
         }
 
         // CENÁRIO 3: Aceite para Inventário Interno da Escola (Estado 9)
@@ -91,7 +103,21 @@ public class MarketplaceService {
             novaUnidade.setCriadoEm(Instant.now());
 
             inventarioUnidadeRepository.save(novaUnidade);
+
+            mensagemNotif = "O seu artigo '" + artigo.getNome() + "' foi aceite e doado ao inventário da escola.";
         }
+
+        if (!mensagemNotif.isEmpty()) {
+            notificacoesService.criarNotificacao(
+                    artigo.getDonoUtilizador().getId(),
+                    null, // Remetente sistema (null porque é uma mensagem automática)
+                    "Estado do Artigo Atualizado",
+                    mensagemNotif,
+                    "MARKETPLACE_STATUS",
+                    artigo.getId().toString()
+            );
+        }
+
     }
 
     @Transactional
@@ -144,22 +170,25 @@ public class MarketplaceService {
             }
         }
 
-
+        enviarNotificacaoNovoArtigo(artigoGuardado);
 
         return toDto(artigoGuardado);
     }
 
     @Transactional
-    public void arquivarArtigo(Integer artigoId) {
-        Artigo artigo = artigoRepository.findById(artigoId)
+    public void arquivarArtigo(String idHashed) {
+        Integer idOriginal = idHasher.decode(idHashed);
+        Artigo artigo = artigoRepository.findById(idOriginal)
                 .orElseThrow(() -> new RuntimeException("Artigo não encontrado"));
         artigo.setArquivado(true);
         artigoRepository.save(artigo);
     }
 
     @Transactional
-    public ArtigoDto editarArtigo(Integer id, ArtigoRequest request) {
-        Artigo artigo = artigoRepository.findById(id)
+    public ArtigoDto editarArtigo(String idHashed, ArtigoRequest request) {
+        Integer idOriginal = idHasher.decode(idHashed);
+
+        Artigo artigo = artigoRepository.findById(idOriginal)
                 .orElseThrow(() -> new RuntimeException("Artigo não encontrado"));
 
         artigo.setNome(request.nome());
@@ -193,8 +222,9 @@ public class MarketplaceService {
     }
 
     @Transactional
-    public void removerImagem(Integer imagemId) {
-        imagensUnidadeRepository.deleteById(imagemId);
+    public void removerImagem(String imagemIdHashed) {
+        Integer idOriginal = idHasher.decode(imagemIdHashed);
+        imagensUnidadeRepository.deleteById(idOriginal);
     }
 
     private ArtigoDto toDto(Artigo artigo) {
@@ -211,11 +241,15 @@ public class MarketplaceService {
         }
 
         List<ImagensUnidade> imagens = imagensUnidadeRepository.findByArtigoId(artigo.getId());
-        List<Integer> todosImagemIds = imagens.stream().map(ImagensUnidade::getId).toList();
-        Integer imagemPrincipalId = todosImagemIds.isEmpty() ? null : todosImagemIds.get(todosImagemIds.size() - 1);
+        // Codificamos todos os IDs das imagens
+        List<String> todosImagemIdsHashed = imagens.stream()
+                .map(img -> idHasher.encode(img.getId()))
+                .toList();
+
+        String imagemPrincipalIdHashed = todosImagemIdsHashed.isEmpty() ? null : todosImagemIdsHashed.get(todosImagemIdsHashed.size() - 1);
 
         return new ArtigoDto(
-                artigo.getId(),
+                idHasher.encode(artigo.getId()), // Encode do ID do Artigo
                 artigo.getNome(),
                 artigo.getDescricao(),
                 artigo.getTamanho(),
@@ -231,8 +265,8 @@ public class MarketplaceService {
                 artigo.getCriadoEm(),
                 estadoId,
                 estadoNome,
-                imagemPrincipalId,
-                todosImagemIds
+                imagemPrincipalIdHashed,
+                todosImagemIdsHashed
         );
     }
 
@@ -287,5 +321,25 @@ public class MarketplaceService {
         }
 
         unidadeRepository.delete(unidade);
+    }
+
+    private void enviarNotificacaoNovoArtigo(Artigo artigo) {
+        // 1. Procurar todos os coordenadores (ajusta a string se no banco for diferente, ex: "COORDENADOR")
+        List<Utilizadore> coordenadores = utilizadoreRepository.findByTipo_TipoUtilizador("COORDENACAO");
+
+        String titulo = Boolean.TRUE.equals(artigo.getIsDoacao()) ? "Nova Doação Pendente" : "Novo Artigo no Marketplace";
+        String mensagem = "O utilizador " + artigo.getDonoUtilizador().getNome() + " inseriu o artigo: " + artigo.getNome();
+        String tipo = Boolean.TRUE.equals(artigo.getIsDoacao()) ? "MARKETPLACE_PENDENTE" : "MARKETPLACE_NOVO";
+
+        for (Utilizadore coord : coordenadores) {
+            notificacoesService.criarNotificacao(
+                    coord.getId(),
+                    artigo.getDonoUtilizador().getId(),
+                    titulo,
+                    mensagem,
+                    tipo,
+                    artigo.getId().toString() // Referência para o ID do artigo
+            );
+        }
     }
 }

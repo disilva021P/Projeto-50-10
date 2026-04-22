@@ -57,7 +57,6 @@ public class AuthController {
             response.put("nome", user.getNome());
             response.put("email", user.getEmail());
 
-            // ADICIONADO: Envia o ID do tipo de utilizador (ex: 1 para coordenação, 2 para aluno)
             // Isto permite ao Next.js saber para que página redirecionar
             if (user.getTipo() != null) {
                 response.put("tipoId", user.getTipo().getId());

@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 public record InventarioDto(
-        Integer id,
+        String id,
         String nomeArtigo,
         String descricao,
         String tamanho,
@@ -16,6 +16,6 @@ public record InventarioDto(
         String localizacao,
         String notas,
         Instant criadoEm,
-        Integer imagemId,
-        java.util.List<Integer> imagemIds
+        String imagemId,
+        java.util.List<String> imagemIds
 ) {}

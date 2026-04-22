@@ -1,5 +1,6 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.controller.Inventario;
 
+import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.InventarioAdicionarRequest;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.InventarioDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.InventarioEditarRequest;
@@ -24,6 +25,7 @@ public class InventarioController {
 
     private final InventarioService inventarioService;
     private final InventarioUnidadeRepository unidadeRepository;
+    private final IdHasher idHasher;
 
     @GetMapping
     public ResponseEntity<Page<InventarioDto>> listar(
@@ -49,14 +51,14 @@ public class InventarioController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> remover(@PathVariable Integer id) {
+    public ResponseEntity<Void> remover(@PathVariable String id) {
         inventarioService.removerDoInventario(id);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<InventarioDto> editar(
-            @PathVariable Integer id,
+            @PathVariable String id,
             @RequestBody InventarioEditarRequest request
     ) {
         return ResponseEntity.ok(inventarioService.editarUnidade(id, request));

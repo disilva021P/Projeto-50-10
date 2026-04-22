@@ -1,5 +1,6 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
+import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.InventarioAdicionarRequest;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.InventarioDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.InventarioEditarRequest;
@@ -25,6 +26,7 @@ public class InventarioService {
     private final ImagensUnidadeRepository imagensUnidadeRepository;
     private final EstadoUnidadeRepository estadoUnidadeRepository;
     private final UtilizadoreRepository utilizadoreRepository;
+    private final IdHasher idHasher;
 
     public Page<InventarioDto> filtrarInventario(
             String nome, Integer estadoId, String tamanho,
@@ -39,36 +41,36 @@ public class InventarioService {
         // Como o inventário agora é independente, os campos de "vestuário" e imagens
         // são passados como null/vazios para manter a compatibilidade com o DTO
         return new InventarioDto(
-                u.getId(),
+                idHasher.encode(u.getId()),
                 u.getNome(),
                 u.getDescricao(),
-                null, // tamanho
-                null, // cor
-                null, // condicao
+                null,
+                null,
+                null,
                 u.getEstado().getId(),
                 u.getEstado().getEstado(),
                 u.getDisponivel(),
                 u.getLocalizacao(),
                 u.getNotas(),
                 u.getCriadoEm(),
-                null, // imagemId principal
-                List.of() // imagemIds lista
+                null,
+                List.of()
         );
     }
 
     @Transactional
-    public void removerDoInventario(Integer unidadeId) {
-        if (!inventarioUnidadeRepository.existsById(unidadeId)) {
+    public void removerDoInventario(String unidadeIdHashed) {
+        Integer idOriginal = idHasher.decode(unidadeIdHashed);
+        if (!inventarioUnidadeRepository.existsById(idOriginal)) {
             throw new RuntimeException("Unidade não encontrada");
         }
-        // Agora basta remover da tabela de inventário.
-        // Não apaga nada da tabela Artigos (Marketplace).
-        inventarioUnidadeRepository.deleteById(unidadeId);
+        inventarioUnidadeRepository.deleteById(idOriginal);
     }
 
     @Transactional
-    public InventarioDto editarUnidade(Integer unidadeId, InventarioEditarRequest request) {
-        InventarioUnidade unidade = inventarioUnidadeRepository.findById(unidadeId)
+    public InventarioDto editarUnidade(String unidadeIdHashed, InventarioEditarRequest request) {
+        Integer idOriginal = idHasher.decode(unidadeIdHashed);
+        InventarioUnidade unidade = inventarioUnidadeRepository.findById(idOriginal)
                 .orElseThrow(() -> new RuntimeException("Unidade não encontrada"));
 
         // Atualiza campos básicos da própria unidade

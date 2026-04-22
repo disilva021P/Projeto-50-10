@@ -1,5 +1,6 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.controller.Marketplace;
 
+import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ArtigoDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ArtigoRequest;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ConversaoInventarioRequest;
@@ -26,10 +27,14 @@ public class MarketplaceController {
 
     private final MarketplaceService marketplaceService;
     private final ImagensUnidadeRepository imagensUnidadeRepository;
+    private final IdHasher idHasher;
 
-    public MarketplaceController(MarketplaceService marketplaceService, ImagensUnidadeRepository imagensUnidadeRepository) {
+    public MarketplaceController(MarketplaceService marketplaceService,
+                                 ImagensUnidadeRepository imagensUnidadeRepository,
+                                 IdHasher idHasher) {
         this.marketplaceService = marketplaceService;
         this.imagensUnidadeRepository = imagensUnidadeRepository;
+        this.idHasher = idHasher;
     }
 
     /**
@@ -48,7 +53,7 @@ public class MarketplaceController {
                 @RequestParam(required = false)          String condicao,
                 @RequestParam(required = false)          Double min,
                 @RequestParam(required = false)          Double max,
-                @RequestParam(required = false)          Integer donoId
+                @RequestParam(required = false)          String donoId
         ) {
 
         Sort sort = direction.equalsIgnoreCase("desc")
@@ -94,8 +99,9 @@ public class MarketplaceController {
     }
 
     @GetMapping("/imagem/{id}")
-    public ResponseEntity<byte[]> getImagem(@PathVariable Integer id) {
-        return imagensUnidadeRepository.findById(id)
+    public ResponseEntity<byte[]> getImagem(@PathVariable String id) {
+        Integer idOriginal = idHasher.decode(id);
+        return imagensUnidadeRepository.findById(idOriginal)
                 .map(img -> ResponseEntity.ok()
                         .contentType(MediaType.IMAGE_JPEG)
                         .body(img.getUrlImagem()))
@@ -104,14 +110,14 @@ public class MarketplaceController {
 
     //Remover artigo (Arquivar)
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> arquivar(@PathVariable Integer id) {
+    public ResponseEntity<Void> arquivar(@PathVariable String id) { // Recebe String
         marketplaceService.arquivarArtigo(id);
         return ResponseEntity.noContent().build();
     }
 
     //Apagar imagem
     @DeleteMapping("/imagem/{imagemId}")
-    public ResponseEntity<Void> apagarImagem(@PathVariable Integer imagemId) {
+    public ResponseEntity<Void> apagarImagem(@PathVariable String imagemId) {
         marketplaceService.removerImagem(imagemId);
         return ResponseEntity.noContent().build();
     }
@@ -119,8 +125,8 @@ public class MarketplaceController {
     //Editar artigo
     @PutMapping(value = "/{id}", consumes = {"multipart/form-data"})
     public ResponseEntity<ArtigoDto> editar(
-            @PathVariable Integer id,
-            @ModelAttribute ArtigoRequest request // Alterado de @RequestBody para @ModelAttribute
+            @PathVariable String id,
+            @ModelAttribute ArtigoRequest request
     ) {
         return ResponseEntity.ok(marketplaceService.editarArtigo(id, request));
     }

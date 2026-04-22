@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.util.List;
 
 public record ArtigoDto(
-        Integer id,
+        String id,
         String nome,
         String descricao,
         String tamanho,
@@ -21,6 +21,6 @@ public record ArtigoDto(
         Instant criadoEm,
         Integer estadoUnidadeId,
         String estadoUnidadeNome,
-        Integer imagemId,
-        List<Integer> imagemIds
+        String imagemId,
+        List<String> imagemIds
 ) {}

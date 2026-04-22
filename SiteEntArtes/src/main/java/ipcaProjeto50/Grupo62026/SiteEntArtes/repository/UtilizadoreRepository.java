@@ -18,26 +18,4 @@ public interface UtilizadoreRepository extends JpaRepository<Utilizadore, Intege
     List<Utilizadore> findByAtivo(Boolean ativo);
 
     List<Utilizadore> findByTipo_TipoUtilizadorAndAtivo(String tipoUtilizador, Boolean ativo);
-
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
