@@ -251,5 +251,17 @@ public class UtilizadorService {
         // 5. Apagar o token para não ser usado de novo
         tokenRecuperacaoRepository.delete(recuperacao);
     }
+    public List<UtilizadoreResumoDto> listarContactosDisponiveis(String idLogadoHashed) {
+        // Descodificamos o ID para saber quem é o utilizador atual
+        Integer idRealLogado = idHasher.decode(idLogadoHashed);
+
+        return utilizadoreRepository.findAll().stream()
+                .filter(u -> !u.getId().equals(idRealLogado)) // Filtra pelo ID numérico
+                .map(u -> new UtilizadoreResumoDto(
+                        idHasher.encode(u.getId()),
+                        u.getNome()
+                ))
+                .toList();
+    }
 
 }

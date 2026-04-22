@@ -5,6 +5,7 @@ import de.jollyday.HolidayCalendar;
 import de.jollyday.HolidayManager;
 import de.jollyday.ManagerParameters;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -15,10 +16,12 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@RequiredArgsConstructor
 @Service
 public class FeriadosService {
-    private @Lazy final FeriadosService self;
+
+    @Autowired
+    @Lazy
+    private FeriadosService self;
     @Cacheable("feriados")
     public List<LocalDate> diasFeriados() {
         HolidayManager manager = HolidayManager.getInstance(
