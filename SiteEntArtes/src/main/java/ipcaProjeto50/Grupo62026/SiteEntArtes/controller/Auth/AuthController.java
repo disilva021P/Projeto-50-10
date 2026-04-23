@@ -53,13 +53,11 @@ public class AuthController {
             // 4. Criar um mapa com a resposta estruturada para o Frontend
             Map<String, Object> response = new HashMap<>();
             response.put("token", token);
-            response.put("id", user.getId());
             response.put("nome", user.getNome());
-            response.put("email", user.getEmail());
 
             // Isto permite ao Next.js saber para que página redirecionar
             if (user.getTipo() != null) {
-                response.put("tipoId", user.getTipo().getId());
+                response.put("tipoId", user.getTipo().getTipoUtilizador());
             }
 
             return ResponseEntity.ok(response);

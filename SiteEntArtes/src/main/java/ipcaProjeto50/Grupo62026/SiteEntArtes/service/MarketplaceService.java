@@ -57,10 +57,6 @@ public class MarketplaceService {
                 .toList();
     }
 
-    /**
-     * IMPORTANTE: Como já não há relação direta via BD, aqui controlamos apenas o Artigo.
-     * Quando um artigo é aceite como doação, ele deve ser "clonado" para a tabela de inventário.
-     */
     @Transactional
     public void alterarEstadoArtigo(String idHash, Integer novoEstadoId) {
         Integer idReal = idHasher.decode(idHash);

@@ -4,8 +4,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record TransacaoRequest(
-        Integer artigoId,
-        Integer compradorId,
+        String artigoId,
+        String compradorId,
         String tipo, // "VENDA", "ALUGUER" ou "DOACAO"
         BigDecimal valorFinal,
         LocalDate dataInicio,
