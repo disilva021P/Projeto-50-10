@@ -35,7 +35,7 @@ public class CoordenacaoController {
      * Aceita uma doação (Muda estado de 8 para 2)
      */
     @PostMapping("/aceitar/{artigoId}")
-    public ResponseEntity<Void> aceitarDoacao(@PathVariable Integer artigoId) {
+    public ResponseEntity<Void> aceitarDoacao(@PathVariable String artigoId) {
         marketplaceService.alterarEstadoArtigo(artigoId, 2);
         return ResponseEntity.ok().build();
     }
@@ -44,7 +44,7 @@ public class CoordenacaoController {
      * Recusa uma doação (Muda estado de 8 para 5 - Removido)
      */
     @PostMapping("/recusar/{artigoId}")
-    public ResponseEntity<Void> recusarDoacao(@PathVariable Integer artigoId) {
+    public ResponseEntity<Void> recusarDoacao(@PathVariable String artigoId) {
         marketplaceService.alterarEstadoArtigo(artigoId, 5);
         return ResponseEntity.ok().build();
     }

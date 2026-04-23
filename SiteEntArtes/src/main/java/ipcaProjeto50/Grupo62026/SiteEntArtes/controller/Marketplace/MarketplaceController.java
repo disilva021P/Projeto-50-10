@@ -138,7 +138,7 @@ public class MarketplaceController {
      */
     @PutMapping("/artigos/{id}/estado/{novoEstadoId}")
     public ResponseEntity<Void> alterarEstado(
-            @PathVariable Integer id,
+            @PathVariable String id,
             @PathVariable Integer novoEstadoId
     ) {
         marketplaceService.alterarEstadoArtigo(id, novoEstadoId);

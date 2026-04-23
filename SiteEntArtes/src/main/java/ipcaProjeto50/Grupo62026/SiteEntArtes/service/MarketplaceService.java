@@ -62,8 +62,9 @@ public class MarketplaceService {
      * Quando um artigo é aceite como doação, ele deve ser "clonado" para a tabela de inventário.
      */
     @Transactional
-    public void alterarEstadoArtigo(Integer artigoId, Integer novoEstadoId) {
-        Artigo artigo = artigoRepository.findById(artigoId)
+    public void alterarEstadoArtigo(String idHash, Integer novoEstadoId) {
+        Integer idReal = idHasher.decode(idHash);
+        Artigo artigo = artigoRepository.findById(idReal)
                 .orElseThrow(() -> new RuntimeException("Artigo não encontrado"));
 
         String mensagemNotif = "";
