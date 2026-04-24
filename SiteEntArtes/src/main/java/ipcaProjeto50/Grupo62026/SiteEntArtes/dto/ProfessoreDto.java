@@ -8,6 +8,6 @@ import java.math.BigDecimal;
 /**
  * DTO for {@link Professore}
  */
-public record ProfessoreDto(UtilizadoreResumoDto utilizadores, BigDecimal valorHora,
+public record   ProfessoreDto(UtilizadoreResumoDto utilizadores, BigDecimal valorHora,
                             Boolean professorExterno) implements Serializable {
 }

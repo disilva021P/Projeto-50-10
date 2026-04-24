@@ -9,6 +9,7 @@ public record UtilizadorResponseDto(
         String nome,
         String email,
         String telefone,
+        String nif,
         String tipoUtilizador,
         Boolean ativo,
         LocalDate dataNascimento,

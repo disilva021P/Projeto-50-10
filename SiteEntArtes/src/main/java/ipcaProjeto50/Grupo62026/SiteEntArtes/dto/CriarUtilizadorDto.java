@@ -9,6 +9,7 @@ public record CriarUtilizadorDto(
         String telefone,
         String id_tipoUtilizador,
         LocalDate dataNascimento,
+        String nif,
         String palavraPasseTemporaria
 
 ) {}

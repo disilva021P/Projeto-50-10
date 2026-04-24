@@ -79,11 +79,9 @@ public class UtilizadorController {
     // Ver o próprio perfil
     // Qualquer utilizador autenticado tem acesso
     @GetMapping("/meu-perfil")
-    public ResponseEntity<UtilizadorResponseDto> verMeuPerfil(
-            @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(
-                utilizadorService.verMeuPerfil(userDetails.getUsername()));
-    }
+    public ResponseEntity<UtilizadorResponseDto> verMeuPerfil() {
+        String id = getUserId();
+        return ResponseEntity.ok(utilizadorService.verMeuPerfil(id));}
 
     // ─── PATCH /api/utilizadores/minha-password ───────────────────────────────
     // Alterar a própria palavra-passe

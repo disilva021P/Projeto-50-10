@@ -18,49 +18,82 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
-@Component
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
+@Service
+public class JwtService {
 
-    private final JwtService jwtService;
+    @Value("${JWT_SECRET}")
+    private String secretKey;
 
-    public JwtAuthenticationFilter(JwtService jwtService,UserDetailsService userDetailsService) {
-        this.jwtService = jwtService;
+    // ─── GERAR TOKEN ─────────────────────────────────────────────
+    public String generateToken(UserDetails user) {
+
+        Map<String, Object> claims = new HashMap<>();
+
+        // 👇 remove ROLE_ para manter padrão limpo
+        String role = user.getAuthorities()
+                .iterator()
+                .next()
+                .getAuthority()
+                .replace("ROLE_", "");
+
+        claims.put("role", role);
+
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(user.getUsername())
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10))
+                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                .compact();
     }
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
-        String path = request.getServletPath();
-        if (path.startsWith("/api/auth/login")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+    // ─── EXTRAIR ROLE ─────────────────────────────────────────────
+    public String extractRole(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims.get("role", String.class);
+    }
 
-        String authHeader = request.getHeader("Authorization");
+    // ─── USERNAME ────────────────────────────────────────────────
+    public String extractUsername(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSignInKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
+    }
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+    // ─── VALIDAÇÃO ──────────────────────────────────────────────
+    public boolean isTokenValid(String jwt, String userId) {
+        final String username = extractUsername(jwt);
+        return (username.equals(userId)) && !isTokenExpired(jwt);
+    }
 
-        String jwt = authHeader.substring(7);
-        String userId = jwtService.extractUsername(jwt);
+    // ─── EXPIRAÇÃO ───────────────────────────────────────────────
+    private boolean isTokenExpired(String token) {
+        return extractExpiration(token).before(new Date());
+    }
 
-        if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            String authority = jwtService.extractAuthorities(jwt);
-            if (jwtService.isTokenValid(jwt, userId)) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userId,
-                        null,
-                        Collections.singletonList(new SimpleGrantedAuthority(authority))
-                );
+    private Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
 
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
-        }
+    public <T> T extractClaim(String token, Function<Claims, T> resolver) {
+        final Claims claims = extractAllClaims(token);
+        return resolver.apply(claims);
+    }
 
-        filterChain.doFilter(request, response);
+    private Claims extractAllClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSignInKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    // ─── KEY ─────────────────────────────────────────────────────
+    private Key getSignInKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 }
