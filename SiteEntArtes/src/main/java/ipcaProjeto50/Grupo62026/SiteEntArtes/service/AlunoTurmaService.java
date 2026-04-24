@@ -1,7 +1,9 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.PagamentoDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.TurmaAlunoDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.UtilizadoreResumoDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Aluno;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Turma;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.TurmaAluno;
@@ -13,7 +15,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -24,6 +28,9 @@ public class AlunoTurmaService {
     private final TurmaRepository turmaRepository;
     private final TurmaAlunoRepository turmaAlunoRepository;
     private final IdHasher idHasher;
+    private final PagamentoService pagamentoService;
+    private BigDecimal INSCRICAO=new BigDecimal(30);
+    private BigDecimal SEGURO=new BigDecimal(15);
 
     @Transactional
     public TurmaAlunoDto adicionarAlunoATurma(String idAlunoHashed, String idTurmaHashed) throws Exception {
@@ -50,7 +57,14 @@ public class AlunoTurmaService {
 
         turmaAluno.setTurma(turma);
 
-        return convertToDto(turmaAlunoRepository.save(turmaAluno));
+        TurmaAlunoDto turmaAlunoDto = convertToDto(turmaAlunoRepository.save(turmaAluno));
+        if(turmaAlunoDto.idAluno()!=null){
+
+            pagamentoService.criar(new PagamentoDto(null,INSCRICAO,false,"Pagamento de Inscrição na escola",idHasher.encode(3),"Inscrição",null, LocalDate.now(),null,new UtilizadoreResumoDto(idAlunoHashed,aluno.getNome())));
+            pagamentoService.criar(new PagamentoDto(null,SEGURO,false,"Pagamento de Seguro na escola",idHasher.encode(4),"Seguro",null, LocalDate.now(),null,new UtilizadoreResumoDto(idAlunoHashed,aluno.getNome())));
+
+        }
+        return turmaAlunoDto;
     }
 
     @Transactional

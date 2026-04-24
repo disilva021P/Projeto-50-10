@@ -8,10 +8,12 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.service.CancelamentoService;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.service.JustificacaoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -27,7 +29,7 @@ public class CancelamentoController {
     // --- AÇÕES DE REGISTO E GESTÃO ---
 
     @PostMapping("/marcar")
-    @PreAuthorize("hasAnyRole( 'PROFESSOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole( 'PROFESSOR', 'COORDENACAO')")
     public ResponseEntity<?> marcar(@RequestBody FaltaDto dto) {
         try {
             FaltaDto resultado = cancelamentoService.marcarFalta(dto, Utils.getAuthenticatedUserId());
@@ -38,7 +40,7 @@ public class CancelamentoController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('PROFESSOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('PROFESSOR', 'COORDENACAO')")
     public ResponseEntity<?> atualizar(@PathVariable String id, @RequestBody FaltaDto dto) {
         try {
             FaltaDto resultado = cancelamentoService.atualizarFalta(id, dto);
@@ -49,7 +51,7 @@ public class CancelamentoController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('COORDENACAO')")
     public ResponseEntity<?> remover(@PathVariable String id) {
         try {
             cancelamentoService.removerFalta(id);
@@ -60,10 +62,10 @@ public class CancelamentoController {
     }
 
     @PatchMapping("/{id}/validar")
-    @PreAuthorize("hasAnyRole('PROFESSOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('COORDENACAO')")
     public ResponseEntity<?> validar(@PathVariable String id, @RequestParam boolean aprovada) {
         try {
-            justificacaoService.validarFalta(id, aprovada);
+            justificacaoService.validarFalta(id, aprovada,Utils.getAuthenticatedUserId());
             return ResponseEntity.ok("Estado da falta atualizado com sucesso.");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Erro na validação: " + e.getMessage());
@@ -73,26 +75,54 @@ public class CancelamentoController {
     // --- LISTAGENS ---
 
     @GetMapping("/utilizador/{idHash}/detalhe")
-    @PreAuthorize("hasAnyRole('ALUNO', 'PROFESSOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('ALUNO', 'PROFESSOR', 'COORDENACAO')")
     public ResponseEntity<List<FaltaResponseDto>> listarFaltasPorUtilizador(@PathVariable String idHash) {
         return ResponseEntity.ok(cancelamentoService.listarFaltasPorUtilizador(idHash));
     }
 
     @GetMapping("/aluno/{alunoId}/estatisticas")
-    @PreAuthorize("hasAnyRole('ALUNO', 'PROFESSOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('ALUNO', 'PROFESSOR', 'COORDENACAO')")
     public ResponseEntity<FaltaResumoDto> obterResumoEstatisticas(@PathVariable String alunoId) {
         return ResponseEntity.ok(cancelamentoService.obterResumoEstatisticas(alunoId));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('PROFESSOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('PROFESSOR', 'COORDENACAO')")
     public ResponseEntity<List<FaltaDto>> listarTodas() {
         return ResponseEntity.ok(cancelamentoService.listarTodas());
     }
 
     @GetMapping("/pendentes")
-    @PreAuthorize("hasAnyRole('PROFESSOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('PROFESSOR', 'COORDENACAO')")
     public ResponseEntity<List<FaltaDto>> listarPendentes() {
         return ResponseEntity.ok(cancelamentoService.listarPendentes());
+    }
+    // Encarregado submete justificação com PDF
+    @PostMapping("/{id}/justificar")
+    @PreAuthorize("hasAnyRole('ENCARREGADO', 'PROFESSOR')")
+    public ResponseEntity<?> submeterJustificacao(
+            @PathVariable String id,
+            @RequestParam("pdf") MultipartFile pdf,
+            @RequestParam("motivo") String motivo) {
+        try {
+            justificacaoService.submeterJustificacao(id, pdf.getBytes(), motivo);
+            return ResponseEntity.ok("Justificação submetida com sucesso.");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // Coordenação consulta o PDF
+    @GetMapping("/{id}/pdf")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
+    public ResponseEntity<byte[]> verPdf(@PathVariable String id) {
+        try {
+            byte[] pdf = justificacaoService.verConteudoPdf(id);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 }

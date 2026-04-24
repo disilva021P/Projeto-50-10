@@ -1,6 +1,7 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.AulaAlunoDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.AulaCoachingDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.AulaCoachingRequestDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.AulaDto;
@@ -13,10 +14,7 @@ import org.springframework.expression.ExpressionException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek;
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.*;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 
@@ -42,6 +40,7 @@ public class AulaCoachingService {
     private final ProfessorService professorService;
     private final ProfessorModalidadeRepository professorModalidadeRepository;
     private final EstudioModalidadeRepository estudioModalidadeRepository;
+    private final NotificacoesService notificacoesService;
 
     // =========================================================================
     // Leitura
@@ -160,6 +159,12 @@ public class AulaCoachingService {
      */
     @Transactional
     public AulaCoachingDto salvarMarcarCoaching(AulaCoachingRequestDto dto, String idAluno) throws Exception {
+        if(dto.dataAula().isBefore(LocalDate.now()) || (dto.dataAula().equals(LocalDate.now()) && dto.horaInicio().isBefore(LocalTime.now()))){
+            throw new Exception("Data de início inferior à Data atual");
+        }
+        if(dto.maxAlunos()>8){
+            throw new Exception("Nº de alunos max é 8");
+        }
         if (!professorModalidadeRepository.existsByModalidadeIdAndProfessorId(idHasher.decode(dto.modalidadeId()), idHasher.decode( dto.professorId()) )) {
             throw new Exception("Professor não leciona esta modalidade");
         }
@@ -177,18 +182,27 @@ public class AulaCoachingService {
 
         AulaCoaching aulaCoaching = aulaCoachingRepository.save(requestDtoParaCoaching(dto));
 
+        Aluno a = alunoRepository.findById(idHasher.decode(idAluno))
+                .orElseThrow(() -> new Exception("Aluno não encontrado"));
         aulaAlunoRepository.save(new AulaAluno(
                 new AulaAlunoId(aulaCoaching.getId(), idHasher.decode(idAluno)),
-                    aulaCoaching,
-                alunoRepository.findById(idHasher.decode(idAluno))
-                        .orElseThrow(() -> new Exception("Aluno não encontrado")) // Removido o ";" aqui
+                    aulaCoaching,a
+                // Removido o ";" aqui
         ));
+        Professore p = professoreRepository.findById(idHasher.decode(dto.professorId()))
+                .orElseThrow(() -> new Exception("Professor não encontrado"));
         aulaProfessoreRepository.save(new AulaProfessore(
                 new AulaProfessoreId(aulaCoaching.getId(), idHasher.decode(dto.professorId())),
-                aulaCoaching,
-                professoreRepository.findById(idHasher.decode(dto.professorId()))
-                        .orElseThrow(() -> new Exception("Professor não encontrado"))
+                aulaCoaching, p
         ));
+        notificacoesService.criarNotificacao(
+                p.getId(),
+                a.getId(),
+                "Novo Pedido de coacing",
+                "Novo pedido de coaching para "+ a.getNome() +". Acesse pedidos pendentes para confirmar",
+                "PEDIDO COACHING",
+                idHasher.encode(a.getId())
+        );
         return convertToAulaCoachingDto(aulaCoaching);
     }
 
@@ -240,11 +254,6 @@ public class AulaCoachingService {
         LocalDateTime momentoDaAula = LocalDateTime.of(coaching.getDataAula(), coaching.getHoraInicio());
         // 3. Verificar se o momento da aula está entre "agora" e "agora + 48h"
         // E também garantir que a aula não é no passado (opcional, mas recomendado)
-        if (momentoDaAula.isBefore(agora.plusHours(48)) && momentoDaAula.isAfter(agora)) {
-            // ENTRA NO IF: Faltam menos de 48 horas para a aula
-            //TODO LÓGICA DE FALTA ANTES DO TEMPO
-            throw new Exception("Operação não permitida: faltam menos de 48 horas para o início da aula.");
-        }
         if(coaching.getEstado().getId() == AulaService.ID_ESTADO_PENDENTE){
             aulaService.cancelarInscricaoAluno(alunoId, aulaId);
             aulaProfessoreRepository.deleteAllByAula_Id(idAula);
@@ -262,15 +271,29 @@ public class AulaCoachingService {
      * Lança exceção se o coaching já não estiver no estado PENDENTE.
      */
     @Transactional
-    public AulaCoachingDto confirmar(String aulaId) throws Exception {
+    public AulaCoachingDto confirmar(String aulaId,String professorId) throws Exception {
         AulaCoaching coaching = aulaCoachingRepository.findById(idHasher.decode(aulaId))
                 .orElseThrow(() -> new Exception("Aula de coaching não encontrada"));
-
+        Professore professore = professorService.findById(professorId);
+        boolean aulaProfessore = aulaProfessoreRepository.existsByAula_IdAndProfessor_Id(coaching.getId(), idHasher.decode(professorId));
+        if(!aulaProfessore) {
+            throw new Exception("Professor sem acesso à Aula");
+        }
         if (coaching.getEstado().getId() != AulaService.ID_ESTADO_PENDENTE) {
             throw new Exception("Só é possível confirmar coachings no estado PENDENTE. Estado atual: "
                     + coaching.getEstado().getEstado());
         }
-
+        for(AulaAlunoDto aulaAluno: aulaAlunoService.findAllByAulaId(aulaId))
+        notificacoesService.criarNotificacao(
+                idHasher.decode(aulaAluno.idAluno()),
+                professore.getId(),
+                "Aula de coaching marcada! ",
+                "Aula de coaching de"+ coaching.getDataAula() +" das "+
+                        coaching.getHoraInicio() + " às " + coaching.getHoraFim() + ".\nFoi confirmada pelo professor " + professore.getNome()
+                ,
+                "PEDIDO COACHING",
+                idHasher.encode( coaching.getId())
+        );
         coaching.setEstado(estadoAuloService.findbyId(AulaService.ID_ESTADO_AGENDADA));
         return convertToAulaCoachingDto(aulaCoachingRepository.save(coaching));
     }
@@ -405,6 +428,17 @@ public class AulaCoachingService {
     public void professorRejeitaCoaching(String idAula,String idProfessor) throws Exception {
         AulaCoaching aula = aulaCoachingRepository.findById(idHasher.decode(idAula)).orElseThrow(()-> new Exception( "Aula não encontrada"));
         AulaProfessore aulaProfessore = aulaProfessoreRepository.findByAula_IdAndProfessor_Id(idHasher.decode(idAula), idHasher.decode(idProfessor) ).orElseThrow(()-> new Exception( "Professor não possui esta aula"));
+        for(AulaAlunoDto aulaAluno: aulaAlunoService.findAllByAulaId(idAula))
+            notificacoesService.criarNotificacao(
+                    idHasher.decode(aulaAluno.idAluno()),
+                    aulaProfessore.getProfessor().getId(),
+                    "Aula de coaching rejeitada! ",
+                    "Aula de coaching de"+ aula.getDataAula() +" das "+
+                            aula.getHoraInicio() + " às " + aula.getHoraFim() + ".\nFoi rejeitada pelo professor " + aulaProfessore.getProfessor().getNome()
+                    ,
+                    "PEDIDO COACHING",
+                    idHasher.encode( aulaProfessore.getProfessor().getId())
+            );
         eliminar(idAula);
     }
 }

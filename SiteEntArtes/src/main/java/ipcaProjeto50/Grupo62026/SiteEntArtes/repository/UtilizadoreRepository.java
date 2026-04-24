@@ -22,4 +22,5 @@ public interface UtilizadoreRepository extends JpaRepository<Utilizadore, Intege
     List<Utilizadore> findByTipo_TipoUtilizadorAndAtivo(String tipoUtilizador, Boolean ativo);
 
     List<Utilizadore> findByTipo_TipoUtilizador(String coordenacao);
+    List<Utilizadore> findAllByTipo_Id(Integer tipo_id);
 }

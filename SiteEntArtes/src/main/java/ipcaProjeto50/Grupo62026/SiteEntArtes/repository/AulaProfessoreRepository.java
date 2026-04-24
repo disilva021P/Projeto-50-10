@@ -32,6 +32,8 @@ public interface AulaProfessoreRepository extends JpaRepository<AulaProfessore, 
     List<AulaProfessore> findByAula_Id(Integer id);
 
     List<AulaProfessore> findByProfessor_Id(Integer professorId);
+    boolean existsByAula_IdAndProfessor_Id(Integer id1, Integer id2);
     Optional<AulaProfessore> findByAula_IdAndProfessor_Id(Integer idAula, Integer idProfessor);
     void deleteAllByAula_Id(Integer aula_id);
+    List<AulaProfessore> findAllByAulaId(Integer id);
 }

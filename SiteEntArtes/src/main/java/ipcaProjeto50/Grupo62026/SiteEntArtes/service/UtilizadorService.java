@@ -361,5 +361,7 @@ public class UtilizadorService {
                 ))
                 .toList();
     }
-
+    public List<Utilizadore> findAllCoordenacao() {
+        return utilizadoreRepository.findAllByTipo_Id(1);
+    }
 }

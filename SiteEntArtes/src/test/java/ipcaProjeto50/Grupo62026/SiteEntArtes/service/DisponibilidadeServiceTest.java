@@ -80,4 +80,46 @@ class DisponibilidadeServiceTest {
 
         assertEquals("Disponibilidade não encontrada", exception.getMessage());
     }
+    @Test
+    @DisplayName("Deve retornar false quando o professor já tem outra aula no mesmo horário (Conflito)")
+    void verificaMarcacao_ErroConflitoHorario() {
+        // GIVEN
+        String idHash = "prof-123";
+        Integer idReal = 10;
+        LocalDate data = LocalDate.now();
+        LocalTime inicio = LocalTime.of(14, 0);
+        LocalTime fim = LocalTime.of(15, 0);
+
+        when(idHasher.decode(idHash)).thenReturn(idReal);
+
+        // Tem disponibilidade base...
+        when(disponibilidadeProfessorRepository.verificarDisponibilidade(eq(idReal), anyInt(), eq(data), eq(inicio), eq(fim)))
+                .thenReturn(Optional.of(new DisponibilidadeProfessor()));
+
+        // ...MAS já tem uma aula (conflito de agenda)
+        when(aulaProfessoreRepository.professorJaPossuiAula(idReal, data, inicio, fim))
+                .thenReturn(true);
+
+        // WHEN
+        boolean resultado = disponibilidadeService.verificaMarcacaoValida(idHash, data, inicio, fim);
+
+        // THEN
+        assertFalse(resultado, "A marcação deveria ser inválida devido ao conflito de horário");
+    }
+
+    @Test
+    @DisplayName("Deve retornar false se a data estiver fora do intervalo de disponibilidade do professor")
+    void verificaMarcacao_DataForaDoRango() {
+        // GIVEN
+        when(idHasher.decode(anyString())).thenReturn(10);
+        // Simula que a query de disponibilidade não encontra nada para esta data específica
+        when(disponibilidadeProfessorRepository.verificarDisponibilidade(any(), anyInt(), any(), any(), any()))
+                .thenReturn(Optional.empty());
+
+        // WHEN
+        boolean resultado = disponibilidadeService.verificaMarcacaoValida("hash", LocalDate.now(), LocalTime.of(10,0), LocalTime.of(11,0));
+
+        // THEN
+        assertFalse(resultado);
+    }
 }

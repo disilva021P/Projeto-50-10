@@ -71,7 +71,11 @@ public class AulaProfessorService {
                 .map(this::convertoToDto)
                 .toList();
     }
+    public List<AulaProfessore> findAllByAulaId(String hashId) {
+        Integer realId = idHasher.decode(hashId);
+        return aulaProfessoreRepository.findAllByAulaId(realId);
 
+    }
     // DELETE
     @Transactional
     public void deleteById(String hashIdProfessor, String hashIdAula) {
