@@ -45,9 +45,6 @@ public class LoginService {
         // 2. Verificar se o IP ou a Conta estão bloqueados antes de qualquer tentativa
 
 
-        if (estaBloqueado(utilizadorOpt.get().getId())) {
-            throw new Exception("Esta conta está bloqueada temporariamente.");
-        }
 
         try {
             // 3. Tentar a Autenticação (Spring Security)
@@ -56,13 +53,13 @@ public class LoginService {
             );
 
             UserDetails userDetails = (UserDetails) auth.getPrincipal();
+
             if (userDetails == null) throw new Exception("Erro interno");
 
             // 4. Sucesso: Registar log positivo
             registarTentativa(utilizadorOpt.get(), ip, true);
 
             return jwtService.generateToken(userDetails);
-
         } catch (AuthenticationException e) {
             // 5. Falha: Registar log negativo (essencial para o contador de bloqueio)
             registarTentativa(utilizadorOpt.get(), ip, false);
@@ -71,10 +68,7 @@ public class LoginService {
     }
 
     // Métodos auxiliares
-    private boolean estaBloqueado(Integer idUtilizador) {
-        LocalDateTime limite = LocalDateTime.now().minusMinutes(MINUTOS_BLOQUEIO);
-        return logRepository.countRecentFailures(idUtilizador, limite) >= MAX_TENTATIVAS;
-    }
+
 
     private boolean ipEstaBloqueado(String ip) {
         LocalDateTime limite = LocalDateTime.now().minusMinutes(MINUTOS_BLOQUEIO);

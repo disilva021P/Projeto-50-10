@@ -29,8 +29,8 @@ public class UtilizadorLog {
     @Column(name = "endereco_ip", nullable = false, length = 45)
     private String enderecoIp;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_utilizador")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_utilizador", nullable = true)
     private Utilizadore idUtilizador;
 
     @Column(name = "sucesso", nullable = false)

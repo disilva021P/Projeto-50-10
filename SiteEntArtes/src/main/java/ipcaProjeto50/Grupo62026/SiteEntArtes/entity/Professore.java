@@ -6,26 +6,18 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
-
 import java.math.BigDecimal;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
 @Entity
-@Table(name = "professores")
-public class Professore {
-    @Id
-    @Column(name = "utilizador_id", nullable = false)
-    private Integer id;
+@Table(name = "professores") // Esta tabela conterá apenas os campos específicos
+@PrimaryKeyJoinColumn(name = "utilizador_id") // Liga o ID do Professor ao ID do Utilizador
+public class Professore extends Utilizadore {
 
-    @MapsId
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "utilizador_id", nullable = false)
-    private Utilizadore utilizadores;
+
 
     @ColumnDefault("36.00")
     @Column(name = "valor_hora", nullable = false, precision = 10, scale = 2)
@@ -38,6 +30,4 @@ public class Professore {
     @Lob
     @Column(name = "notas", columnDefinition = "TEXT")
     private String notas;
-
-
 }

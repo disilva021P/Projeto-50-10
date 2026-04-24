@@ -33,8 +33,10 @@ public class AuthController {
     private final LoginService loginService;
     @PostMapping("/login")
     public ResponseEntity<String> login(@Valid @RequestBody LoginDTO loginData, HttpServletRequest request) {
+        System.out.println("Passou aqui?32131");
         String ip = request.getRemoteAddr();
         try {
+            System.out.println("Passou aqui?");
             String token = loginService.login(loginData,ip);
             return (token == null || token.isBlank()) ? ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Erro inesperado") : ResponseEntity.ok().body(token);
         }catch (Exception e) {
