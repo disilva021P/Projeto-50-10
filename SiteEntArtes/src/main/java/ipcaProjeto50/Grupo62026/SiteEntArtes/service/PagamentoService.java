@@ -55,9 +55,9 @@ public class PagamentoService {
         Integer idReal2= idHasher.decode(idHashed2);
 
         Utilizadore donoDoPagamento = utilizadoreRepository.findById(idReal)
-                .orElseThrow(() -> new RuntimeException("Utilizador nao encontrado"));
+                .orElseThrow(() -> new Exception("Utilizador nao encontrado"));
         TipoPagamento tipoPagamento= tipoPagamentoRepository.findById(idReal2)
-                .orElseThrow(() -> new RuntimeException("Tipo nao encontrado"));
+                .orElseThrow(() -> new Exception("Tipo nao encontrado"));
         Aula aula = aulaService.bucarPorId(dto.id());
         //  Passamos os dados do DTO (que veio do JS) para a Entity
         entidade.setValorPagamento(dto.valorPagamento());
@@ -81,10 +81,10 @@ public class PagamentoService {
         Integer idReal = idHasher.decode(idHashed);
 
         Pagamento pagamento = pagamentoRepository.findById(idReal)
-                .orElseThrow(() -> new RuntimeException("Pagamento não encontrado"));
+                .orElseThrow(() -> new Exception("Pagamento não encontrado"));
 
         TipoPagamento tipoPagamento= tipoPagamentoRepository.findById(idHasher.decode(dto.idTipoPagamento()))
-                .orElseThrow(() -> new RuntimeException("Tipo nao encontrado"));
+                .orElseThrow(() -> new Exception("Tipo nao encontrado"));
 
         pagamento.setValorPagamento(dto.valorPagamento());
         pagamento.setDescricao(dto.descricao());
@@ -95,7 +95,7 @@ public class PagamentoService {
         if (dto.utilizadoreResumoDto() != null) {
             Integer novoUserId = idHasher.decode(dto.utilizadoreResumoDto().id());
             Utilizadore novoDono = utilizadoreRepository.findById(novoUserId)
-                    .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
+                    .orElseThrow(() -> new Exception("Utilizador não encontrado"));
             pagamento.setIdutilizador(novoDono);
         }
         Pagamento gravado = pagamentoRepository.save(pagamento);
@@ -103,14 +103,14 @@ public class PagamentoService {
     }
 
     // Confirmar pagamento
-    public PagamentoDto confirmar(String idHashed) {
+    public PagamentoDto confirmar(String idHashed) throws Exception {
 
         //  Usamos o hasher para saber qual é o ID real (Integer)
         Integer idReal = idHasher.decode(idHashed);
 
         //  Vamos buscar à base de dados
         Pagamento pagamento = pagamentoRepository.findById(idReal)
-                .orElseThrow(() -> new RuntimeException("Pagamento não encontrado"));
+                .orElseThrow(() -> new Exception("Pagamento não encontrado"));
 
         //  Fazemos a alteração (o "tempero" do cozinheiro)
         pagamento.setPago(true);

@@ -20,19 +20,19 @@ public class TransacaoService {
     private final UtilizadoreRepository utilizadoreRepository;
 
     @Transactional
-    public void realizarTransacao(TransacaoRequest request) {
+    public void realizarTransacao(TransacaoRequest request) throws Exception {
         // 1. Buscar o Artigo
         Artigo artigo = artigoRepository.findById(request.artigoId())
-                .orElseThrow(() -> new RuntimeException("Artigo não encontrado"));
+                .orElseThrow(() -> new Exception("Artigo não encontrado"));
 
         // 2. Verificar se já está arquivado (Boolean check)
         if (Boolean.TRUE.equals(artigo.getArquivado())) {
-            throw new RuntimeException("Este artigo já não está disponível.");
+            throw new Exception("Este artigo já não está disponível.");
         }
 
         // 3. Buscar Comprador
         Utilizadore comprador = utilizadoreRepository.findById(request.compradorId())
-                .orElseThrow(() -> new RuntimeException("Comprador não encontrado"));
+                .orElseThrow(() -> new Exception("Comprador não encontrado"));
 
         // 4. Criar a Transação
         Transacao t = new Transacao();

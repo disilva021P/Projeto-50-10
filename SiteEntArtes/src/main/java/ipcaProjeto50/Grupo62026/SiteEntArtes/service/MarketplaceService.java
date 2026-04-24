@@ -54,9 +54,9 @@ public class MarketplaceService {
      * Quando um artigo é aceite como doação, ele deve ser "clonado" para a tabela de inventário.
      */
     @Transactional
-    public void alterarEstadoArtigo(Integer artigoId, Integer novoEstadoId) {
+    public void alterarEstadoArtigo(Integer artigoId, Integer novoEstadoId) throws Exception {
         Artigo artigo = artigoRepository.findById(artigoId)
-                .orElseThrow(() -> new RuntimeException("Artigo não encontrado"));
+                .orElseThrow(() -> new Exception("Artigo não encontrado"));
 
         // CENÁRIO 1: Recusado ou Removido (Estado 5)
         if (novoEstadoId == 5) {
@@ -95,14 +95,14 @@ public class MarketplaceService {
     }
 
     @Transactional
-    public ArtigoDto inserirArtigo(ArtigoRequest request, List<MultipartFile> imagens, String identifier) throws IOException {
+    public ArtigoDto inserirArtigo(ArtigoRequest request, List<MultipartFile> imagens, String identifier) throws Exception {
         Utilizadore dono;
         if (identifier.contains("@")) {
             dono = utilizadoreRepository.findByEmail(identifier)
-                    .orElseThrow(() -> new RuntimeException("Utilizador nao encontrado: " + identifier));
+                    .orElseThrow(() -> new Exception("Utilizador nao encontrado: " + identifier));
         } else {
             dono = utilizadoreRepository.findById(idHasher.decode(identifier))
-                    .orElseThrow(() -> new RuntimeException("Utilizador nao encontrado: " + identifier));
+                    .orElseThrow(() -> new Exception("Utilizador nao encontrado: " + identifier));
         }
 
         Artigo artigo = new Artigo();
@@ -150,17 +150,17 @@ public class MarketplaceService {
     }
 
     @Transactional
-    public void arquivarArtigo(Integer artigoId) {
+    public void arquivarArtigo(Integer artigoId) throws Exception {
         Artigo artigo = artigoRepository.findById(artigoId)
-                .orElseThrow(() -> new RuntimeException("Artigo não encontrado"));
+                .orElseThrow(() -> new Exception("Artigo não encontrado"));
         artigo.setArquivado(true);
         artigoRepository.save(artigo);
     }
 
     @Transactional
-    public ArtigoDto editarArtigo(Integer id, ArtigoRequest request) {
+    public ArtigoDto editarArtigo(Integer id, ArtigoRequest request) throws Exception {
         Artigo artigo = artigoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Artigo não encontrado"));
+                .orElseThrow(() -> new Exception("Artigo não encontrado"));
 
         artigo.setNome(request.nome());
         artigo.setDescricao(request.descricao());
@@ -182,7 +182,7 @@ public class MarketplaceService {
                         imgEntity.setUrlImagem(imagem.getBytes());
                         imagensUnidadeRepository.save(imgEntity);
                     } catch (IOException e) {
-                        throw new RuntimeException("Erro ao processar imagem", e);
+                        throw new Exception("Erro ao processar imagem", e);
                     }
                 }
             }
@@ -237,10 +237,10 @@ public class MarketplaceService {
     }
 
     @Transactional
-    public void converterUnidadeParaMarketplace(ConversaoInventarioRequest request, Integer coordenadorId) {
+    public void converterUnidadeParaMarketplace(ConversaoInventarioRequest request, Integer coordenadorId) throws Exception {
         // 1. Verificar se a unidade existe (Usa getUnidadeId)
         var unidade = unidadeRepository.findById(request.getUnidadeId())
-                .orElseThrow(() -> new RuntimeException("Item de inventário não encontrado."));
+                .orElseThrow(() -> new Exception("Item de inventário não encontrado."));
 
         // 2. Criar o novo Artigo no Marketplace (Usa os Getters)
         Artigo novoArtigo = new Artigo();
@@ -262,7 +262,7 @@ public class MarketplaceService {
         novoArtigo.setCriadoEm(Instant.now());
 
         Utilizadore dono = utilizadoreRepository.findById(coordenadorId)
-                .orElseThrow(() -> new RuntimeException("Coordenador não encontrado."));
+                .orElseThrow(() -> new Exception("Coordenador não encontrado."));
         novoArtigo.setDonoUtilizador(dono);
 
         artigoRepository.save(novoArtigo);
@@ -280,7 +280,7 @@ public class MarketplaceService {
                         imgEntity.setUrlImagem(imagem.getBytes()); // Converte o ficheiro para bytes
                         imagensUnidadeRepository.save(imgEntity);
                     } catch (IOException e) {
-                        throw new RuntimeException("Erro ao processar imagem vinda do inventário", e);
+                        throw new Exception("Erro ao processar imagem vinda do inventário", e);
                     }
                 }
             }

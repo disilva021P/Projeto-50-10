@@ -22,7 +22,7 @@ public class EncarregadoAlunoService {
     private final IdHasher idHasher; // Se estiveres a usar IDs hasheados no front
 
     @Transactional
-    public void adicionarEducando(String encarregadoIdHashed, String alunoIdHashed) {
+    public void adicionarEducando(String encarregadoIdHashed, String alunoIdHashed) throws Exception {
         // 1. Decifrar os IDs (se vierem do front-end como hash)
         Integer encId = idHasher.decode(encarregadoIdHashed);
         Integer aluId = idHasher.decode(alunoIdHashed);
@@ -39,7 +39,7 @@ public class EncarregadoAlunoService {
 
         // 4. Se já existir, não faz nada ou lança erro
         if (encarregadoAlunoRepository.existsById(idComposto)) {
-            throw new RuntimeException("Esta relação já existe.");
+            throw new Exception("Esta relação já existe.");
         }
 
         // 5. Criar e salvar a relação

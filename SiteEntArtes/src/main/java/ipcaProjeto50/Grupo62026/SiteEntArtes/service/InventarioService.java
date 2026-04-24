@@ -57,9 +57,9 @@ public class InventarioService {
     }
 
     @Transactional
-    public void removerDoInventario(Integer unidadeId) {
+    public void removerDoInventario(Integer unidadeId) throws Exception {
         if (!inventarioUnidadeRepository.existsById(unidadeId)) {
-            throw new RuntimeException("Unidade não encontrada");
+            throw new Exception("Unidade não encontrada");
         }
         // Agora basta remover da tabela de inventário.
         // Não apaga nada da tabela Artigos (Marketplace).
@@ -67,9 +67,9 @@ public class InventarioService {
     }
 
     @Transactional
-    public InventarioDto editarUnidade(Integer unidadeId, InventarioEditarRequest request) {
+    public InventarioDto editarUnidade(Integer unidadeId, InventarioEditarRequest request) throws Exception {
         InventarioUnidade unidade = inventarioUnidadeRepository.findById(unidadeId)
-                .orElseThrow(() -> new RuntimeException("Unidade não encontrada"));
+                .orElseThrow(() -> new Exception("Unidade não encontrada"));
 
         // Atualiza campos básicos da própria unidade
         if (request.nome() != null) unidade.setNome(request.nome());
@@ -82,12 +82,12 @@ public class InventarioService {
     }
 
     @Transactional
-    public InventarioDto adicionarAoInventario(InventarioAdicionarRequest request) {
+    public InventarioDto adicionarAoInventario(InventarioAdicionarRequest request) throws Exception {
 
         // Definir o estado (Default 9 - Inventário conforme a sua tabela)
         EstadoUnidade estado = estadoUnidadeRepository.findById(
                         request.estadoId() != null ? request.estadoId() : 9)
-                .orElseThrow(() -> new RuntimeException("Estado não encontrado"));
+                .orElseThrow(() -> new Exception("Estado não encontrado"));
 
         // Criar a Unidade diretamente (Sem criar Artigo)
         InventarioUnidade unidade = new InventarioUnidade();

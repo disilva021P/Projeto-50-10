@@ -125,7 +125,7 @@ public class MensagemService {
 
     public List<MensagenDto> mensagensConversa(String idUser, String idConversa ){
         Utilizadore utilizadore = utilizadoreRepository.findById(idHasher.decode(idUser))
-                .orElseThrow(() -> new RuntimeException("Utilizador com o email não encontrado"));
+                .orElseThrow(() -> new Exception("Utilizador com o email não encontrado"));
 
         return mensagenRepository.findChatHistory(utilizadore.getId(),idHasher.decode(idConversa)).stream().map(this::converterParaDto).toList();
     }
@@ -175,7 +175,7 @@ public class MensagemService {
 
         // 2. Buscar o utilizador pelo ID real
         Utilizadore utilizadore = utilizadoreRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
+                .orElseThrow(() -> new Exception("Utilizador não encontrado"));
 
         // 3. Buscar mensagens do grupo
         return mensagensGrupoRepository.findByGrupoIdOrderByEnviadaEmAsc(grupoId)

@@ -159,7 +159,7 @@ public class AulaService {
         Utilizadore utilizador = encontraUtilizador(userId);
         Integer aulaIdDecoded = idHasher.decode(aulaId);
         Optional<Aula> aula = aulaRepository.findAulaByIdAndAlunoId(aulaIdDecoded,utilizador.getId());
-        if(aula.isEmpty()) throw new RuntimeException("Aula/Aluno não coincidem");
+        if(aula.isEmpty()) throw new Exception("Aula/Aluno não coincidem");
         return converterParaDto(aula.get());
     }
 
@@ -198,7 +198,7 @@ public class AulaService {
     /**
      * Resolve um utilizador a partir do ID hasheado.
      *
-     * @throws RuntimeException se o utilizador não existir
+     * @throws Exception se o utilizador não existir
      */
     private Utilizadore encontraUtilizador(String userId) throws Exception {
         return utilizadoreRepository.findById(idHasher.decode(userId))

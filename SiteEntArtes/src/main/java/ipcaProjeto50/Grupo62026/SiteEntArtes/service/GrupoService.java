@@ -24,11 +24,11 @@ public class GrupoService {
     private final IdHasher idHasher;
 
     @Transactional
-    public void criarGrupoPrivado(String idCriadorHashed, String nomeGrupo, List<String> membrosHashedIds) {
+    public void criarGrupoPrivado(String idCriadorHashed, String nomeGrupo, List<String> membrosHashedIds) throws Exception {
         // 1. Buscar o criador (usando o ID que vem do sub do token)
         Integer idRealCriador = idHasher.decode(idCriadorHashed);
         Utilizadore criador = utilizadoreRepository.findById(idRealCriador)
-                .orElseThrow(() -> new RuntimeException("Criador não encontrado."));
+                .orElseThrow(() -> new Exception("Criador não encontrado."));
 
         // 2. Identificar o cargo do criador
         // IDs: 1=Coordenação, 2=Professor, 3=Aluno, 4=Encarregado
@@ -46,7 +46,7 @@ public class GrupoService {
             if (idMembroReal.equals(idRealCriador)) continue;
 
             Utilizadore membro = utilizadoreRepository.findById(idMembroReal)
-                    .orElseThrow(() -> new RuntimeException("Membro não encontrado: " + hashedId));
+                    .orElseThrow(() -> new Exception("Membro não encontrado: " + hashedId));
 
             int cargoMembro = membro.getTipo().getId();
 
@@ -54,18 +54,18 @@ public class GrupoService {
 
             // ENCARREGADO (4) -> Só com outros Encarregados (4)
             if (cargoCriador == 4 && cargoMembro != 4) {
-                throw new RuntimeException("Como encarregado, só pode criar grupos com outros encarregados.");
+                throw new Exception("Como encarregado, só pode criar grupos com outros encarregados.");
             }
 
             // PROFESSOR (2) -> Com Profs (2), Alunos (3) ou Encarregados (4)
             // Por exclusão: Professor não pode criar grupo com Coordenação (1) nesta lógica
             if (cargoCriador == 2 && cargoMembro == 1) {
-                throw new RuntimeException("Professores não podem adicionar membros da coordenação a estes grupos.");
+                throw new Exception("Professores não podem adicionar membros da coordenação a estes grupos.");
             }
 
             // ALUNO (3) -> (Opcional) Podes definir se alunos podem criar grupos
             if (cargoCriador == 3) {
-                throw new RuntimeException("Alunos não têm permissão para criar grupos privados.");
+                throw new Exception("Alunos não têm permissão para criar grupos privados.");
             }
 
             // COORDENAÇÃO (1) -> Não entra em if nenhum, logo tem acesso total.
@@ -86,22 +86,22 @@ public class GrupoService {
 
 
     @Transactional
-    public void adicionarMembro(String idAdminHashed, String grupoIdHashed, String novoMembroHashed) {
+    public void adicionarMembro(String idAdminHashed, String grupoIdHashed, String novoMembroHashed) throws Exception {
         // 1. Validar se quem está a tentar adicionar é Coordenação (ID 1)
         Integer adminId = idHasher.decode(idAdminHashed);
         Utilizadore admin = utilizadoreRepository.findById(adminId)
-                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado."));
+                .orElseThrow(() -> new Exception("Utilizador não encontrado."));
 
         if (admin.getTipo().getId() != 1) {
-            throw new RuntimeException("Apenas a coordenação pode editar membros de grupos.");
+            throw new Exception("Apenas a coordenação pode editar membros de grupos.");
         }
 
         // 2. Buscar o grupo e o novo membro
         Grupo grupo = grupoRepository.findById(idHasher.decode(grupoIdHashed))
-                .orElseThrow(() -> new RuntimeException("Grupo não encontrado."));
+                .orElseThrow(() -> new Exception("Grupo não encontrado."));
 
         Utilizadore novoMembro = utilizadoreRepository.findById(idHasher.decode(novoMembroHashed))
-                .orElseThrow(() -> new RuntimeException("Utilizador a adicionar não encontrado."));
+                .orElseThrow(() -> new Exception("Utilizador a adicionar não encontrado."));
 
         // 3. Adicionar se não existir
         if (!grupo.getMembros().contains(novoMembro)) {
@@ -111,17 +111,17 @@ public class GrupoService {
     }
 
     @Transactional
-    public void removerMembro(String idAdminHashed, String grupoIdHashed, String membroARemoverHashed) {
+    public void removerMembro(String idAdminHashed, String grupoIdHashed, String membroARemoverHashed) throws Exception {
         Integer adminId = idHasher.decode(idAdminHashed);
         Utilizadore admin = utilizadoreRepository.findById(adminId)
-                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado."));
+                .orElseThrow(() -> new Exception("Utilizador não encontrado."));
 
         if (admin.getTipo().getId() != 1) {
-            throw new RuntimeException("Apenas a coordenação pode remover membros.");
+            throw new Exception("Apenas a coordenação pode remover membros.");
         }
 
         Grupo grupo = grupoRepository.findById(idHasher.decode(grupoIdHashed))
-                .orElseThrow(() -> new RuntimeException("Grupo não encontrado."));
+                .orElseThrow(() -> new Exception("Grupo não encontrado."));
 
         // Evitar que o grupo fique sem o criador se necessário, ou permitir remoção total
         grupo.getMembros().removeIf(m -> idHasher.encode(m.getId()).equals(membroARemoverHashed));
@@ -133,7 +133,7 @@ public class GrupoService {
         // 1. Descodificar o ID e procurar o grupo
         Integer idReal = idHasher.decode(grupoIdHashed);
         Grupo grupo = grupoRepository.findById(idReal)
-                .orElseThrow(() -> new RuntimeException("Grupo não encontrado."));
+                .orElseThrow(() -> new Exception("Grupo não encontrado."));
 
         // 2. Converter a lista de entidades Utilizadore para UtilizadoreResumoDto
         // Usamos o Stream para mapear cada membro e codificar o ID de volta para Hash (para o frontend)

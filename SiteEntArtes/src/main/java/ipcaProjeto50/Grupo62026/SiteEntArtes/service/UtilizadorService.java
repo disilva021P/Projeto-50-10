@@ -212,14 +212,14 @@ public class UtilizadorService {
     // Não envolve tokens — a coordenação define diretamente uma nova password
     // e o utilizador é obrigado a alterá-la no próximo login
 
-    public void reporPalavraPasse(String id, ReporPasswordDto dto) {
+    public void reporPalavraPasse(String id, ReporPasswordDto dto) throws Exception {
 
         Utilizadore utilizador = utilizadoreRepository.findById(idHasher.decode(id))
                 .orElseThrow(() -> new UtilizadorNaoEncontradoException(id));
 
         // Confirmar que a nova password e a confirmação coincidem
         if (!dto.novaPassword().equals(dto.confirmarNovaPassword())) {
-            throw new RuntimeException();
+            throw new Exception("Passwords não coincidem");
 
         }
 
@@ -266,10 +266,10 @@ public class UtilizadorService {
         );
     }
 
-    private TipoUtilizadorDto FindTipoById(String id) {
+    private TipoUtilizadorDto FindTipoById(String id) throws Exception {
         TipoUtilizador tipo = tipoUtilizadorRepository
                 .findById(idHasher.decode(id))
-                .orElseThrow(() -> new RuntimeException("Tipo de utilizador não encontrado"));
+                .orElseThrow(() -> new Exception("Tipo de utilizador não encontrado"));
         return new TipoUtilizadorDto(id, tipo.getTipoUtilizador());
 
     }
@@ -331,14 +331,14 @@ public class UtilizadorService {
         // 2. Verificar se expirou
         if (recuperacao.getExpiraEm().isBefore(LocalDateTime.now())) {
             tokenRecuperacaoRepository.delete(recuperacao);
-            throw new RuntimeException("O token expirou!");
+            throw new Exception("O token expirou!");
         }
 
         // 3. O BCrypt NÃO permite buscar por "token" direto se for hash.
         // Você deve buscar o registro e usar o checkpw:
 
         if (!BCrypt.checkpw(dto.token(), recuperacao.getToken())) {
-            throw new RuntimeException("Token incorreto!");
+            throw new Exception("Token incorreto!");
         }
 
         // 4. Se chegou aqui, é válido! Atualizar a senha do utilizador

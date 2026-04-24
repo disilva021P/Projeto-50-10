@@ -59,17 +59,17 @@ public class ProfessorService {
                 p.getProfessorExterno()
         );
     }
-    public ProfessoreDto adicionarModalidade(String professorId, String modalidadeId) {
+    public ProfessoreDto adicionarModalidade(String professorId, String modalidadeId) throws Exception {
         Professore professor = professoreRepository.findById(idHasher.decode(professorId))
-                .orElseThrow(() -> new RuntimeException("Professor não encontrado"));
+                .orElseThrow(() -> new Exception("Professor não encontrado"));
 
         Modalidade modalidade = modalidadeRepository.findById(idHasher.decode(modalidadeId))
-                .orElseThrow(() -> new RuntimeException("Modalidade não encontrada"));
+                .orElseThrow(() -> new Exception("Modalidade não encontrada"));
 
         ProfessorModalidadeId id = new ProfessorModalidadeId(professor.getId(), modalidade.getId());
 
         if (professorModalidadeRepository.existsById(id)) {
-            throw new RuntimeException("Modalidade já associada a este professor");
+            throw new Exception("Modalidade já associada a este professor");
         }
 
         ProfessorModalidade pm = new ProfessorModalidade(id, professor, modalidade);
@@ -78,17 +78,17 @@ public class ProfessorService {
         return convertToDto(professor);
     }
 
-    public void removerModalidade(String professorId, String modalidadeId) {
+    public void removerModalidade(String professorId, String modalidadeId) throws Exception {
         Professore professor = professoreRepository.findById(idHasher.decode(professorId))
-                .orElseThrow(() -> new RuntimeException("Professor não encontrado"));
+                .orElseThrow(() -> new Exception("Professor não encontrado"));
 
         Modalidade modalidade = modalidadeRepository.findById(idHasher.decode(modalidadeId))
-                .orElseThrow(() -> new RuntimeException("Modalidade não encontrada"));
+                .orElseThrow(() -> new Exception("Modalidade não encontrada"));
 
         ProfessorModalidadeId id = new ProfessorModalidadeId(professor.getId(), modalidade.getId());
 
         if (!professorModalidadeRepository.existsById(id)) {
-            throw new RuntimeException("Associação não encontrada");
+            throw new Exception("Associação não encontrada");
         }
 
         professorModalidadeRepository.deleteById(id);
