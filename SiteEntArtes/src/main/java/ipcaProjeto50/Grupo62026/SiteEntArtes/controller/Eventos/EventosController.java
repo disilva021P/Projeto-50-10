@@ -25,7 +25,7 @@ public class EventosController
     @GetMapping
     public ResponseEntity<List<EventoDto>> listarEventosFuturos() {
         return ResponseEntity.ok(eventoService.findEventosFuturos());
-}
+    }
 
     // Qualquer utilizador autenticado pode ver um evento específico
     @GetMapping("/{id}")

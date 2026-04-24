@@ -26,5 +26,9 @@ public class ParticipantesEvento {
     @JoinColumn(name = "utilizador_id", nullable = false)
     private Utilizadore utilizador;
 
+    @Column(name = "pago", nullable = false)
+    private boolean pago = false;
 
+    @Column(name = "cancelado", nullable = false)
+    private boolean cancelado = false;
 }
