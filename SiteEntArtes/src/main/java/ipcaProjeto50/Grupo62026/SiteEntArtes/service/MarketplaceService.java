@@ -3,6 +3,7 @@ package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ArtigoDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ArtigoRequest;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ConversaoInventarioRequest;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.ArtigoRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.UtilizadoreRepository;
@@ -24,6 +25,7 @@ import java.util.List;
 public class MarketplaceService {
 
     private final ArtigoRepository artigoRepository;
+    private final InventarioUnidadeRepository unidadeRepository;
     private final UtilizadoreRepository utilizadoreRepository;
     private final InventarioUnidadeRepository inventarioUnidadeRepository;
     private final ImagensUnidadeRepository imagensUnidadeRepository;
@@ -52,9 +54,9 @@ public class MarketplaceService {
      * Quando um artigo é aceite como doação, ele deve ser "clonado" para a tabela de inventário.
      */
     @Transactional
-    public void alterarEstadoArtigo(Integer artigoId, Integer novoEstadoId) {
+    public void alterarEstadoArtigo(Integer artigoId, Integer novoEstadoId) throws Exception {
         Artigo artigo = artigoRepository.findById(artigoId)
-                .orElseThrow(() -> new RuntimeException("Artigo não encontrado"));
+                .orElseThrow(() -> new Exception("Artigo não encontrado"));
 
         // CENÁRIO 1: Recusado ou Removido (Estado 5)
         if (novoEstadoId == 5) {
@@ -93,14 +95,14 @@ public class MarketplaceService {
     }
 
     @Transactional
-    public ArtigoDto inserirArtigo(ArtigoRequest request, List<MultipartFile> imagens, String identifier) throws IOException {
+    public ArtigoDto inserirArtigo(ArtigoRequest request, List<MultipartFile> imagens, String identifier) throws Exception {
         Utilizadore dono;
         if (identifier.contains("@")) {
             dono = utilizadoreRepository.findByEmail(identifier)
-                    .orElseThrow(() -> new RuntimeException("Utilizador nao encontrado: " + identifier));
+                    .orElseThrow(() -> new Exception("Utilizador nao encontrado: " + identifier));
         } else {
             dono = utilizadoreRepository.findById(idHasher.decode(identifier))
-                    .orElseThrow(() -> new RuntimeException("Utilizador nao encontrado: " + identifier));
+                    .orElseThrow(() -> new Exception("Utilizador nao encontrado: " + identifier));
         }
 
         Artigo artigo = new Artigo();
@@ -148,17 +150,17 @@ public class MarketplaceService {
     }
 
     @Transactional
-    public void arquivarArtigo(Integer artigoId) {
+    public void arquivarArtigo(Integer artigoId) throws Exception {
         Artigo artigo = artigoRepository.findById(artigoId)
-                .orElseThrow(() -> new RuntimeException("Artigo não encontrado"));
+                .orElseThrow(() -> new Exception("Artigo não encontrado"));
         artigo.setArquivado(true);
         artigoRepository.save(artigo);
     }
 
     @Transactional
-    public ArtigoDto editarArtigo(Integer id, ArtigoRequest request) {
+    public ArtigoDto editarArtigo(Integer id, ArtigoRequest request) throws Exception {
         Artigo artigo = artigoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Artigo não encontrado"));
+                .orElseThrow(() -> new Exception("Artigo não encontrado"));
 
         artigo.setNome(request.nome());
         artigo.setDescricao(request.descricao());
@@ -180,7 +182,7 @@ public class MarketplaceService {
                         imgEntity.setUrlImagem(imagem.getBytes());
                         imagensUnidadeRepository.save(imgEntity);
                     } catch (IOException e) {
-                        throw new RuntimeException("Erro ao processar imagem", e);
+                        throw new Exception("Erro ao processar imagem", e);
                     }
                 }
             }
@@ -232,5 +234,58 @@ public class MarketplaceService {
                 imagemPrincipalId,
                 todosImagemIds
         );
+    }
+
+    @Transactional
+    public void converterUnidadeParaMarketplace(ConversaoInventarioRequest request, Integer coordenadorId) throws Exception {
+        // 1. Verificar se a unidade existe (Usa getUnidadeId)
+        var unidade = unidadeRepository.findById(request.getUnidadeId())
+                .orElseThrow(() -> new Exception("Item de inventário não encontrado."));
+
+        // 2. Criar o novo Artigo no Marketplace (Usa os Getters)
+        Artigo novoArtigo = new Artigo();
+        novoArtigo.setNome(request.getNome());
+        novoArtigo.setDescricao(request.getDescricao());
+        novoArtigo.setTamanho(request.getTamanho());
+        novoArtigo.setCor(request.getCor());
+        novoArtigo.setCondicao(request.getCondicao());
+
+        // Configurações de negócio
+        novoArtigo.setIsVenda(request.getIsVenda());
+        novoArtigo.setIsAluguer(request.getIsAluguer());
+        novoArtigo.setIsDoacao(request.getIsDoacao());
+        novoArtigo.setPrecoVenda(request.getPrecoVenda());
+        novoArtigo.setPrecoAluguer(request.getPrecoAluguer());
+
+        novoArtigo.setArquivado(false);
+        novoArtigo.setAprovado(true);
+        novoArtigo.setCriadoEm(Instant.now());
+
+        Utilizadore dono = utilizadoreRepository.findById(coordenadorId)
+                .orElseThrow(() -> new Exception("Coordenador não encontrado."));
+        novoArtigo.setDonoUtilizador(dono);
+
+        artigoRepository.save(novoArtigo);
+
+        // 3. Salvar o Artigo para gerar o ID
+        Artigo artigoSalvo = artigoRepository.save(novoArtigo);
+
+        // 4. Processar e salvar as imagens que vieram no request (CORREÇÃO AQUI)
+        if (request.getImagens() != null) {
+            for (MultipartFile imagem : request.getImagens()) {
+                if (imagem != null && !imagem.isEmpty()) {
+                    try {
+                        ImagensUnidade imgEntity = new ImagensUnidade();
+                        imgEntity.setArtigoId(artigoSalvo.getId());
+                        imgEntity.setUrlImagem(imagem.getBytes()); // Converte o ficheiro para bytes
+                        imagensUnidadeRepository.save(imgEntity);
+                    } catch (IOException e) {
+                        throw new Exception("Erro ao processar imagem vinda do inventário", e);
+                    }
+                }
+            }
+        }
+
+        unidadeRepository.delete(unidade);
     }
 }

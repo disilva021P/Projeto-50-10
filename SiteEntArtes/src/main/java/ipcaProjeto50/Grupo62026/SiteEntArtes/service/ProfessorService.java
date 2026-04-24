@@ -3,8 +3,11 @@ package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ProfessoreDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.UtilizadoreResumoDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Modalidade;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.ProfessorModalidade;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.ProfessorModalidadeId;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Professore;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.ModalidadeRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.ProfessorModalidadeRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.ProfessoreRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +24,8 @@ public class ProfessorService {
     private final IdHasher idHasher;
     private final ProfessoreRepository professoreRepository;
     private final ProfessorModalidadeRepository professorModalidadeRepository;
+    private final ModalidadeRepository modalidadeRepository;
+
     public Professore findById(Integer id) throws Exception {
         return professoreRepository.findById(id).orElseThrow(()-> new Exception("Professor não encontrado"));
     }
@@ -49,9 +54,43 @@ public class ProfessorService {
     }
     public ProfessoreDto convertToDto(Professore p){
         return p == null ? null : new ProfessoreDto(
-                new UtilizadoreResumoDto(idHasher.encode(p.getId()),p.getUtilizadores().getNome() ),
+                new UtilizadoreResumoDto(idHasher.encode(p.getId()),p.getNome() ),
                 p.getValorHora(),
                 p.getProfessorExterno()
         );
+    }
+    public ProfessoreDto adicionarModalidade(String professorId, String modalidadeId) throws Exception {
+        Professore professor = professoreRepository.findById(idHasher.decode(professorId))
+                .orElseThrow(() -> new Exception("Professor não encontrado"));
+
+        Modalidade modalidade = modalidadeRepository.findById(idHasher.decode(modalidadeId))
+                .orElseThrow(() -> new Exception("Modalidade não encontrada"));
+
+        ProfessorModalidadeId id = new ProfessorModalidadeId(professor.getId(), modalidade.getId());
+
+        if (professorModalidadeRepository.existsById(id)) {
+            throw new Exception("Modalidade já associada a este professor");
+        }
+
+        ProfessorModalidade pm = new ProfessorModalidade(id, professor, modalidade);
+        professorModalidadeRepository.save(pm);
+
+        return convertToDto(professor);
+    }
+
+    public void removerModalidade(String professorId, String modalidadeId) throws Exception {
+        Professore professor = professoreRepository.findById(idHasher.decode(professorId))
+                .orElseThrow(() -> new Exception("Professor não encontrado"));
+
+        Modalidade modalidade = modalidadeRepository.findById(idHasher.decode(modalidadeId))
+                .orElseThrow(() -> new Exception("Modalidade não encontrada"));
+
+        ProfessorModalidadeId id = new ProfessorModalidadeId(professor.getId(), modalidade.getId());
+
+        if (!professorModalidadeRepository.existsById(id)) {
+            throw new Exception("Associação não encontrada");
+        }
+
+        professorModalidadeRepository.deleteById(id);
     }
 }

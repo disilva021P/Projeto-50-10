@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Email;
 public record CriarUtilizadorDto(
         String nome,
         String email,
+        String nif,
         String telefone,
         String id_tipoUtilizador,
         LocalDate dataNascimento,

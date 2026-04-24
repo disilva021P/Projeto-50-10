@@ -8,6 +8,7 @@ public record UtilizadorResponseDto(
         String id,
         String nome,
         String email,
+        String nif,
         String telefone,
         String nif,
         String tipoUtilizador,

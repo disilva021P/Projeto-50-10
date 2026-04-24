@@ -42,6 +42,7 @@ public class Aula {
     @Column(name = "hora_fim", nullable = false)
     private LocalTime horaFim;
 
+
     @Lob
     @Column(name = "notas", columnDefinition = "TEXT")
     private String notas;

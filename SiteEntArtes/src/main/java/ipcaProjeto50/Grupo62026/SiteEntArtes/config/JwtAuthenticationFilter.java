@@ -21,6 +21,7 @@ import java.util.List;
 @Service
 public class JwtService {
 
+<<<<<<< HEAD
     @Value("${JWT_SECRET}")
     private String secretKey;
 
@@ -45,6 +46,13 @@ public class JwtService {
                 .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
+=======
+    private final JwtService jwtService;
+    private final UserDetailsService userDetailsService;
+    public JwtAuthenticationFilter(JwtService jwtService,UserDetailsService userDetailsService) {
+        this.jwtService = jwtService;
+        this.userDetailsService=userDetailsService;
+>>>>>>> 92b3ffea007f843f4deef34cab6ce50ae6fad435
     }
 
     // ─── EXTRAIR ROLE ─────────────────────────────────────────────

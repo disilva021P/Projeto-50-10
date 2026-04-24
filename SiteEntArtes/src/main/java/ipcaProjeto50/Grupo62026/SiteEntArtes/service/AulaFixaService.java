@@ -72,7 +72,7 @@ public class AulaFixaService {
                     try {
                         horarioExistente.setEstudioId(estudioService.findEstudiobyId(idHasher.decode(dadosAtualizados.estudioId().id())));
                     } catch (Exception e) {
-                        throw new RuntimeException("Estudio não encontrado");
+                        throw new Exception("Estudio não encontrado");
                     }
                     // Nota: Turma e Criador normalmente não mudam num update de horário,
                     return horarioFixoRepository.save(horarioExistente);

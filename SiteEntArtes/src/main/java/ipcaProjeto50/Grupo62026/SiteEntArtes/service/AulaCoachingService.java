@@ -69,7 +69,7 @@ public class AulaCoachingService {
                     try {
                         return convertToAulaCoachingDto(aula);
                     } catch (Exception e) {
-                        throw new RuntimeException("Mapping failed", e);
+                        throw new Exception("Mapping failed", e);
                     }
                 })
                 .toList();
@@ -83,7 +83,7 @@ public class AulaCoachingService {
                     try {
                         return convertToAulaCoachingDto(aula);
                     } catch (Exception e) {
-                        throw new RuntimeException("Mapping failed", e);
+                        throw new Exception("Mapping failed", e);
                     }
                 });
     }
@@ -96,14 +96,14 @@ public class AulaCoachingService {
                     try {
                         return convertToAulaCoachingDto(aula);
                     } catch (Exception e) {
-                        throw new RuntimeException("Mapping failed", e);
+                        throw new Exception("Mapping failed", e);
                     }});
         else {
             return aulaCoachingRepository.buscaAulasCoachingDisponiveilPorModalidade(inicioSemana,fimSemana,idHasher.decode(modalidade), pageable).map(aula -> {
                 try {
                     return convertToAulaCoachingDto(aula);
                 } catch (Exception e) {
-                    throw new RuntimeException("Mapping failed", e);
+                    throw new Exception("Mapping failed", e);
                 }});
         }
 
@@ -120,7 +120,7 @@ public class AulaCoachingService {
                     try {
                         return convertToAulaCoachingDto(aula);
                     } catch (Exception e) {
-                        throw new RuntimeException("Mapping failed", e);
+                        throw new Exception("Mapping failed", e);
                     }
                 })
                 .toList();
@@ -132,7 +132,7 @@ public class AulaCoachingService {
             try {
                 return convertToAulaCoachingDto(aula);
             } catch (Exception e) {
-                throw new RuntimeException("Mapping failed", e);
+                throw new Exception("Mapping failed", e);
             }
         });
     }
@@ -146,7 +146,7 @@ public class AulaCoachingService {
                     try {
                         return convertToAulaCoachingDto(aula);
                     } catch (Exception e) {
-                        throw new RuntimeException("Mapping failed", e);
+                        throw new Exception("Mapping failed", e);
                     }
                 });
     }
@@ -401,5 +401,10 @@ public class AulaCoachingService {
             aulaCoachingRepository.deleteById(idReal);
             return;
         }
+    }
+    public void professorRejeitaCoaching(String idAula,String idProfessor) throws Exception {
+        AulaCoaching aula = aulaCoachingRepository.findById(idHasher.decode(idAula)).orElseThrow(()-> new Exception( "Aula não encontrada"));
+        AulaProfessore aulaProfessore = aulaProfessoreRepository.findByAula_IdAndProfessor_Id(idHasher.decode(idAula), idHasher.decode(idProfessor) ).orElseThrow(()-> new Exception( "Professor não possui esta aula"));
+        eliminar(idAula);
     }
 }

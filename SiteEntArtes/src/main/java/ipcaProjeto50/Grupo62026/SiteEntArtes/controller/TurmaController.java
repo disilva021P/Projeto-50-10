@@ -1,6 +1,7 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.controller;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.TurmaDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.service.AlunoTurmaService;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.service.TurmaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,6 +18,7 @@ import java.util.List;
 public class TurmaController {
 
     private final TurmaService turmaService;
+    private final AlunoTurmaService alunoTurmaService;
 
     // --- LEITURA ---
 
@@ -68,6 +70,42 @@ public class TurmaController {
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Erro ao eliminar turma: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/{idTurma}/alunos/{idAluno}")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
+    public ResponseEntity<?> adicionar(
+            @PathVariable String idTurma,
+            @PathVariable String idAluno) {
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(alunoTurmaService.adicionarAlunoATurma(idAluno, idTurma));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{idTurma}/alunos/{idAluno}")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
+    public ResponseEntity<?> remover(
+            @PathVariable String idTurma,
+            @PathVariable String idAluno) {
+        try {
+            alunoTurmaService.removerAlunoDaTurma(idAluno, idTurma);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/{idTurma}/alunos")
+    @PreAuthorize("hasAnyAuthority('COORDENACAO', 'PROFESSOR')")
+    public ResponseEntity<?> listar(@PathVariable String idTurma) {
+        try {
+            return ResponseEntity.ok(alunoTurmaService.listarAlunosDaTurma(idTurma));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 }

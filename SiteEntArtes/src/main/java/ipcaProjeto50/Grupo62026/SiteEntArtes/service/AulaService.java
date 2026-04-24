@@ -1,9 +1,13 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
+import de.jollyday.Holiday;
+import de.jollyday.HolidayCalendar;
+import de.jollyday.HolidayManager;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.*;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -16,10 +20,9 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
+
 @RequiredArgsConstructor
 @Service
 public class AulaService {
@@ -156,7 +159,7 @@ public class AulaService {
         Utilizadore utilizador = encontraUtilizador(userId);
         Integer aulaIdDecoded = idHasher.decode(aulaId);
         Optional<Aula> aula = aulaRepository.findAulaByIdAndAlunoId(aulaIdDecoded,utilizador.getId());
-        if(aula.isEmpty()) throw new RuntimeException("Aula/Aluno não coincidem");
+        if(aula.isEmpty()) throw new Exception("Aula/Aluno não coincidem");
         return converterParaDto(aula.get());
     }
 
@@ -195,7 +198,7 @@ public class AulaService {
     /**
      * Resolve um utilizador a partir do ID hasheado.
      *
-     * @throws RuntimeException se o utilizador não existir
+     * @throws Exception se o utilizador não existir
      */
     private Utilizadore encontraUtilizador(String userId) throws Exception {
         return utilizadoreRepository.findById(idHasher.decode(userId))
@@ -254,7 +257,7 @@ public class AulaService {
 
                 // Associar o horário à aula antes de adicionar à lista
                 aulaGuardada.setIdHorario(horarioTurma);
-                          adicionados.add(aulaGuardada);
+                adicionados.add(aulaGuardada);
 
             } catch (Exception e) {
                 erros.add(novaAula);
@@ -515,6 +518,7 @@ public class AulaService {
             LocalDateTime momentoDaAula = LocalDateTime.of(aula.dataAula(), aula.horaInicio());
             if(!LocalDateTime.now().isBefore(momentoDaAula.minusHours(48))){
                 //TODO:APLICAR CONSEQUENCIAS, FALTAS ETC
+                aplicaSancoes(alunoId);
             }
         }
         aulaAlunoRepository.deleteById(id);
@@ -522,6 +526,9 @@ public class AulaService {
 
     public long contarInscritos(String aulaId) {
         return aulaAlunoRepository.countByAulaId(idHasher.decode(aulaId));
+    }
+    public void aplicaSancoes(String alunoId){
+        return;
     }
 
 }
