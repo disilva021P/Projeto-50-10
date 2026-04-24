@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedModel;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.PrintWriter;
 import java.math.BigDecimal;
@@ -43,6 +44,7 @@ public class PagamentoService {
     }
 
     // Criar pagamento
+    @Transactional
     public PagamentoDto criar(PagamentoDto dto) throws Exception {
 
         //  Criamos uma Entity vazia
@@ -76,6 +78,7 @@ public class PagamentoService {
     }
 
     // Atualizar pagamento
+    @Transactional
     public PagamentoDto atualizar(String idHashed, PagamentoDto dto) throws Exception {
 
         Integer idReal = idHasher.decode(idHashed);
@@ -103,6 +106,7 @@ public class PagamentoService {
     }
 
     // Confirmar pagamento
+    @Transactional
     public PagamentoDto confirmar(String idHashed) throws Exception {
 
         //  Usamos o hasher para saber qual é o ID real (Integer)
@@ -202,6 +206,7 @@ public class PagamentoService {
                 dataAlvo.getYear()
         );
     }
+
 
     public String escreverPagamentosCsv( List<PagamentoDto> pagamentos) {
         StringBuilder sb = new StringBuilder();

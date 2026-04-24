@@ -1,5 +1,6 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.controller.Horarios;
 
+import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.Utils;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.service.*;
 import lombok.RequiredArgsConstructor;
@@ -257,7 +258,7 @@ public class HorarioController {
     @PreAuthorize("hasAuthority('PROFESSOR')")
     public ResponseEntity<?> confirmarCoaching(@PathVariable(name = "aulaId") String aulaId) {
         try {
-            return ResponseEntity.ok(aulaCoachingService.confirmar(aulaId));
+            return ResponseEntity.ok(aulaCoachingService.confirmar(aulaId, Utils.getAuthenticatedUserId()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Erro ao confirmar coaching: " + e.getMessage());
         }

@@ -70,7 +70,13 @@ public class AulaAlunoService {
                 .toList();
     }
 
-    // DELETE
+    public List<AulaAlunoDto> findAllByAulaId(String hashId) {
+        Integer realId = idHasher.decode(hashId);
+        return aulaAlunoRepository.findAllByAula_Id(realId)
+                .stream()
+                .map(this::convertToDto)
+                .toList();
+    }    // DELETE
     @Transactional
     public void deleteById(String hashIdAluno, String hashIdAula) {
         AulaAlunoId id = new AulaAlunoId(
