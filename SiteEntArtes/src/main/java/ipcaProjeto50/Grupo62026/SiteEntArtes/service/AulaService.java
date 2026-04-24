@@ -8,6 +8,7 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.*;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.repository.Repository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -58,8 +59,9 @@ public class AulaService {
     private final AlunoRepository alunoRepository;
     private final NotificacoesService notificacoesService;
     private final ProfessorModalidadeRepository professorModalidadeRepository;
-    private final PagamentoService pagamentoService;
+    private final PagamentoRepository pagamentoRepository;
     private final CancelamentoService cancelamentoService;
+    private final TipoPagamentoRepository tipoPagamentoRepository;
     //region feito
     // -------------------------------------------------------------------------
     // CRUD base
@@ -232,6 +234,9 @@ public class AulaService {
     public List<AulaDto> GerarAulasComHorario(HorarioTurmaRequestDto horario,String idProfessor) throws Exception {
         if (horario.dataInicio().isAfter(horario.dataValidade())) {
             throw new Exception("Data de início superior à Data final");
+        }
+        if(horario.dataInicio().isBefore(LocalDate.now())){
+            throw new Exception("Data de início inferior à Data atual");
         }
 
         List<AulaDto> erros = new ArrayList<>();
@@ -455,17 +460,15 @@ public class AulaService {
     }
     @Transactional(rollbackFor = Exception.class)
     public void processarPagamentosAula(Aula aula) throws Exception {
-        String aulaIdHashed = idHasher.encode(aula.getId());
-
-        // 1. Obter intervenientes
-        List<AulaProfessore> professores = aulaProfessorService.findAllByAulaId(aulaIdHashed);
+        // 1. Obter intervenientes (Usando IDs reais já disponíveis na entidade 'aula')
+        List<AulaProfessore> professores = aulaProfessorService.findAllByAulaId(idHasher.encode(aula.getId()));
         List<AulaAluno> alunosInscritos = aulaAlunoRepository.findAllByAula_Id(aula.getId());
 
         if (professores.isEmpty() || alunosInscritos.isEmpty()) {
             throw new Exception("A aula deve ter pelo menos um professor e um aluno para processar pagamentos.");
         }
 
-        // 2. Cálculo do Valor Base (BigDecimal para precisão)
+        // 2. Cálculo do Valor Base
         BigDecimal duracaoHoras = BigDecimal.valueOf(aula.getDuracaoMinutos())
                 .divide(BigDecimal.valueOf(60), 2, java.math.RoundingMode.HALF_UP);
 
@@ -477,49 +480,46 @@ public class AulaService {
 
         BigDecimal valorTotalAula = maiorValorHora.multiply(duracaoHoras);
 
-        // 3. Definir IDs de Tipo de Pagamento
-        // Aluno: 1 (Fixa) ou 2 (Coaching) | Professor: Sempre 7
-        int idTipoAluno = (aula.getIdHorario() != null) ? 1 : 2;
-        String label = (idTipoAluno == 1) ? "Aula Fixa" : "Coaching";
+        // 3. Obter Tipos de Pagamento (Entities)
+        int idTipoAlunoReal = (aula.getIdHorario() != null) ? 1 : 2;
+        TipoPagamento tipoAluno = tipoPagamentoRepository.findById(idTipoAlunoReal)
+                .orElseThrow(() -> new Exception("Tipo de pagamento aluno não encontrado"));
 
-        // 4. Gerar Pagamentos dos Alunos (Rateio)
+        TipoPagamento tipoProf = tipoPagamentoRepository.findById(7)
+                .orElseThrow(() -> new Exception("Tipo de remuneração professor não encontrado"));
+
+        String label = (idTipoAlunoReal == 1) ? "Aula Fixa" : "Coaching";
+
+        // 4. Gerar Pagamentos dos Alunos
         BigDecimal valorPorAluno = valorTotalAula.divide(BigDecimal.valueOf(alunosInscritos.size()), 2, java.math.RoundingMode.HALF_UP);
 
         for (AulaAluno vinculo : alunosInscritos) {
-            Utilizadore userAluno = vinculo.getAluno();
-            PagamentoDto dto = new PagamentoDto(
-                    aulaIdHashed,
-                    valorPorAluno,
-                    false,
-                    "Pagamento " + label + ": " + aula.getDataAula(),
-                    idHasher.encode(idTipoAluno),
-                    label,
-                    null,
-                    LocalDate.now(),
-                    null,
-                    new UtilizadoreResumoDto(idHasher.encode(userAluno.getId()), userAluno.getNome())
-            );
-            pagamentoService.criar(dto);
+            Pagamento p = new Pagamento();
+            p.setValorPagamento(valorPorAluno);
+            p.setDescricao("Pagamento " + label + ": " + aula.getDataAula());
+            p.setPago(false);
+            p.setDataPagamento(LocalDate.now());
+            p.setAula(aula);
+            p.setIdutilizador(vinculo.getAluno()); // Atribuição direta da Entity
+            p.setIdTipoPagamento(tipoAluno);
+
+            pagamentoRepository.save(p);
         }
 
-        // 5. Gerar Remuneração dos Professores (Divisão do total entre os docentes)
+        // 5. Gerar Remuneração dos Professores
         BigDecimal valorPorProf = valorTotalAula.divide(BigDecimal.valueOf(professores.size()), 2, java.math.RoundingMode.HALF_UP);
 
         for (AulaProfessore vinculo : professores) {
-            Utilizadore userProf = vinculo.getProfessor();
-            PagamentoDto dto = new PagamentoDto(
-                    aulaIdHashed,
-                    valorPorProf,
-                    false,
-                    "Remuneração " + label + ": " + aula.getDataAula(),
-                    idHasher.encode(7),
-                    "Crédito Professor",
-                    null,
-                    LocalDate.now(),
-                    null,
-                    new UtilizadoreResumoDto(idHasher.encode(userProf.getId()), userProf.getNome())
-            );
-            pagamentoService.criar(dto);
+            Pagamento p = new Pagamento();
+            p.setValorPagamento(valorPorProf);
+            p.setDescricao("Remuneração " + label + ": " + aula.getDataAula());
+            p.setPago(false);
+            p.setDataPagamento(LocalDate.now());
+            p.setAula(aula);
+            p.setIdutilizador(vinculo.getProfessor()); // Atribuição direta da Entity
+            p.setIdTipoPagamento(tipoProf);
+
+            pagamentoRepository.save(p);
         }
     }
 
@@ -606,3 +606,5 @@ public class AulaService {
     }
 
 }
+
+

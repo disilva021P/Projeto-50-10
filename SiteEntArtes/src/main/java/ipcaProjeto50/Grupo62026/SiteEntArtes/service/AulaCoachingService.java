@@ -14,10 +14,7 @@ import org.springframework.expression.ExpressionException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek;
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.*;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 
@@ -162,6 +159,12 @@ public class AulaCoachingService {
      */
     @Transactional
     public AulaCoachingDto salvarMarcarCoaching(AulaCoachingRequestDto dto, String idAluno) throws Exception {
+        if(dto.dataAula().isBefore(LocalDate.now()) || (dto.dataAula().equals(LocalDate.now()) && dto.horaInicio().isBefore(LocalTime.now()))){
+            throw new Exception("Data de início inferior à Data atual");
+        }
+        if(dto.maxAlunos()>8){
+            throw new Exception("Nº de alunos max é 8");
+        }
         if (!professorModalidadeRepository.existsByModalidadeIdAndProfessorId(idHasher.decode(dto.modalidadeId()), idHasher.decode( dto.professorId()) )) {
             throw new Exception("Professor não leciona esta modalidade");
         }
@@ -178,6 +181,7 @@ public class AulaCoachingService {
         }
 
         AulaCoaching aulaCoaching = aulaCoachingRepository.save(requestDtoParaCoaching(dto));
+
         Aluno a = alunoRepository.findById(idHasher.decode(idAluno))
                 .orElseThrow(() -> new Exception("Aluno não encontrado"));
         aulaAlunoRepository.save(new AulaAluno(

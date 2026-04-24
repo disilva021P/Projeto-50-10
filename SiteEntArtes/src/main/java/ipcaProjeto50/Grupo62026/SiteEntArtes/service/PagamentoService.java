@@ -1,5 +1,6 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
@@ -31,7 +32,7 @@ public class PagamentoService {
     private final UtilizadoreRepository utilizadoreRepository;
     private final TipoUtilizadorRepository tipoUtilizadorRepository;
     private final TipoPagamentoRepository tipoPagamentoRepository;
-    private final AulaService aulaService;
+    private final AulaRepository aulaRepository;
 
     // Listar todos os pagamentos ,
     public List<PagamentoDto> listarTodos() {
@@ -60,7 +61,7 @@ public class PagamentoService {
                 .orElseThrow(() -> new Exception("Utilizador nao encontrado"));
         TipoPagamento tipoPagamento= tipoPagamentoRepository.findById(idReal2)
                 .orElseThrow(() -> new Exception("Tipo nao encontrado"));
-        Aula aula = aulaService.bucarPorId(dto.id());
+        Aula aula = aulaRepository.findById(idHasher.decode( dto.id())).orElseThrow(()->new Exception("Aula não encontrada"));
         //  Passamos os dados do DTO (que veio do JS) para a Entity
         entidade.setValorPagamento(dto.valorPagamento());
         entidade.setDescricao(dto.descricao());
@@ -155,6 +156,41 @@ public class PagamentoService {
             resumo = new UtilizadoreResumoDto(idHasher.encode(pagamento.getIdutilizador().getId()),
                     pagamento.getIdutilizador().getNome());
         }
+        Aula aula=pagamento.getAula();
+        if(aula!=null){
+            // 1. Criar os DTOs de suporte (se necessário)
+// Se o pagamento não precisar dos detalhes do estúdio ou estado, podes passar null
+            EstudioDto estudioDto = (aula.getEstudio() != null) ?
+                    new EstudioDto(idHasher.encode(aula.getEstudio().getId()), aula.getEstudio().getNome(),aula.getEstudio().getCapacidade()) : null;
+
+            EstadoAulaDto estadoDto = (aula.getEstado() != null) ?
+                    new EstadoAulaDto(idHasher.encode(aula.getEstado().getId()), aula.getEstado().getEstado()) : null;
+
+// 2. Instanciar o AulaDto usando o construtor que forneceste
+            AulaDto aulaDtoManual = new AulaDto(
+                    idHasher.encode(aula.getId()), // id
+                    estudioDto,                    // estudio
+                    aula.getDuracaoMinutos(),      // duracaoMinutos
+                    aula.getDataAula(),            // dataAula
+                    aula.getHoraInicio(),          // horaInicio
+                    aula.getHoraFim(),             // horaFim
+                    idHasher.encode( aula.getCriadoPor().getId()),           // criadoPo (ajusta para o nome correto do campo na Entity)
+                    null,                          // idHorario (HorarioTurmaDto - opcional aqui)
+                    estadoDto                      // estado
+            );
+            return new PagamentoDto(
+                    idHasher.encode(pagamento.getId()), // ID seguro para o JS
+                    pagamento.getValorPagamento(),
+                    pagamento.getPago(),
+                    pagamento.getDescricao(),
+                    idHasher.encode(pagamento.getIdTipoPagamento().getId()), // Objeto completo
+                    nomeTipo,                       // Apenas o nome (String)
+                    aulaDtoManual,
+                    pagamento.getDataPagamento(),
+                    pagamento.getDataConfirmado(),
+                    resumo // associa o utilizador ao pagamento
+            );
+        }
 
         return new PagamentoDto(
                 idHasher.encode(pagamento.getId()), // ID seguro para o JS
@@ -163,7 +199,7 @@ public class PagamentoService {
                 pagamento.getDescricao(),
                 idHasher.encode(pagamento.getIdTipoPagamento().getId()), // Objeto completo
                 nomeTipo,                       // Apenas o nome (String)
-               aulaService.converterParaDto(pagamento.getAula()),
+               null,
                 pagamento.getDataPagamento(),
                 pagamento.getDataConfirmado(),
                 resumo // associa o utilizador ao pagamento
@@ -206,6 +242,7 @@ public class PagamentoService {
                 dataAlvo.getYear()
         );
     }
+
 
 
     public String escreverPagamentosCsv( List<PagamentoDto> pagamentos) {
