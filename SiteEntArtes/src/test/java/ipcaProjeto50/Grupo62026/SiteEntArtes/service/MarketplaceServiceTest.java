@@ -128,7 +128,7 @@ class MarketplaceServiceTest {
 
         // WHEN & THEN
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            marketplaceService.converterUnidadeParaMarketplace(request, 1);
+            marketplaceService.converterUnidadeParaMarketplace(request, "coordenador@teste.com");
         });
 
         assertEquals("Item de inventário não encontrado.", exception.getMessage());

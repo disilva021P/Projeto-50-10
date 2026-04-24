@@ -224,14 +224,13 @@ public class MarketplaceController {
 
     @PostMapping(value = "/importar-inventario", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> importarDoInventario(
-            @ModelAttribute ConversaoInventarioRequest request
+            @ModelAttribute ConversaoInventarioRequest request,
+            Authentication authentication
     ) {
         try {
-            // TODO: substituir por utilizador autenticado via Security
-            // Integer coordenadorId = ((Utilizadore) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getId();
-            Integer coordenadorId = 1; // Temporário para testes
+            String email = authentication.getName(); // devolve o email do JWT
 
-            marketplaceService.converterUnidadeParaMarketplace(request, coordenadorId);
+            marketplaceService.converterUnidadeParaMarketplace(request, email);
             return ResponseEntity.ok("Artigo importado com sucesso!");
 
         } catch (NoSuchElementException e) {

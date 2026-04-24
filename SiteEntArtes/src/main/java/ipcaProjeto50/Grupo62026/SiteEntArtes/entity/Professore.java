@@ -20,7 +20,7 @@ public class Professore extends Utilizadore {
 
 
     @ColumnDefault("36.00")
-    @Column(name = "valor_hora", nullable = false, precision = 10, scale = 2)
+    @Column(name = "valor_hora", nullable = true, precision = 10, scale = 2)
     private BigDecimal valorHora;
 
     @ColumnDefault("0")

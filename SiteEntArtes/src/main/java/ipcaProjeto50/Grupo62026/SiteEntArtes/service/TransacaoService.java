@@ -2,16 +2,14 @@ package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.TransacaoRequest;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Artigo;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Transacao;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Utilizadore;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.ArtigoRepository;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.TransacaoRepository;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.UtilizadoreRepository;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.TransacaoResumoDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -23,6 +21,8 @@ public class TransacaoService {
     private final UtilizadoreRepository utilizadoreRepository;
     private final NotificacoesService notificacoesService;
     private final IdHasher idHasher;
+    private final PagamentoRepository pagamentoRepository;
+    private final TipoPagamentoRepository tipoPagamentoRepository;
 
     @Transactional
     public void realizarTransacao(TransacaoRequest request) throws Exception {
@@ -35,6 +35,11 @@ public class TransacaoService {
         // 2. Verificar se já está arquivado (Boolean check)
         if (Boolean.TRUE.equals(artigo.getArquivado())) {
             throw new RuntimeException("Este artigo já não está disponível.");
+        }
+
+        // VALIDAÇÃO: Aluguer obriga a data de fim
+        if ("ALUGUER".equalsIgnoreCase(request.tipo()) && request.dataFimPrevista() == null) {
+            throw new IllegalArgumentException("Data de fim prevista é obrigatória para alugueres.");
         }
 
         // 3. Descodificar o ID do Comprador
@@ -53,6 +58,26 @@ public class TransacaoService {
         t.setDataFimPrevista(request.dataFimPrevista());
 
         transacaoRepository.save(t);
+
+        String tipoUpper = request.tipo().toUpperCase();
+        if ("VENDA".equals(tipoUpper) || "ALUGUER".equals(tipoUpper)) {
+            TipoPagamento tipoMaterial = tipoPagamentoRepository.findById(5)
+                    .orElseThrow(() -> new RuntimeException("Tipo de pagamento 'Material' não encontrado"));
+
+            Pagamento pagamento = new Pagamento();
+            pagamento.setIdutilizador(comprador);
+            pagamento.setValorPagamento(request.valorFinal());
+            pagamento.setIdTipoPagamento(tipoMaterial);
+            pagamento.setPago(false);
+            pagamento.setDataPagamento(LocalDate.now());
+            pagamento.setDescricao(
+                    ("VENDA".equals(tipoUpper) ? "Compra" : "Aluguer") +
+                            " do artigo '" + artigo.getNome() + "'"
+            );
+            pagamento.setAula(null); // Não está associado a uma aula
+
+            pagamentoRepository.save(pagamento);
+        }
 
         // 5. Arquivar o artigo
         artigo.setArquivado(true);
@@ -109,6 +134,45 @@ public class TransacaoService {
                 mensagem,
                 "MARKETPLACE_TRANSACAO",
                 t.getArtigo().getId().toString()
+        );
+    }
+
+    public List<TransacaoResumoDto> listarAlugueresAtivos(String compradorIdHash) {
+        Integer idReal = idHasher.decode(compradorIdHash);
+        return transacaoRepository.findAlugueresAtivosByComprador(idReal)
+                .stream()
+                .map(this::toResumoDto)
+                .toList();
+    }
+
+    @Transactional
+    public void devolverArtigo(String transacaoIdHash) {
+        Integer idReal = idHasher.decode(transacaoIdHash);
+        Transacao t = transacaoRepository.findById(idReal)
+                .orElseThrow(() -> new RuntimeException("Transação não encontrada"));
+
+        if (!"ALUGUER".equals(t.getTipo())) {
+            throw new IllegalArgumentException("Só é possível devolver alugueres.");
+        }
+        if (t.getDataDevolucaoReal() != null) {
+            throw new IllegalStateException("Este artigo já foi devolvido.");
+        }
+
+        t.setDataDevolucaoReal(LocalDate.now());
+        t.setEstadoTransacao("DEVOLVIDA");
+
+        transacaoRepository.save(t);
+    }
+
+    private TransacaoResumoDto toResumoDto(Transacao t) {
+        return new TransacaoResumoDto(
+                idHasher.encode(t.getId()),
+                t.getArtigo().getNome(),
+                t.getArtigo().getDescricao(),
+                idHasher.encode(t.getArtigo().getId()),
+                t.getDataInicio(),
+                t.getDataFimPrevista(),
+                t.getValorFinal()
         );
     }
 }

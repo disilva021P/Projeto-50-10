@@ -5,7 +5,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 
-// DTO para receber o pedido de conversão
 @Data
 public class ConversaoInventarioRequest {
     private Integer unidadeId;

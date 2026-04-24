@@ -268,55 +268,52 @@ public class MarketplaceService {
     }
 
     @Transactional
-    public void converterUnidadeParaMarketplace(ConversaoInventarioRequest request, Integer coordenadorId) {
-        // 1. Verificar se a unidade existe (Usa getUnidadeId)
+    public void converterUnidadeParaMarketplace(ConversaoInventarioRequest request, String emailCoordenador) {
+        // 1. Verificar se a unidade existe
         var unidade = unidadeRepository.findById(request.getUnidadeId())
                 .orElseThrow(() -> new RuntimeException("Item de inventário não encontrado."));
 
-        // 2. Criar o novo Artigo no Marketplace (Usa os Getters)
+        // 2. Buscar o coordenador pelo email (vem do JWT)
+        Utilizadore dono = utilizadoreRepository.findByEmail(emailCoordenador)
+                .orElseThrow(() -> new RuntimeException("Coordenador não encontrado: " + emailCoordenador));
+
+        // 3. Criar o novo Artigo
         Artigo novoArtigo = new Artigo();
         novoArtigo.setNome(request.getNome());
         novoArtigo.setDescricao(request.getDescricao());
         novoArtigo.setTamanho(request.getTamanho());
         novoArtigo.setCor(request.getCor());
         novoArtigo.setCondicao(request.getCondicao());
-
-        // Configurações de negócio
         novoArtigo.setIsVenda(request.getIsVenda());
         novoArtigo.setIsAluguer(request.getIsAluguer());
         novoArtigo.setIsDoacao(request.getIsDoacao());
         novoArtigo.setPrecoVenda(request.getPrecoVenda());
         novoArtigo.setPrecoAluguer(request.getPrecoAluguer());
-
         novoArtigo.setArquivado(false);
         novoArtigo.setAprovado(true);
         novoArtigo.setCriadoEm(Instant.now());
-
-        Utilizadore dono = utilizadoreRepository.findById(coordenadorId)
-                .orElseThrow(() -> new RuntimeException("Coordenador não encontrado."));
         novoArtigo.setDonoUtilizador(dono);
 
-        artigoRepository.save(novoArtigo);
-
-        // 3. Salvar o Artigo para gerar o ID
+        // 4. Salvar
         Artigo artigoSalvo = artigoRepository.save(novoArtigo);
 
-        // 4. Processar e salvar as imagens que vieram no request (CORREÇÃO AQUI)
+        // 5. Processar Imagens
         if (request.getImagens() != null) {
             for (MultipartFile imagem : request.getImagens()) {
                 if (imagem != null && !imagem.isEmpty()) {
                     try {
                         ImagensUnidade imgEntity = new ImagensUnidade();
                         imgEntity.setArtigoId(artigoSalvo.getId());
-                        imgEntity.setUrlImagem(imagem.getBytes()); // Converte o ficheiro para bytes
+                        imgEntity.setUrlImagem(imagem.getBytes());
                         imagensUnidadeRepository.save(imgEntity);
                     } catch (IOException e) {
-                        throw new RuntimeException("Erro ao processar imagem vinda do inventário", e);
+                        throw new RuntimeException("Erro ao processar imagem", e);
                     }
                 }
             }
         }
 
+        // 6. Remover do inventário antigo
         unidadeRepository.delete(unidade);
     }
 
