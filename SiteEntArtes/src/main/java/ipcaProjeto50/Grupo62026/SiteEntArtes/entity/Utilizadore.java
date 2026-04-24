@@ -1,17 +1,22 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
 import java.time.LocalDate;
-
+import java.time.LocalDateTime;
+@AllArgsConstructor
+@NoArgsConstructor
 @Getter
 @Setter
 @Entity
 @Table(name = "utilizadores")
+@Inheritance(strategy = InheritanceType.JOINED)
 public class Utilizadore {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,11 +45,11 @@ public class Utilizadore {
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "criado_em", nullable = false)
-    private Instant criadoEm;
+    private LocalDateTime criadoEm;
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "editado_em", nullable = false)
-    private Instant editadoEm;
+    private LocalDateTime editadoEm;
 
     @Column(name = "data_nascimento", nullable = false)
     private LocalDate dataNascimento;
@@ -56,13 +61,13 @@ public class Utilizadore {
         return this.tipo.getTipoUtilizador().equals("ROLE_ALUNO");
     }
     public boolean isProfessor(){
-        return this.tipo.getTipoUtilizador().equals("ROLE_PROFESSOR");
+        return tipo != null && "ROLE_ALUNO".equals(tipo.getTipoUtilizador());
     }
     public boolean isCoordenacao(){
-        return this.tipo.getTipoUtilizador().equals("ROLE_COORDENACAO");
+        return tipo != null && this.tipo.getTipoUtilizador().equals("ROLE_COORDENACAO");
     }
     public boolean isEncarregado(){
-        return this.tipo.getTipoUtilizador().equals("ROLE_Encarregado");
+        return tipo != null && this.tipo.getTipoUtilizador().equals("ROLE_Encarregado");
     }
 
 }

@@ -21,5 +21,4 @@ public class JustificacaoFalta {
     @JoinColumn(name = "idfalta", nullable = false)
     private Cancelamento idfalta;
 
-
 }

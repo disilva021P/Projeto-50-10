@@ -37,7 +37,9 @@ public class AuthController {
             Authentication auth = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(loginData.email(), loginData.password())
             );
+
             UserDetails userDetails = (UserDetails) auth.getPrincipal();
+            if(userDetails==null) throw new RuntimeException("User nulo");
             String token = jwtService.generateToken(userDetails);
             return ResponseEntity.ok(token);
         } catch (AuthenticationException e) {

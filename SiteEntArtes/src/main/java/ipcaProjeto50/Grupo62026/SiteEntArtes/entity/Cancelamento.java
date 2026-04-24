@@ -1,12 +1,17 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 
+@AllArgsConstructor
+@NoArgsConstructor
 @Getter
 @Setter
 @Entity
@@ -24,9 +29,13 @@ public class Cancelamento {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "utilizador_id", nullable = false)
     private Utilizadore utilizador;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "marcardo_por", nullable = false)
+    private Utilizadore marcardo_por;
+
 
     @Lob
-    @Column(name = "motivo", nullable = false,columnDefinition = "TEXT")
+    @Column(name = "motivo", nullable = true,length = 500)
     private String motivo;
 
     @ColumnDefault("0")
@@ -35,10 +44,14 @@ public class Cancelamento {
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "criado_em", nullable = false)
-    private Instant criadoEm;
+    private LocalDateTime criadoEm;
 
     @Column(name = "justificado_em")
     private Instant justificadoEm;
 
-
+    @PrePersist
+    protected void onCreate() {
+        this.criadoEm = LocalDateTime.now();
+        if (this.justificado == null) this.justificado = false;
+    }
 }

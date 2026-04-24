@@ -1,9 +1,9 @@
-# 🎭 Ent'Artes — Sistema de Gestão de Escola de Dança
+# Ent'Artes — Sistema de Gestão de Escola de Dança
 
 > Projeto académico desenvolvido no âmbito da Licenciatura em Engenharia de Sistemas Informáticos — IPCA 2025/2026
 
 ![Status](https://img.shields.io/badge/Status-Em%20Desenvolvimento-yellow)
-![Java](https://img.shields.io/badge/Java-17-orange)
+![Java](https://img.shields.io/badge/Java-21+-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-green)
 ![React](https://img.shields.io/badge/React-18-blue)
 ![MySQL](https://img.shields.io/badge/MySQL-8.x-blue)
@@ -34,10 +34,11 @@ Este projeto consiste no desenvolvimento de um **sistema de gestão integrada** 
 
 - Gestão de alunos, professores e estúdios
 - Dois tipos de aulas: **semanais fixas** e **coaching personalizadas**
-- Faturação automática baseada em aulas validadas
+- Visualização de pagamentos baseada em aulas validadas
 - Inventário digital de figurinos com marketplace interno
 - Comunicação interna centralizada (substituindo grupos externos)
 - Controlo de acessos por perfil com RBAC
+- Gestão de eventos que a escola organiza/participa
 
 A solução segue uma arquitetura **cliente-servidor** com API RESTful, desenvolvida em contexto real com a Ent'Artes como entidade parceira no projeto **50+10**.
 
@@ -60,7 +61,7 @@ A solução segue uma arquitetura **cliente-servidor** com API RESTful, desenvol
 ### Backend
 | Tecnologia | Versão | Utilização |
 |-----------|--------|-----------|
-| Java | 17 | Linguagem principal |
+| Java | 21+ | Linguagem principal |
 | Spring Boot | 3.x | Framework REST API |
 | Spring Security + JWT | — | Autenticação e autorização (RBAC) |
 | Spring Data JPA + Hibernate | — | ORM e persistência |
@@ -173,7 +174,7 @@ A arquitetura segue o padrão **Controller → Service → Repository**, com sep
 ### Pré-requisitos
 
 ```bash
-Java 17+
+Java 21+
 MySQL 8.x
 Node.js 18+
 ```
@@ -210,7 +211,7 @@ npm install
 npm run dev
 ```
 
-A aplicação ficará disponível em `http://localhost:5173`
+A aplicação ficará disponível em `http://localhost:3000`
 
 ---
 
@@ -219,21 +220,9 @@ A aplicação ficará disponível em `http://localhost:5173`
 - **Scrum** com sprints de **1 semana**
 - Daily standups de 15 minutos
 - Sprint reviews e retrospetivas semanais
-- Branching estruturado: `main` / `develop` / `feature/*` / `hotfix/*`
+- Branching estruturado: `main` / `nº desenvolverdor` / `fetch/*` / `hotfix/*`
 - Gestão de backlog e sprints no **Jira**
 
-### Distribuição do Backlog
-
-| Ator | User Stories | Story Points |
-|------|-------------|-------------|
-| Coordenação | 22 | 92 pts |
-| Encarregados | 15 | 46 pts |
-| Professores | 11 | 29 pts |
-| Alunos | 9 | 21 pts |
-| Geral (Auth) | 3 | 5 pts |
-| **Total** | **60** | **193 pts** |
-
-Prioridades: **MUST** 62% · **SHOULD** 35% · **COULD** 7%
 
 ---
 
@@ -242,8 +231,8 @@ Prioridades: **MUST** 62% · **SHOULD** 35% · **COULD** 7%
 | Marco | Data | Entregáveis |
 |-------|------|-------------|
 | **M1 — Análise e Modelação** | 13/03/2026 ✅ | Requisitos, diagramas UML/BPMN, mockups, backlog |
-| **M2 — Versão Beta** | A definir | Backend completo, API funcional, testes implementados |
-| **M3 — Versão Final** | 09/05/2026 | Sistema completo, UI finalizada, documentação |
+| **M2 — Versão Beta** | 24/04/2026 | Backend completo, API funcional, testes implementados |
+| **M3 — Versão Final** | 09/05/2026 | Sistema completo, UI (simplificada) finalizada |
 
 ---
 

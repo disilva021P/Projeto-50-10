@@ -31,7 +31,7 @@ public class JwtService {
 
         return Jwts.builder()
                 .setClaims(claims) // Adiciona as gavetas extra
-                .setSubject(user.getUsername()) // O Subject fica só com o Email (Limpo!)
+                .setSubject(user.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
@@ -57,8 +57,9 @@ public class JwtService {
 
 
 
-    public boolean isTokenValid(String jwt, String userEmail) {
-        return true;//TODO: ADICIONAR LÓGICA
+    public boolean isTokenValid(String jwt, String userId) {
+        final String username = extractUsername(jwt);
+        return (username.equals(userId)) && !isTokenExpired(jwt);
     }
     private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
