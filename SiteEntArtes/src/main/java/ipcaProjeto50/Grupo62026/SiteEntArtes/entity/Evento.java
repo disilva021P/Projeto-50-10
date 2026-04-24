@@ -13,6 +13,7 @@ import java.time.Instant;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -42,6 +43,12 @@ public class Evento {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "criado_por", nullable = false)
     private Utilizadore criadoPor;
+
+    @Column(name = "hora_inicio", nullable = false)
+    private LocalTime horaInicio;
+
+    @Column(name = "hora_fim", nullable = false)
+    private LocalTime horaFim;
 
     @NotNull
     @ColumnDefault("0.00")

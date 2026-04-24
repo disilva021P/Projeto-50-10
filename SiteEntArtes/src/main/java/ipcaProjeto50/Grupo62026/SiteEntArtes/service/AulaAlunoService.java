@@ -79,6 +79,10 @@ public class AulaAlunoService {
         );
         aulaAlunoRepository.deleteById(id);
     }
+    @Transactional
+    public void deleteAllByAulaId(String hashIdAula) {
+        aulaAlunoRepository.deleteAllByAula_Id(idHasher.decode(hashIdAula));
+    }
 
     // MAPPING
     public AulaAlunoDto convertToDto(AulaAluno a) {

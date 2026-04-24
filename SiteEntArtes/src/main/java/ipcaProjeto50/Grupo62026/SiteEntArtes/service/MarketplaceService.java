@@ -58,7 +58,7 @@ public class MarketplaceService {
     }
 
     @Transactional
-    public void alterarEstadoArtigo(String idHash, Integer novoEstadoId) {
+    public void alterarEstadoArtigo(String idHash, Integer novoEstadoId) throws Exception {
         Integer idReal = idHasher.decode(idHash);
         Artigo artigo = artigoRepository.findById(idReal)
                 .orElseThrow(() -> new RuntimeException("Artigo não encontrado"));
@@ -118,7 +118,7 @@ public class MarketplaceService {
     }
 
     @Transactional
-    public ArtigoDto inserirArtigo(ArtigoRequest request, List<MultipartFile> imagens, String identifier) throws IOException {
+    public ArtigoDto inserirArtigo(ArtigoRequest request, List<MultipartFile> imagens, String identifier) throws Exception {
         Utilizadore dono;
         if (identifier.contains("@")) {
             dono = utilizadoreRepository.findByEmail(identifier)
@@ -320,7 +320,7 @@ public class MarketplaceService {
         unidadeRepository.delete(unidade);
     }
 
-    private void enviarNotificacaoNovoArtigo(Artigo artigo) {
+    private void enviarNotificacaoNovoArtigo(Artigo artigo) throws Exception {
         // 1. Procurar todos os coordenadores (ajusta a string se no banco for diferente, ex: "COORDENADOR")
         List<Utilizadore> coordenadores = utilizadoreRepository.findByTipo_TipoUtilizador("COORDENACAO");
 

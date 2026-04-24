@@ -11,6 +11,6 @@ import java.time.LocalDate;
  * DTO for {@link ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Pagamento}
  */
 public record PagamentoDto(String id, BigDecimal valorPagamento, Boolean pago, String descricao,
-                           TipoPagamento idTipoPagamento,String tipoPagamentoNome , Aula aula, LocalDate dataPagamento,
+                           String idTipoPagamento,String tipoPagamentoNome , AulaDto aula, LocalDate dataPagamento,
                            LocalDate dataConfirmado, UtilizadoreResumoDto utilizadoreResumoDto) implements Serializable {
 }

@@ -23,7 +23,7 @@ public class GrupoController {
         try {
             var membros = grupoService.listarMembrosDoGrupo(grupoId);
             return ResponseEntity.ok(membros);
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
@@ -36,7 +36,7 @@ public class GrupoController {
             // Alterado para retornar o ID se necessário, mas podes manter como está
             grupoService.criarGrupoPrivado(userIdHashed, dto.nome(), dto.membrosIds());
             return ResponseEntity.ok("Grupo criado com sucesso!");
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -52,7 +52,7 @@ public class GrupoController {
 
             grupoService.adicionarMembro(adminIdHashed, grupoId, membroId);
             return ResponseEntity.ok("Membro adicionado com sucesso.");
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -66,7 +66,7 @@ public class GrupoController {
 
             grupoService.removerMembro(adminIdHashed, grupoId, membroId);
             return ResponseEntity.ok("Membro removido com sucesso.");
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }

@@ -25,7 +25,7 @@ public class TransacaoService {
     private final IdHasher idHasher;
 
     @Transactional
-    public void realizarTransacao(TransacaoRequest request) {
+    public void realizarTransacao(TransacaoRequest request) throws Exception {
         // 1. Buscar o Artigo
         Integer idRealArtigo = idHasher.decode(request.artigoId());
 
@@ -62,7 +62,7 @@ public class TransacaoService {
         enviarNotificacaoVenda(t);
     }
 
-    private void enviarNotificacaoVenda(Transacao t) {
+    private void enviarNotificacaoVenda(Transacao t) throws Exception {
         String tipoAcao = t.getTipo().toUpperCase();
         String titulo = "";
         String mensagem = "";

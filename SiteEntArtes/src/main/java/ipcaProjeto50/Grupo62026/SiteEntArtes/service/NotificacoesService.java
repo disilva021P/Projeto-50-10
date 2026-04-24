@@ -32,9 +32,9 @@ public class NotificacoesService {
     }
 
     @Transactional
-    public void criarNotificacao(Integer destinatarioId, Integer remetenteId, String titulo, String mensagem, String tipo, String referenciaId) {
+    public void criarNotificacao(Integer destinatarioId, Integer remetenteId, String titulo, String mensagem, String tipo, String referenciaId) throws Exception {
         Utilizadore destinatario = utilizadoreRepository.findById(destinatarioId)
-                .orElseThrow(() -> new RuntimeException("Destinatário não encontrado"));
+                .orElseThrow(() -> new Exception("Destinatário não encontrado"));
 
         Utilizadore remetente = null;
         if (remetenteId != null) {

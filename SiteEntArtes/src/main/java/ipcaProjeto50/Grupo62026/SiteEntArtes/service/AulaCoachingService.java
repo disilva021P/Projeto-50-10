@@ -402,4 +402,9 @@ public class AulaCoachingService {
             return;
         }
     }
+    public void professorRejeitaCoaching(String idAula,String idProfessor) throws Exception {
+        AulaCoaching aula = aulaCoachingRepository.findById(idHasher.decode(idAula)).orElseThrow(()-> new Exception( "Aula não encontrada"));
+        AulaProfessore aulaProfessore = aulaProfessoreRepository.findByAula_IdAndProfessor_Id(idHasher.decode(idAula), idHasher.decode(idProfessor) ).orElseThrow(()-> new Exception( "Professor não possui esta aula"));
+        eliminar(idAula);
+    }
 }

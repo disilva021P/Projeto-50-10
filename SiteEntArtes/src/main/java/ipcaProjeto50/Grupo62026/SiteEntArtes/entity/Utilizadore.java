@@ -67,5 +67,13 @@ public class Utilizadore {
     public boolean isEncarregado(){
         return this.tipo.getTipoUtilizador().equals("ROLE_Encarregado");
     }
+    public boolean isMenorIdade() {
+        if (this.dataNascimento != null) {
+            // Calcula o período entre a data de nascimento e agora
+            long anos = java.time.temporal.ChronoUnit.YEARS.between(this.dataNascimento, LocalDateTime.now());
 
+            return anos < 18;
+        }
+        return false; // Ou lançar uma exceção, dependendo da tua regra de negócio
+    }
 }

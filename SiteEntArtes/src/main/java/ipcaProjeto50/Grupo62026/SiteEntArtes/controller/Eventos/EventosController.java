@@ -25,7 +25,7 @@ public class EventosController
     @GetMapping
     public ResponseEntity<List<EventoDto>> listarEventosFuturos() {
         return ResponseEntity.ok(eventoService.findEventosFuturos());
-}
+    }
 
     // Qualquer utilizador autenticado pode ver um evento específico
     @GetMapping("/{id}")
@@ -102,5 +102,38 @@ public class EventosController
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    // O aluno ou a coordenação cancelam a inscrição
+    @PatchMapping("/{id}/participantes/{utilizadorId}/cancelar")
+    public ResponseEntity<Void> cancelarInscricao(
+            @PathVariable String id,
+            @PathVariable String utilizadorId) {
+        try {
+            eventoService.cancelarInscricao(id, utilizadorId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    // Apenas a coordenação pode mudar o estado de um evento
+    @PreAuthorize("hasAuthority('ROLE_COORDENACAO')")
+    @PatchMapping("/{id}/estado/{novoEstadoId}")
+    public ResponseEntity<Void> editarEstado(
+            @PathVariable String id,
+            @PathVariable Integer novoEstadoId) {
+        try {
+            eventoService.editarEstado(id, novoEstadoId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    @GetMapping("/utilizador/{utilizadorId}")
+    public ResponseEntity<List<EventoDto>> listarPorUtilizador(@PathVariable String utilizadorId) {
+        List<EventoDto> eventos = eventoService.findEventosPorUtilizador(utilizadorId);
+        return ResponseEntity.ok(eventos);
     }
 }

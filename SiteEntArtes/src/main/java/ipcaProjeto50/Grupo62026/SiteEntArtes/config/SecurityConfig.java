@@ -56,18 +56,28 @@ public class    SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+        // Recomendo usar origins específicos em produção, mas para teste:
         configuration.setAllowedOriginPatterns(List.of("*"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
+        // ADICIONADO: "PATCH"
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+
         configuration.setAllowedHeaders(List.of(
                 "Authorization",
                 "Content-Type",
                 "X-Requested-With",
+                "Accept",
+                "Origin",
                 "hx-current-url",
                 "hx-request",
                 "hx-target",
                 "hx-trigger"
         ));
+
         configuration.setAllowCredentials(true);
+        // IMPORTANTE: Expor o header Authorization se o teu front-end precisar de o ler
+        configuration.setExposedHeaders(List.of("Authorization"));
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

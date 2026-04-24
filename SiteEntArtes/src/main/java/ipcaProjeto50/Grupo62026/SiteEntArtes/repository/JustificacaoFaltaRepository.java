@@ -11,7 +11,6 @@ import java.util.Optional;
 public interface JustificacaoFaltaRepository extends JpaRepository<JustificacaoFalta, Integer> {
 
     // Buscar justificação de uma falta específica
-    Optional<JustificacaoFalta> findByIdfalta_Id(Integer cancelamentoId);
-
+    Optional<JustificacaoFalta> findByIdfalta_Id(Integer faltaId);
     // Justificações pendentes (ainda não aceites)
 }

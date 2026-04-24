@@ -17,8 +17,12 @@ public class TransacaoController {
     private final TransacaoService transacaoService;
 
     @PostMapping("/checkout")
-    public ResponseEntity<String> checkout(@RequestBody TransacaoRequest request) {
-        transacaoService.realizarTransacao(request);
-        return ResponseEntity.ok("Transação concluída com sucesso!");
+    public ResponseEntity<?> checkout(@RequestBody TransacaoRequest request) {
+        try {
+            transacaoService.realizarTransacao(request);
+            return ResponseEntity.ok("Transação concluída com sucesso!");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 }

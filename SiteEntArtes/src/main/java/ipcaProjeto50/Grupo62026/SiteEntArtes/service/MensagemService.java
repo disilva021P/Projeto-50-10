@@ -8,6 +8,8 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Utilizadore;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -23,6 +25,8 @@ public class MensagemService {
     private final IdHasher idHasher;
     private final UtilizadorLogRepository utilizadorLogRepository;
     private final NotificacoesService notificacoesService;
+
+    private static final Logger logger = LoggerFactory.getLogger(MensagemService.class);
 
     public List<MensagenPreviewDto> buscarPreviewMensagens(String idUser) {
         Integer id = idHasher.decode(idUser);
@@ -50,11 +54,9 @@ public class MensagemService {
         // ── 2. Grupos (Corrigido para incluir grupos sem mensagens) ──
 
         // Injetar o GrupoRepository no teu Service para usar aqui:
-        // List<Grupo> meusGrupos = grupoRepository.findAllByMembrosId(id);
-
         // Como alternativa, se o teu mensagensGrupoRepository conseguir buscar grupos:
         List<ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Grupo> meusGrupos =
-                grupoRepository.findByMembros_Id(id); // Precisas de criar este método no GrupoRepository
+                grupoRepository.findByMembros_Id(id);
 
         for (ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Grupo g : meusGrupos) {
             // Tenta encontrar a última mensagem deste grupo específico
@@ -90,7 +92,7 @@ public class MensagemService {
     }
 
 
-    public MensagenDto criar(String idUser, MensagemCriarDto mensagenDto){
+    public MensagenDto criar(String idUser, MensagemCriarDto mensagenDto) throws Exception {
         Utilizadore remetente = utilizadoreRepository.findById(idHasher.decode(idUser))
                 .orElseThrow(() -> new EntityNotFoundException("Remetente com o id fornecido não encontrado"));
         Utilizadore destinatario = utilizadoreRepository.findById(idHasher.decode(mensagenDto.destinatario()))
@@ -123,9 +125,9 @@ public class MensagemService {
     }
 
 
-    public List<MensagenDto> mensagensConversa(String idUser, String idConversa ){
+    public List<MensagenDto> mensagensConversa(String idUser, String idConversa ) throws Exception {
         Utilizadore utilizadore = utilizadoreRepository.findById(idHasher.decode(idUser))
-                .orElseThrow(() -> new RuntimeException("Utilizador com o email não encontrado"));
+                .orElseThrow(() -> new Exception("Utilizador com o email não encontrado"));
 
         return mensagenRepository.findChatHistory(utilizadore.getId(),idHasher.decode(idConversa)).stream().map(this::converterParaDto).toList();
     }
@@ -168,14 +170,14 @@ public class MensagemService {
 
     // --- MÉTODOS PARA GRUPOS ---
 
-    public List<MensagenDto> mensagensConversaGrupo(String idUserHashed, String idGrupoHashed) {
+    public List<MensagenDto> mensagensConversaGrupo(String idUserHashed, String idGrupoHashed) throws Exception {
         // 1. Descodificar IDs
         Integer userId = idHasher.decode(idUserHashed);
         Integer grupoId = idHasher.decode(idGrupoHashed);
 
         // 2. Buscar o utilizador pelo ID real
         Utilizadore utilizadore = utilizadoreRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
+                .orElseThrow(() -> new Exception("Utilizador não encontrado"));
 
         // 3. Buscar mensagens do grupo
         return mensagensGrupoRepository.findByGrupoIdOrderByEnviadaEmAsc(grupoId)
@@ -183,6 +185,7 @@ public class MensagemService {
                 .map(this::converterGrupoParaDto)
                 .toList();
     }
+
 
     public MensagenDto criarMensagemGrupo(String idUserHashed, MensagemGrupoCriarDto dto) {
         Integer userId = idHasher.decode(idUserHashed);
@@ -204,16 +207,19 @@ public class MensagemService {
 
         // --- DISPARAR NOTIFICAÇÕES PARA O GRUPO ---
         grupo.getMembros().forEach(membro -> {
-            // Não notificar a própria pessoa que enviou
             if (!membro.getId().equals(userId)) {
-                notificacoesService.criarNotificacao(
-                        membro.getId(),
-                        remetente.getId(),
-                        "Grupo: " + grupo.getNome(),
-                        remetente.getNome() + ": " + dto.conteudo(),
-                        "MENSAGEM_GRUPO",
-                        "GRUPO_" + idHasher.encode(grupo.getId()) // Referência para abrir o grupo
-                );
+                try {
+                    notificacoesService.criarNotificacao(
+                            membro.getId(),
+                            remetente.getId(),
+                            "Grupo: " + grupo.getNome(),
+                            remetente.getNome() + ": " + dto.conteudo(),
+                            "MENSAGEM_GRUPO",
+                            "GRUPO_" + idHasher.encode(grupo.getId())
+                    );
+                } catch (Exception e) {
+                    logger.warn("Falha ao enviar notificação para membro {}: {}", membro.getId(), e.getMessage());
+                }
             }
         });
 
