@@ -25,6 +25,10 @@ public class CancelamentoService {
     private final IdHasher idHasher;
 
     public FaltaDto marcarFalta(FaltaDto faltaDto,String idMarca_por){
+
+        if (faltaDto.aulaId() == null) throw new RuntimeException("Erro: aulaId está null no JSON!");
+        if (faltaDto.utilizadorId() == null) throw new RuntimeException("Erro: utilizadorId está null no JSON!");
+        if (idMarca_por == null) throw new RuntimeException("Erro: idMarca_por está null (User não autenticado)!");
         // 1. Descodifica para trabalhar internamente
         Integer idAulaReal = idHasher.decode(faltaDto.aulaId());
         Integer idUserReal = idHasher.decode(faltaDto.utilizadorId());
@@ -112,6 +116,7 @@ public class CancelamentoService {
 
 
     public FaltaDto atualizarFalta(String faltaIdHash, FaltaDto novosDados) {
+
         // 1. Localiza a falta original
         Integer idReal = idHasher.decode(faltaIdHash);
         Cancelamento falta = cancelamentoRepository.findById(idReal)
