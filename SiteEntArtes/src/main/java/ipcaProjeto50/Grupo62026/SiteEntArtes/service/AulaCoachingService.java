@@ -86,6 +86,7 @@ public class AulaCoachingService {
                     }
                 });
     }
+
     public Page<AulaCoachingDto> findAllPorAlunoIDModalidadePage(String alunoId,String modalidade,int offset, Pageable pageable) throws Exception {
         Integer idDecoded = idHasher.decode(alunoId);
         if(offset<0) throw new Exception("Erro: Não pode inscrever-se em aulas passadas");
@@ -198,10 +199,10 @@ public class AulaCoachingService {
         notificacoesService.criarNotificacao(
                 p.getId(),
                 a.getId(),
-                "Novo Pedido de coacing",
+                "Novo Pedido de coaching",
                 "Novo pedido de coaching para "+ a.getNome() +". Acesse pedidos pendentes para confirmar",
                 "PEDIDO COACHING",
-                idHasher.encode(a.getId())
+                idHasher.encode(aulaCoaching.getId())
         );
         return convertToAulaCoachingDto(aulaCoaching);
     }
@@ -413,6 +414,8 @@ public class AulaCoachingService {
                 .with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
                 .plusWeeks(offset);
     }
+
+    @Transactional
     public void eliminar(String id) throws Exception {
         Integer idReal = idHasher.decode( id);
        AulaCoaching coaching= aulaCoachingRepository.findById(idReal)
@@ -425,6 +428,8 @@ public class AulaCoachingService {
             return;
         }
     }
+
+    @Transactional
     public void professorRejeitaCoaching(String idAula,String idProfessor) throws Exception {
         AulaCoaching aula = aulaCoachingRepository.findById(idHasher.decode(idAula)).orElseThrow(()-> new Exception( "Aula não encontrada"));
         AulaProfessore aulaProfessore = aulaProfessoreRepository.findByAula_IdAndProfessor_Id(idHasher.decode(idAula), idHasher.decode(idProfessor) ).orElseThrow(()-> new Exception( "Professor não possui esta aula"));
@@ -433,7 +438,7 @@ public class AulaCoachingService {
                     idHasher.decode(aulaAluno.idAluno()),
                     aulaProfessore.getProfessor().getId(),
                     "Aula de coaching rejeitada! ",
-                    "Aula de coaching de"+ aula.getDataAula() +" das "+
+                    "Aula de coaching de "+ aula.getDataAula() +" das "+
                             aula.getHoraInicio() + " às " + aula.getHoraFim() + ".\nFoi rejeitada pelo professor " + aulaProfessore.getProfessor().getNome()
                     ,
                     "PEDIDO COACHING",

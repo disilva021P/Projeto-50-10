@@ -539,7 +539,6 @@ public class AulaService {
                 .map(this::converterParaDto)
                 .toList();
     }
-    // No AulaService
 
     @Transactional
     public void inscreverAluno(String alunoId, String aulaId) throws Exception {
@@ -566,7 +565,7 @@ public class AulaService {
             notificacoesService.criarNotificacao(
                     professore.getProfessor().getId(),
                     aluno.getId(),
-                    "Inscição em aula de coacing",
+                    "Inscição em aula de coaching",
                     "Nova inscrição para aula de coaching de"+ aulaAluno.getAula().getDataAula() +" das "+
                         aulaAluno.getAula().getHoraInicio() + " às " + aulaAluno.getAula().getHoraFim()
                     ,
