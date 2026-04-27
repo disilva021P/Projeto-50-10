@@ -1,6 +1,7 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.controller.Marketplace;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.Utils;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ArtigoDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ArtigoRequest;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ConversaoInventarioRequest;
@@ -224,13 +225,11 @@ public class MarketplaceController {
 
     @PostMapping(value = "/importar-inventario", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> importarDoInventario(
-            @ModelAttribute ConversaoInventarioRequest request,
-            Authentication authentication
+            @ModelAttribute ConversaoInventarioRequest request
     ) {
         try {
-            String email = authentication.getName(); // devolve o email do JWT
 
-            marketplaceService.converterUnidadeParaMarketplace(request, email);
+            marketplaceService.converterUnidadeParaMarketplace(request, Utils.getAuthenticatedUserId());
             return ResponseEntity.ok("Artigo importado com sucesso!");
 
         } catch (NoSuchElementException e) {

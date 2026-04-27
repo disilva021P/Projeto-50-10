@@ -269,12 +269,15 @@ public class MarketplaceService {
 
     @Transactional
     public void converterUnidadeParaMarketplace(ConversaoInventarioRequest request, String emailCoordenador) {
+        //DECODE
+        Integer idOriginal = idHasher.decode(emailCoordenador);
+
         // 1. Verificar se a unidade existe
         var unidade = unidadeRepository.findById(request.getUnidadeId())
                 .orElseThrow(() -> new RuntimeException("Item de inventário não encontrado."));
 
         // 2. Buscar o coordenador pelo email (vem do JWT)
-        Utilizadore dono = utilizadoreRepository.findByEmail(emailCoordenador)
+        Utilizadore dono = utilizadoreRepository.findById(idOriginal)
                 .orElseThrow(() -> new RuntimeException("Coordenador não encontrado: " + emailCoordenador));
 
         // 3. Criar o novo Artigo
