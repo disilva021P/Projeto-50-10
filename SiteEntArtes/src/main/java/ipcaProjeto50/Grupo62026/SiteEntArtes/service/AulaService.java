@@ -655,7 +655,7 @@ public class AulaService {
         return aulaAlunoRepository.countByAulaId(idHasher.decode(aulaId));
     }
     public void aplicaSancoes(String alunoId, Aula aula,String marcadopor) throws Exception {
-        FaltaDto faltaDto = new FaltaDto(null,idHasher.encode(aula.getId()),alunoId,false,"Cancelamento antes das 48 horas");
+        FaltaDto faltaDto = new FaltaDto(null,idHasher.encode(aula.getId()),alunoId,false,"Cancelamento antes das 48 horas","PENDENTE");
         cancelamentoService.marcarFalta(faltaDto,marcadopor);
         return;
     }

@@ -41,6 +41,8 @@ public class AulaCoachingService {
     private final ProfessorModalidadeRepository professorModalidadeRepository;
     private final EstudioModalidadeRepository estudioModalidadeRepository;
     private final NotificacoesService notificacoesService;
+    private  final UtilizadorService utilizadorService;
+    private final EncarregadoAlunoRepository encarregadoAlunoRepository;
 
     // =========================================================================
     // Leitura
@@ -277,24 +279,39 @@ public class AulaCoachingService {
                 .orElseThrow(() -> new Exception("Aula de coaching não encontrada"));
         Professore professore = professorService.findById(professorId);
         boolean aulaProfessore = aulaProfessoreRepository.existsByAula_IdAndProfessor_Id(coaching.getId(), idHasher.decode(professorId));
-        if(!aulaProfessore) {
+        if (!aulaProfessore) {
             throw new Exception("Professor sem acesso à Aula");
         }
         if (coaching.getEstado().getId() != AulaService.ID_ESTADO_PENDENTE) {
             throw new Exception("Só é possível confirmar coachings no estado PENDENTE. Estado atual: "
                     + coaching.getEstado().getEstado());
         }
-        for(AulaAlunoDto aulaAluno: aulaAlunoService.findAllByAulaId(aulaId))
-        notificacoesService.criarNotificacao(
-                idHasher.decode(aulaAluno.idAluno()),
-                professore.getId(),
-                "Aula de coaching marcada! ",
-                "Aula de coaching de"+ coaching.getDataAula() +" das "+
-                        coaching.getHoraInicio() + " às " + coaching.getHoraFim() + ".\nFoi confirmada pelo professor " + professore.getNome()
-                ,
-                "PEDIDO COACHING",
-                idHasher.encode( coaching.getId())
-        );
+        for (AulaAlunoDto aulaAlunodto : aulaAlunoService.findAllByAulaId(aulaId)) {
+            if (utilizadorService.possuiEducando(aulaAlunodto.idAluno())) {
+                for (EncarregadoAluno ea : encarregadoAlunoRepository.findAllByAluno_Id(idHasher.decode(aulaAlunodto.idAluno()))) {
+                    notificacoesService.criarNotificacao(
+                            ea.getEncarregado().getId(),
+                            professore.getId(),
+                            "Aula de coaching marcada! ",
+                            "Aula de coaching de" + coaching.getDataAula() + " das " +
+                                    coaching.getHoraInicio() + " às " + coaching.getHoraFim() + ".\nFoi confirmada pelo professor " + professore.getNome()
+                            ,
+                            "PEDIDO COACHING",
+                            idHasher.encode(coaching.getId())
+                    );
+                }
+            }
+            notificacoesService.criarNotificacao(
+                    idHasher.decode(aulaAlunodto.idAluno()),
+                    professore.getId(),
+                    "Aula de coaching marcada! ",
+                    "Aula de coaching de" + coaching.getDataAula() + " das " +
+                            coaching.getHoraInicio() + " às " + coaching.getHoraFim() + ".\nFoi confirmada pelo professor " + professore.getNome()
+                    ,
+                    "PEDIDO COACHING",
+                    idHasher.encode(coaching.getId())
+            );
+        }
         coaching.setEstado(estadoAuloService.findbyId(AulaService.ID_ESTADO_AGENDADA));
         return convertToAulaCoachingDto(aulaCoachingRepository.save(coaching));
     }

@@ -16,4 +16,8 @@ public interface EncarregadoAlunoRepository extends JpaRepository<EncarregadoAlu
     Optional<EncarregadoAluno> findByEncarregado_IdAndAluno_Id(Integer idEncarregado, Integer idAluno);
 
     boolean existsByEncarregado_IdAndAluno_Id(Integer idEncarregado, Integer idAluno);
+
+    boolean existsByAluno_Id(Integer decode);
+
+    List<EncarregadoAluno> findAllByAluno_Id(Integer decode);
 }

@@ -8,6 +8,8 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.PersistenceContext;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import jdk.jshell.execution.Util;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,6 +26,7 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -44,6 +47,7 @@ public class UtilizadorService {
     private final EmailService emailService;
     private final AlunoRepository alunoRepository;
     private final ProfessoreRepository professoreRepository;
+
     // ─── Listar todos, com filtro opcional por tipo ───────────────────────────
     public Page<UtilizadorResponseDto> listarTodos(String tipoFiltro, Pageable pageable) {
         Page<Utilizadore> lista;
@@ -406,5 +410,12 @@ public class UtilizadorService {
                 .stream()
                 .anyMatch(u -> u.id().equals(educandoId));
         if (!temPermissao) throw new Exception("Não tem permissão para aceder a este educando");
+    }
+    public boolean possuiEducando(String idAluno){
+        return encarregadoAluno.existsByAluno_Id(idHasher.decode(idAluno));
+    }
+
+    public Optional<Utilizadore> findByEmail(@NotBlank(message = "O email não pode estar vazio") @Email(message = "Formato de email inválido") String email) {
+        return utilizadoreRepository.findByEmail(email);
     }
 }

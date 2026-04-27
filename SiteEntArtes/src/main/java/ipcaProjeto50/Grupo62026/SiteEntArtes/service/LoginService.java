@@ -23,59 +23,21 @@ import java.util.Optional;
 public class LoginService {
 
     private final UtilizadorLogRepository logRepository;
-    private final UtilizadoreRepository utilizadoreRepository;
-    private final JwtService jwtService;
-    private final AuthenticationManager authenticationManager;
 
     private static final int MAX_TENTATIVAS = 5;
     private static final int MINUTOS_BLOQUEIO = 15;
 
-    public String login(LoginDTO loginDto, String ip) throws Exception {
-        // 1. Procurar o utilizador (precisamos do ID para verificar bloqueio de conta)
-        if (ipEstaBloqueado(ip)) {
-            throw new Exception("O seu IP está bloqueado temporariamente por excesso de tentativas.");
-        }
-        Optional<Utilizadore> utilizadorOpt = utilizadoreRepository.findByEmail(loginDto.email());
 
-        if(utilizadorOpt.isEmpty()) {
-            registarTentativa(null,ip,false);
-            throw new Exception("Email ou password incorretos.");
-        }
-
-        // 2. Verificar se o IP ou a Conta estão bloqueados antes de qualquer tentativa
-
-
-
-        try {
-            // 3. Tentar a Autenticação (Spring Security)
-            Authentication auth = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(loginDto.email(), loginDto.password())
-            );
-
-            UserDetails userDetails = (UserDetails) auth.getPrincipal();
-
-            if (userDetails == null) throw new Exception("Erro interno");
-
-            // 4. Sucesso: Registar log positivo
-            registarTentativa(utilizadorOpt.get(), ip, true);
-
-            return jwtService.generateToken(userDetails);
-        } catch (AuthenticationException e) {
-            // 5. Falha: Registar log negativo (essencial para o contador de bloqueio)
-            registarTentativa(utilizadorOpt.get(), ip, false);
-            throw new Exception("Email ou password incorretos.");
-        }
-    }
 
     // Métodos auxiliares
 
 
-    private boolean ipEstaBloqueado(String ip) {
+    public boolean ipEstaBloqueado(String ip) {
         LocalDateTime limite = LocalDateTime.now().minusMinutes(MINUTOS_BLOQUEIO);
         return logRepository.countFailuresByIp(ip, limite) >= MAX_TENTATIVAS;
     }
 
-    private void registarTentativa(Utilizadore utilizador, String ip, boolean sucesso) {
+    public void registarTentativa(Utilizadore utilizador, String ip, boolean sucesso) {
         UtilizadorLog log = new UtilizadorLog();
         log.setIdUtilizador(utilizador);
         log.setEnderecoIp(ip);

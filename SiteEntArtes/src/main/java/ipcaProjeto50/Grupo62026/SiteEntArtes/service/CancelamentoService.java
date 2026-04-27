@@ -9,12 +9,14 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Cancelamento;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Utilizadore;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.AulaRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.CancelamentoRepository;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.EncarregadoAlunoRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.UtilizadoreRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,7 +25,8 @@ public class CancelamentoService {
     private final AulaRepository aulaRepository;
     private final UtilizadoreRepository utilizadoreRepository;
     private final IdHasher idHasher;
-
+    private final EncarregadoAlunoRepository encarregadoAlunoRepository;
+    private final NotificacoesService notificacoesService;
     public FaltaDto marcarFalta(FaltaDto faltaDto,String idMarca_por) throws Exception {
         // 1. Descodifica para trabalhar internamente
         Integer idAulaReal = idHasher.decode(faltaDto.aulaId());
@@ -45,7 +48,16 @@ public class CancelamentoService {
         cancelamento.setJustificado(false);
         cancelamento.setMotivo(faltaDto.motivo());
         Cancelamento salvo = cancelamentoRepository.save(cancelamento);
-
+        notificacoesService.criarNotificacao(
+                utilizador.getId(),
+                marcado_por.getId(),
+                "Recebeu uma falta! ",
+                "Recebeu falta na aula " + aula.getDataAula() +
+                        " (" + aula.getHoraInicio() + " - " + aula.getHoraFim() +
+                        ") foi indeferida pelo professor " + marcado_por.getNome() + ".", // Mensagem alterada
+                "FALTA",
+                idHasher.encode( salvo.getId())
+        );
         // 3. RETORNO: Transforma a Entity salva num DTO com Hashes
         return converterParaDto(salvo);
     }
@@ -67,49 +79,52 @@ public class CancelamentoService {
                 .toList();
     }
 
-    public List<FaltaResponseDto> listarFaltasPorUtilizador(String utilizadorIdHash) {
-        // 1. Descodifica o ID (pode ser Aluno ou Professor)
+    public List<FaltaDto> listarFaltasPorUtilizador(String utilizadorIdHash) {
+        // 1. Descodifica o ID
         Integer idReal = idHasher.decode(utilizadorIdHash);
 
-        // 2. Busca na tabela de cancelamentos onde o 'utilizador_id' coincide
-        return cancelamentoRepository.findByUtilizadorId(idReal).stream()
+        // 2. Busca os cancelamentos e converte para FaltaDto
+        return cancelamentoRepository.findAllByUtilizador_Id(idReal).stream()
                 .map(f -> {
-                    // Procuramos saber quem marcou a falta (Coordenador ou Diretor)
-                    String nomeQuemMarcou = (f.getMarcardo_por() != null) ? f.getMarcardo_por().getNome() : "Sistema";
+                    // Cálculo do estado baseado na lógica que discutimos
+                    String estadoCalculado;
+                    if (f.getJustificado()) {
+                        estadoCalculado = "APROVADA";
+                    } else if (f.getJustificadoEm() != null) {
+                        estadoCalculado = "INJUSTIFICADA";
+                    } else {
+                        estadoCalculado = "PENDENTE";
+                    }
 
-                    return new FaltaResponseDto(
+                    // Retorna o DTO simples
+                    return new FaltaDto(
                             idHasher.encode(f.getId()),
-                            f.getAula().getDataAula().toString(),
-                            f.getAula().getDataAula().getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, new java.util.Locale("pt", "PT")),
-                            f.getAula().getHoraInicio() + " - " + f.getAula().getHoraFim(),
-                            f.getAula().getIdHorario().getIdturma().getModalidade().getNome(),
-                            determinarEstadoFalta(f),
-                            nomeQuemMarcou, // Aqui aparece o nome do Coordenador que marcou a falta ao Professor
-                            f.getMotivo()
+                            idHasher.encode(f.getAula().getId()),
+                            idHasher.encode(f.getUtilizador().getId()),
+                            f.getJustificado(),
+                            f.getMotivo(),
+                            estadoCalculado
                     );
                 }).toList();
     }
 
     // 3. LISTAR PENDENTES (Para a Coordenação)
     public List<FaltaDto> listarPendentes() {
-        return cancelamentoRepository.findByJustificadoFalse().stream()
+        return cancelamentoRepository.findByJustificadoFalseAndJustificadoEmNull    ().stream()
                 .map(this::converterParaDto)
                 .toList();
     }
 
-    public FaltaResumoDto obterResumoEstatisticas(String alunoIdHash) {
-        Integer idReal = idHasher.decode(alunoIdHash);
 
-        long total = cancelamentoRepository.countTotalFaltas(idReal);
-        long justificadas = cancelamentoRepository.countJustificadas(idReal);
-        long pendentes = cancelamentoRepository.countNaoJustificadas(idReal);
-
-        // Exemplo: Injustificadas podes calcular pela diferença ou outra query
-        long injustificadas = total - justificadas - pendentes;
-
+    public FaltaResumoDto obterResumoEstatisticas(String idHashed) {
+        // 1. Executa as queries do repository
+        Integer alunoIdReal= idHasher.decode(idHashed);
+        long total = cancelamentoRepository.countTotalFaltas(alunoIdReal);
+        long justificadas = cancelamentoRepository.countJustificadas(alunoIdReal);
+        long pendentes = cancelamentoRepository.countPendentes(alunoIdReal);
+        long injustificadas = cancelamentoRepository.countNaoJustificadas(alunoIdReal);
         return new FaltaResumoDto(total, justificadas, pendentes, injustificadas);
     }
-
 
     public FaltaDto atualizarFalta(String faltaIdHash, FaltaDto novosDados) throws Exception {
         // 1. Localiza a falta original
@@ -152,12 +167,23 @@ public class CancelamentoService {
 
 
     private FaltaDto converterParaDto(Cancelamento c) {
+        String estadoCalculado = "";
+        if (c.getJustificado()) {
+             estadoCalculado = "APROVADA";
+        } else if (c.getJustificadoEm() != null) {
+            // Se justificado é false MAS existe data de processamento, foi rejeitada
+            estadoCalculado = "INJUSTIFICADA";
+        } else {
+            // Se justificado é false E não tem data, ainda ninguém mexeu nela
+            estadoCalculado = "PENDENTE";
+        }
         return new FaltaDto(
                 idHasher.encode(c.getId()),
                 idHasher.encode(c.getAula().getId()),
                 idHasher.encode(c.getUtilizador().getId()),
                 c.getJustificado(),
-                c.getMotivo()
+                c.getMotivo(),
+                estadoCalculado
         );
     }
     private String determinarEstadoFalta(Cancelamento f) {
@@ -165,9 +191,95 @@ public class CancelamentoService {
             return "JUSTIFICADA";
         }
         // Se não está justificado, mas já tem um motivo escrito (pelo encarregado ou prof)
-        if (f.getMotivo() != null && !f.getMotivo().isEmpty()) {
-            return "POR ANALISAR";
+        if (f.getJustificadoEm() == null) {
+            return "PENDENTE";
         }
         return "INJUSTIFICADA";
+    }
+    public List<FaltaDto> listarFaltasPorProfessor(String professorIdHash) {
+        // A query no repositório deve buscar faltas onde a aula pertence ao professorIdHash
+        List<Cancelamento> faltas = cancelamentoRepository.findFaltasByProfessor(idHasher.decode(professorIdHash));
+
+        return faltas.stream()
+                .map(this::converterParaDto).toList();
+    }
+    public List<FaltaDto> listarFaltasPorProfessorAula(String professorIdHash,String aulaId) {
+        // A query no repositório deve buscar faltas onde a aula pertence ao professorIdHash
+        List<Cancelamento> faltas = cancelamentoRepository.findFaltasByProfessorAula(idHasher.decode(professorIdHash),idHasher.decode(aulaId));
+
+        return faltas.stream()
+                .map(this::converterParaDto).toList();
+    }
+
+    // No CancelamentoService.java
+
+    public List<FaltaDto> listarFaltasDosEducandos(String encarregadoId) {
+        // 1. Obter a lista de IDs dos alunos (educandos) associados a este encarregado
+        // Exemplo: utilizadorRepository.findEducandosByEncarregadoId(encarregadoId)
+        List<Integer> educandosIds = encarregadoAlunoRepository.findAllByEncarregado_Id(idHasher.decode(encarregadoId)).stream().map(encarregadoAluno ->  encarregadoAluno.getAluno().getId()).toList();
+
+        if (educandosIds.isEmpty()) {
+            return List.of();
+        }
+
+        // 2. Buscar todos os cancelamentos (faltas) desses alunos
+        List<Cancelamento> faltas = cancelamentoRepository.findByUtilizadorIdIn(educandosIds);
+
+        // 3. Converter a entidade Cancelamento para FaltaResponseDto
+        return faltas.stream()
+                .map(falta -> {
+                    String es;
+                    if(falta.getJustificado()){
+                        es="JUSTIFICADA";
+                    }else if(falta.getJustificadoEm()==null){
+                        es="PENDENTE";
+                    }else{
+                        es="INJUSTIFICADA";
+                    }
+                    // Aqui deves usar o teu Mapper ou converter manualmente
+                    // para preencher campos como 'disciplina', 'data', 'professor', etc.
+                    return new FaltaDto(
+                            idHasher.encode(falta.getId()),
+                            idHasher.encode(falta.getAula().getId()),
+                            null,
+                            falta.getJustificado(),
+                            falta.getMotivo(),
+                            es
+                    );
+                }).toList()
+                ;
+    }
+
+    public FaltaResumoDto obterResumoEstatisticasEducandos(String encarregadoIdHash) {
+        // 1. Obtém os IDs (já descodificados ou em formato real) dos educandos
+        // Assume-se que o utilizadorService já devolve os IDs prontos para a BD
+        List<Integer> educandosIds = encarregadoAlunoRepository.findAllByEncarregado_Id(idHasher.decode(encarregadoIdHash)).stream().map(encarregadoAluno ->  encarregadoAluno.getAluno().getId()).toList();
+
+        long totalAcumulado = 0;
+        long justificadasAcumuladas = 0;
+        long pendentesAcumuladas = 0;
+        long injustificadasAcumuladas = 0;
+
+        // 2. Ciclo para somar as estatísticas de cada educando
+        for (Integer idReal : educandosIds) {
+            long total = cancelamentoRepository.countTotalFaltas(idReal);
+            long justificadas = cancelamentoRepository.countJustificadas(idReal);
+            long pendentes = cancelamentoRepository.countNaoJustificadas(idReal);
+            long injustificadas = cancelamentoRepository.countNaoJustificadas(idReal);
+
+            // Acumula os valores
+            totalAcumulado += total;
+            justificadasAcumuladas += justificadas;
+            pendentesAcumuladas += pendentes;
+            injustificadasAcumuladas += injustificadas;
+        }
+
+        // 3. Devolve o DTO com os totais somados
+        return new FaltaResumoDto(
+                totalAcumulado,
+                justificadasAcumuladas,
+                pendentesAcumuladas,
+                injustificadasAcumuladas
+        );
     }
 }
