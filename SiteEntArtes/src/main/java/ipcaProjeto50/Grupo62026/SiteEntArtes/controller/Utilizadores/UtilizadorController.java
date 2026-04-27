@@ -259,4 +259,32 @@ public class UtilizadorController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
+    @PostMapping("/associar-aluno-encarregado")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
+    public ResponseEntity<?> associarAlunoAEncarregado(
+            @RequestParam(name = "idAluno") String idAluno,
+            @RequestParam(name = "idEncarregado") String idEncarregado) {
+        try {
+            utilizadorService.associarAlunoAEncarregado(idAluno, idEncarregado);
+            return ResponseEntity.ok("Associação criada com sucesso.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Erro ao associar aluno: " + e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/remover-aluno-encarregado")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
+    public ResponseEntity<?> removerAssociacaoAlunoEncarregado(
+            @RequestParam(name = "idAluno") String idAluno,
+            @RequestParam(name = "idEncarregado") String idEncarregado) {
+        try {
+            utilizadorService.removerAssociacaoAlunoEncarregado(idAluno, idEncarregado);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Erro ao remover associação: " + e.getMessage());
+        }
+    }
 }

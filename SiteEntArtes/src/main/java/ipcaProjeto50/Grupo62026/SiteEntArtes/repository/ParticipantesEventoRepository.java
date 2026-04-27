@@ -3,6 +3,7 @@ package ipcaProjeto50.Grupo62026.SiteEntArtes.repository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Evento;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.ParticipantesEvento;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.ParticipantesEventoId;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Utilizadore;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -20,6 +21,10 @@ public interface ParticipantesEventoRepository extends JpaRepository<Participant
 
     @Query("SELECT pe.evento FROM ParticipantesEvento pe WHERE pe.utilizador.id = :utilizadorId AND pe.cancelado = false")
     List<Evento> findEventosAtivosPorUtilizador(@Param("utilizadorId") Integer utilizadorId);
+
+
+    boolean existsByEventoAndUtilizador(Evento evento, Utilizadore utilizador);
+
 
     boolean existsByEventoIdAndUtilizadorId(Integer eventoId, Integer utilizadorId);
 

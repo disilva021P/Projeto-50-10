@@ -38,7 +38,7 @@ public class EventosController
     }
 
     // Só a coordenação pode criar eventos
-    @PreAuthorize("hasAuthority('ROLE_COORDENACAO')")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
     @PostMapping
     public ResponseEntity<EventoDto> criarEvento(
             @AuthenticationPrincipal String userId,
@@ -52,7 +52,7 @@ public class EventosController
     }
 
     // Só a coordenação pode editar eventos
-    @PreAuthorize("hasAuthority('ROLE_COORDENACAO')")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
     @PutMapping("/{id}")
     public ResponseEntity<EventoDto> editarEvento(
             @PathVariable String id,
@@ -65,7 +65,7 @@ public class EventosController
     }
 
     // Só a coordenação pode apagar eventos
-    @PreAuthorize("hasAuthority('ROLE_COORDENACAO')")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> apagarEvento(@PathVariable String id) {
         try {
@@ -77,7 +77,7 @@ public class EventosController
     }
 
     // Adicionar participante a um evento (coordenação)
-    @PreAuthorize("hasAuthority('ROLE_COORDENACAO')")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
     @PostMapping("/{id}/participantes/{utilizadorId}")
     public ResponseEntity<Void> adicionarParticipante(
             @PathVariable String id,
@@ -91,7 +91,7 @@ public class EventosController
     }
 
     // Remover participante de um evento (coordenação)
-    @PreAuthorize("hasAuthority('ROLE_COORDENACAO')")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
     @DeleteMapping("/{id}/participantes/{utilizadorId}")
     public ResponseEntity<Void> removerParticipante(
             @PathVariable String id,
@@ -118,7 +118,7 @@ public class EventosController
     }
 
     // Apenas a coordenação pode mudar o estado de um evento
-    @PreAuthorize("hasAuthority('ROLE_COORDENACAO')")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
     @PatchMapping("/{id}/estado/{novoEstadoId}")
     public ResponseEntity<Void> editarEstado(
             @PathVariable String id,
