@@ -15,32 +15,48 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 @Service
 public class FeriadosService {
 
     @Autowired
     @Lazy
     private FeriadosService self;
+
     @Cacheable("feriados")
     public List<LocalDate> diasFeriados() {
-        HolidayManager manager = HolidayManager.getInstance(
-                ManagerParameters.create(HolidayCalendar.PORTUGAL)
-        );        int anoAtual = LocalDate.now().getYear();
-        // Feriados nacionais
+        HolidayManager manager;
+
+        // --- SOLUÇÃO PARA O ERRO DE CLASSLOADER ---
+        ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
+        try {
+            // Forçamos a thread a olhar para o ClassLoader onde o Jollyday reside
+            Thread.currentThread().setContextClassLoader(HolidayManager.class.getClassLoader());
+
+            manager = HolidayManager.getInstance(
+                    ManagerParameters.create(HolidayCalendar.PORTUGAL)
+            );
+        } finally {
+            // Restauramos o ClassLoader original para não afetar o resto do Spring
+            Thread.currentThread().setContextClassLoader(originalClassLoader);
+        }
+        // ------------------------------------------
+
+        int anoAtual = LocalDate.now().getYear();
         Set<Holiday> holidays = manager.getHolidays(anoAtual);
-        // Converter para lista mutável
+
         List<LocalDate> lista = holidays.stream()
                 .map(Holiday::getDate)
                 .collect(Collectors.toCollection(ArrayList::new));
-        // ➕ Feriado municipal de Braga (São João - 24 de junho)
+
+        // Feriado municipal de Braga
         lista.add(LocalDate.of(anoAtual, 6, 24));
-        // Ordenar e remover duplicados (por segurança)
+
         return lista.stream()
                 .distinct()
                 .sorted()
                 .toList();
     }
+
     public boolean isFeriado(LocalDate data) {
         return self.diasFeriados().contains(data);
     }

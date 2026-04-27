@@ -14,6 +14,8 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.ModalidadeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -118,5 +120,13 @@ public class EstudioService {
                 aulaDto.getHoraFim()
         );
 
+    }
+    public boolean conflitoestudio(Integer estudioId, LocalDate data, LocalTime inicio, LocalTime fim) {
+        return aulaRepository.existeConflitoNoEstudio(
+                estudioId,
+                data,
+                inicio,
+                fim
+        );
     }
 }

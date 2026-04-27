@@ -92,14 +92,14 @@ public class AulaCoachingService {
         if(offset<0) throw new Exception("Erro: Não pode inscrever-se em aulas passadas");
         LocalDate inicioSemana = calcularInicioSemana(offset);
         LocalDate fimSemana = inicioSemana.plusDays(6);
-        if(modalidade==null || modalidade.isBlank()) return aulaCoachingRepository.buscaAulasCoachingDisponiveis(inicioSemana,fimSemana,pageable).map(aula -> {
+        if(modalidade==null || modalidade.isBlank()) return aulaCoachingRepository.buscaAulasCoachingDisponiveis(inicioSemana,fimSemana,idDecoded,pageable).map(aula -> {
                     try {
                         return convertToAulaCoachingDto(aula);
                     } catch (Exception e) {
                         throw new RuntimeException("Mapping failed", e);
                     }});
         else {
-            return aulaCoachingRepository.buscaAulasCoachingDisponiveilPorModalidade(inicioSemana,fimSemana,idHasher.decode(modalidade), pageable).map(aula -> {
+            return aulaCoachingRepository.buscaAulasCoachingDisponiveilPorModalidade(inicioSemana,fimSemana,idHasher.decode(modalidade),idDecoded,  pageable).map(aula -> {
                 try {
                     return convertToAulaCoachingDto(aula);
                 } catch (Exception e) {
@@ -160,6 +160,8 @@ public class AulaCoachingService {
      */
     @Transactional
     public AulaCoachingDto salvarMarcarCoaching(AulaCoachingRequestDto dto, String idAluno) throws Exception {
+        System.out.println("DEBUG ID Aluno: " + idAluno);
+        System.out.println("DEBUG DTO: " + dto);
         if(dto.dataAula().isBefore(LocalDate.now()) || (dto.dataAula().equals(LocalDate.now()) && dto.horaInicio().isBefore(LocalTime.now()))){
             throw new Exception("Data de início inferior à Data atual");
         }
@@ -258,13 +260,11 @@ public class AulaCoachingService {
         if(coaching.getEstado().getId() == AulaService.ID_ESTADO_PENDENTE){
             aulaService.cancelarInscricaoAluno(alunoId, aulaId);
             aulaProfessoreRepository.deleteAllByAula_Id(idAula);
-            aulaRepository.deleteById(idAula);
             aulaCoachingRepository.deleteById(idAula);
             return;
         }
 
         aulaService.cancelarInscricaoAluno(alunoId, aulaId);
-        return;
     }
 
     /**

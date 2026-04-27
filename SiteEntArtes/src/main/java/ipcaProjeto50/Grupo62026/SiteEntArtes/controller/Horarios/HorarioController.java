@@ -77,7 +77,7 @@ public class HorarioController {
 
     @GetMapping("/coachingsdisponiveis")
     @PreAuthorize("hasAuthority('ALUNO')")
-    public ResponseEntity<Page<AulaCoachingDto>> getAulasDisponiveis(
+    public ResponseEntity<? > getAulasDisponiveis(
             @RequestParam(name = "offset", defaultValue = "0") int offset,
             @RequestParam(name = "modalidade", required = false) String modalidade,
             @PageableDefault(size = 10, sort = "dataAula") Pageable pageable) {
@@ -86,13 +86,13 @@ public class HorarioController {
                     getUserId(), modalidade, offset, pageable);
             return ResponseEntity.ok(aulas);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 
-    @PostMapping("/inscreverEmCoaching")
+    @PostMapping("/inscreverEmCoaching/{id}")
     @PreAuthorize("hasAuthority('ALUNO')")
-    public ResponseEntity<?> inscreverCoachingAluno(@RequestBody String aulaId) {
+    public ResponseEntity<?> inscreverCoachingAluno(@PathVariable("id") String aulaId) {
         try {
             return ResponseEntity.ok(aulaCoachingService.inscrever(getUserId(), aulaId));
         } catch (Exception e) {
@@ -112,17 +112,7 @@ public class HorarioController {
                     .body("Erro ao cancelar inscrição no coaching: " + e.getMessage());
         }
     }
-
-    @PutMapping("/coaching/{aulaId}/validar-presenca")
-    @PreAuthorize("hasAuthority('ALUNO')")
-    public ResponseEntity<?> validarPresencaAluno(@PathVariable(name = "aulaId") String aulaId) {
-        try {
-            return ResponseEntity.ok(aulaCoachingService.validarPresenca(getUserId(), aulaId));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Erro ao validar presença: " + e.getMessage());
-        }
-    }
+    
 
     // endregion
 
@@ -150,7 +140,7 @@ public class HorarioController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size) {
         try {
-            verificaPermissaoEducando(educandoId);
+                utilizadorService.verificaPermissaoEducando(educandoId, getUserId());
             return ResponseEntity.ok(aulaCoachingService.findAllbyAlunoIdPage(educandoId, PageRequest.of(page, size)));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -166,7 +156,7 @@ public class HorarioController {
             @RequestParam(name = "modalidade", required = false) String modalidade,
             @PageableDefault(size = 10, sort = "dataAula") Pageable pageable) {
         try {
-            verificaPermissaoEducando(educandoId);
+            utilizadorService.verificaPermissaoEducando(educandoId, getUserId());
             return ResponseEntity.ok(aulaCoachingService.findAllPorAlunoIDModalidadePage(educandoId, modalidade, offset, pageable));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -180,7 +170,7 @@ public class HorarioController {
             @PathVariable(name = "educandoId") String educandoId,
             @RequestBody AulaCoachingRequestDto dto) {
         try {
-            verificaPermissaoEducando(educandoId);
+            utilizadorService.verificaPermissaoEducando(educandoId, getUserId());
             return ResponseEntity.ok(aulaCoachingService.salvarMarcarCoaching(dto, educandoId));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -188,13 +178,13 @@ public class HorarioController {
         }
     }
 
-    @PostMapping("/inscreverEmCoaching/educando/{educandoId}")
+    @PostMapping("/inscreverEmCoaching/{aulaId}/educando/{educandoId}")
     @PreAuthorize("hasAuthority('ENCARREGADO')")
     public ResponseEntity<?> inscreverCoachingEducando(
             @PathVariable(name = "educandoId") String educandoId,
-            @RequestBody String aulaId) {
+            @PathVariable(name="aulaId") String aulaId) {
         try {
-            verificaPermissaoEducando(educandoId);
+            utilizadorService.verificaPermissaoEducando(educandoId, getUserId());
             return ResponseEntity.ok(aulaCoachingService.inscrever(educandoId, aulaId));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -208,7 +198,7 @@ public class HorarioController {
             @PathVariable(name = "aulaId") String aulaId,
             @PathVariable(name = "educandoId") String educandoId) {
         try {
-            verificaPermissaoEducando(educandoId);
+            utilizadorService.verificaPermissaoEducando(educandoId, getUserId());
             aulaCoachingService.cancelarInscricao(educandoId, aulaId);
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
@@ -223,7 +213,7 @@ public class HorarioController {
             @PathVariable(name = "aulaId") String aulaId,
             @PathVariable(name = "educandoId") String educandoId) {
         try {
-            verificaPermissaoEducando(educandoId);
+            utilizadorService.verificaPermissaoEducando(educandoId, getUserId());
             return ResponseEntity.ok(aulaCoachingService.validarPresenca(educandoId, aulaId));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -285,13 +275,6 @@ public class HorarioController {
         }
     }
 
-    @PutMapping("/professor/marcarFalta/{aulaId}/{alunoid}")
-    @PreAuthorize("hasAuthority('PROFESSOR')")
-    public ResponseEntity<?> marcarFalta(
-            @PathVariable(name = "aulaId") String aulaId,
-            @PathVariable(name = "alunoid") String alunoid) {
-        return null;
-    }
 
     @PostMapping("/insereDisponibilidade")
     @PreAuthorize("hasAuthority('PROFESSOR')")
@@ -384,7 +367,7 @@ public class HorarioController {
                     dto.dataValidade(), dto.diaSemana(), (int) duracaoCalculada,
                     dto.horaInicio(), dto.horaFim(), dto.estudioId()
             );
-            return ResponseEntity.ok(aulaService.atualizaPorHorario(dtoComAutor, id, idProfessor));
+            return ResponseEntity.ok(aulaService.atualizaPorHorario(dtoComAutor, id, idProfessor,Utils.getAuthenticatedUserId()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao atualizar horário: " + e.getMessage());
         }
@@ -447,10 +430,5 @@ public class HorarioController {
         }
     }
 
-    private void verificaPermissaoEducando(String educandoId) throws Exception {
-        boolean temPermissao = utilizadorService.findEducandosdeEducador(getUserId())
-                .stream()
-                .anyMatch(u -> u.id().equals(educandoId));
-        if (!temPermissao) throw new Exception("Não tem permissão para aceder a este educando");
-    }
+
 }

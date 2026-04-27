@@ -95,4 +95,6 @@ public class AulaProfessorService {
         );
     }
 
+
+    public void deleteAllByHorarioId(String horario_id) {aulaProfessoreRepository.deleteAllByHorarioId(idHasher.decode(horario_id));}
 }

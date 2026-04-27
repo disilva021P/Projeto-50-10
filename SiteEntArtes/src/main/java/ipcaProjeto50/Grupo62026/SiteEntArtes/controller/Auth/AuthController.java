@@ -37,6 +37,13 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginDTO loginData) {
         try {
+            Utilizadore user = utilizadoreRepository.findByEmail(loginData.email())
+                    .orElseThrow(() -> new RuntimeException("Email ou Password incorretos"));
+
+            // 2. VERIFICAÇÃO DO ATIVO
+            if (!user.getAtivo()) { // Assume que o campo é boolean 'ativo'
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Esta conta não pode ser acessada! Contacte a coordenacao.");
+            }
             // 1. Autenticar as credenciais
             Authentication auth = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(loginData.email(), loginData.password())
@@ -47,9 +54,6 @@ public class AuthController {
             String token = jwtService.generateToken(userDetails);
 
             // 3. Buscar os dados do utilizador na BD
-            Utilizadore user = utilizadoreRepository.findByEmail(loginData.email())
-                    .orElseThrow(() -> new RuntimeException("Utilizador não encontrado após login"));
-
             // 4. Criar um mapa com a resposta estruturada para o Frontend
             Map<String, Object> response = new HashMap<>();
             response.put("token", token);

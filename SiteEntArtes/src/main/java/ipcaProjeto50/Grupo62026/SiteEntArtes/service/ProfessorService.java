@@ -35,6 +35,9 @@ public class ProfessorService {
     public List<ProfessoreDto> findAll(){
         return professoreRepository.findAll().stream().map(this::convertToDto).toList();
     }
+    public List<UtilizadoreResumoDto> findAllUtilizador(){
+        return professoreRepository.findAll().stream().map(p -> new UtilizadoreResumoDto(idHasher.encode(p.getId()),p.getNome())).toList();
+    }
     // No ProfessorService.java
 
     public Page<ProfessoreDto> findAllPageable(Pageable pageable) {
