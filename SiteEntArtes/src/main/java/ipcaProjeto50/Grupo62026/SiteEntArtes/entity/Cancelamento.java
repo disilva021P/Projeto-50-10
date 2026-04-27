@@ -29,9 +29,13 @@ public class Cancelamento {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "utilizador_id", nullable = false)
     private Utilizadore utilizador;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "marcardo_por", nullable = false)
+    private Utilizadore marcardo_por;
+
 
     @Lob
-    @Column(name = "motivo", nullable = false,columnDefinition = "TEXT")
+    @Column(name = "motivo", nullable = true,length = 500)
     private String motivo;
 
     @ColumnDefault("0")
@@ -45,5 +49,9 @@ public class Cancelamento {
     @Column(name = "justificado_em")
     private Instant justificadoEm;
 
-
+    @PrePersist
+    protected void onCreate() {
+        this.criadoEm = LocalDateTime.now();
+        if (this.justificado == null) this.justificado = false;
+    }
 }

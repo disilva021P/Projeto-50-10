@@ -10,6 +10,8 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.OptionalInt;
 
 public interface AulaProfessoreRepository extends JpaRepository<AulaProfessore, AulaProfessoreId> {
     @Query("SELECT COUNT(ap) > 0 FROM AulaProfessore ap WHERE ap.professor.id = :professorId " +
@@ -30,6 +32,8 @@ public interface AulaProfessoreRepository extends JpaRepository<AulaProfessore, 
     List<AulaProfessore> findByAula_Id(Integer id);
 
     List<AulaProfessore> findByProfessor_Id(Integer professorId);
-
+    boolean existsByAula_IdAndProfessor_Id(Integer id1, Integer id2);
+    Optional<AulaProfessore> findByAula_IdAndProfessor_Id(Integer idAula, Integer idProfessor);
     void deleteAllByAula_Id(Integer aula_id);
+    List<AulaProfessore> findAllByAulaId(Integer id);
 }

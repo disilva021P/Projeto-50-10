@@ -38,4 +38,28 @@ public class ProfessorController {
         }
         return ResponseEntity.badRequest().build();
     }
+    @PostMapping("/{professorId}/modalidade/{modalidadeId}")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
+    public ResponseEntity<?> adicionarModalidade(
+            @PathVariable String professorId,
+            @PathVariable String modalidadeId) {
+        try {
+            return ResponseEntity.ok(professorService.adicionarModalidade(professorId, modalidadeId));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Erro ao associar modalidade: " + e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{professorId}/modalidade/{modalidadeId}")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
+    public ResponseEntity<?> removerModalidade(
+            @PathVariable String professorId,
+            @PathVariable String modalidadeId) {
+        try {
+            professorService.removerModalidade(professorId, modalidadeId);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Erro ao remover associação: " + e.getMessage());
+        }
+    }
 }

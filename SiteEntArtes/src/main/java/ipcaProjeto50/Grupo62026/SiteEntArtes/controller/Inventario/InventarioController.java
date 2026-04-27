@@ -1,8 +1,11 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.controller.Inventario;
 
+import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.InventarioAdicionarRequest;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.InventarioDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.InventarioEditarRequest;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.InventarioUnidade;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.InventarioUnidadeRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.service.InventarioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -13,12 +16,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/inventario")
 @RequiredArgsConstructor
 public class InventarioController {
 
     private final InventarioService inventarioService;
+    private final InventarioUnidadeRepository unidadeRepository;
+    private final IdHasher idHasher;
 
     @GetMapping
     public ResponseEntity<Page<InventarioDto>> listar(
@@ -44,14 +51,14 @@ public class InventarioController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> remover(@PathVariable Integer id) {
+    public ResponseEntity<Void> remover(@PathVariable String id) {
         inventarioService.removerDoInventario(id);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<InventarioDto> editar(
-            @PathVariable Integer id,
+            @PathVariable String id,
             @RequestBody InventarioEditarRequest request
     ) {
         return ResponseEntity.ok(inventarioService.editarUnidade(id, request));
@@ -62,5 +69,12 @@ public class InventarioController {
             @RequestBody InventarioAdicionarRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(inventarioService.adicionarAoInventario(request));
+    }
+
+    @GetMapping("/unidades-disponiveis")
+    public ResponseEntity<List<InventarioUnidade>> getUnidadesDisponiveis() {
+        // Aqui buscamos apenas os itens que estão no inventário
+        // e que fazem sentido ir para o marketplace
+        return ResponseEntity.ok(unidadeRepository.findAll());
     }
 }

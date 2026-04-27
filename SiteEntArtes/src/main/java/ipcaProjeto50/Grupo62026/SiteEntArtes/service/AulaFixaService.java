@@ -56,6 +56,7 @@ public class AulaFixaService {
     public HorarioTurma save(HorarioTurmaDto novoHorario) throws Exception {
         return horarioFixoRepository.save(fromDtoToHorarioTurma( novoHorario));
     }
+
     @Transactional
     public HorarioTurma update(String idHashed, HorarioTurmaDto dadosAtualizados) throws Exception {
         Integer idDecoded = idHasher.decode(idHashed);
