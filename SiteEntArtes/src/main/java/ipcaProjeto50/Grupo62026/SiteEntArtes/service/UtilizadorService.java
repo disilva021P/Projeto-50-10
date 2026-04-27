@@ -8,6 +8,8 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.PersistenceContext;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import jdk.jshell.execution.Util;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,6 +26,7 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -327,6 +330,7 @@ public class UtilizadorService {
     private void removeTokensExpirados(){
         tokenRecuperacaoRepository.deleteAllByExpiraEmBefore(LocalDateTime.now());
     }
+
     public String geraToken(String email) throws Exception {
         removeTokensExpirados();
         Utilizadore utilizador = utilizadoreRepository.findByEmail(email)
@@ -360,6 +364,7 @@ public class UtilizadorService {
             }
         return token;
     }
+
     public void atualizaPassSemLogin(AlterarPasswordSemLoginDto dto) throws Exception {
         // 1. Procurar o token no banco pelo ID do utilizador (ou apenas pelo hash se preferir)
         // Aqui assumo que o DTO traz o token digitado e a nova senha
@@ -386,6 +391,7 @@ public class UtilizadorService {
         // 5. Apagar o token para não ser usado de novo
         tokenRecuperacaoRepository.delete(recuperacao);
     }
+
     public List<UtilizadoreResumoDto> listarContactosDisponiveis(String idLogadoHashed) {
         // Descodificamos o ID para saber quem é o utilizador atual
         Integer idRealLogado = idHasher.decode(idLogadoHashed);
@@ -398,9 +404,11 @@ public class UtilizadorService {
                 ))
                 .toList();
     }
+
     public List<Utilizadore> findAllCoordenacao() {
         return utilizadoreRepository.findAllByTipo_Id(1);
     }
+
     public void verificaPermissaoEducando(String educandoId, String educadorId) throws Exception {
         boolean temPermissao = findEducandosdeEducador(educadorId)
                 .stream()
@@ -410,5 +418,9 @@ public class UtilizadorService {
 
     public boolean possuiEducando(String s) {
         return encarregadoAluno.existsByAluno_Id(idHasher.decode(s));
+    }
+
+    public Optional<Utilizadore> findByEmail(@NotBlank(message = "O email não pode estar vazio") @Email(message = "Formato de email inválido") String email) {
+        return utilizadoreRepository.findByEmail(email);
     }
 }

@@ -7,6 +7,7 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.UtilizadoreRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.service.JwtService;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.service.LogService;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.service.LoginService;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.service.UtilizadorService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +30,7 @@ public class AuthController {
 
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
-    private final UtilizadoreRepository utilizadoreRepository;
+    private final UtilizadorService utilizadorService;
     private final LoginService loginService;
 
     @PostMapping("/login")
@@ -39,7 +40,7 @@ public class AuthController {
             if (loginService.ipEstaBloqueado(ip)) {
                 throw new Exception("O ip está bloqueado por excesso de tentativas!");
             }
-            Utilizadore user = utilizadoreRepository.findByEmail(loginData.email())
+            Utilizadore user = utilizadorService.findByEmail(loginData.email())
                     .orElseThrow(() -> new LoginInvalidoException("Email ou Password incorretos"));
 
             // 2. VERIFICAÇÃO DO ATIVO
