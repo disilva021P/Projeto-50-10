@@ -70,7 +70,7 @@ public class LoginService {
     // Métodos auxiliares
 
 
-    private boolean ipEstaBloqueado(String ip) {
+    public boolean ipEstaBloqueado(String ip) {
         LocalDateTime limite = LocalDateTime.now().minusMinutes(MINUTOS_BLOQUEIO);
         return logRepository.countFailuresByIp(ip, limite) >= MAX_TENTATIVAS;
     }

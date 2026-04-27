@@ -4,8 +4,10 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Aula;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -28,9 +30,10 @@ public interface AulaRepository extends JpaRepository<Aula, Integer> {
     );
 
     @Query("SELECT DISTINCT a FROM Aula a " +
-            "JOIN AulaAluno aa ON aa.aula.id = a.id " +
-            " JOIN HorarioTurma h ON a.idHorario.id = h.id " +
-            "WHERE aa.aluno.id=:alunoId "+
+            "JOIN a.idHorario h " + // Assume que idHorario é o nome do atributo na entidade Aula
+            "JOIN h.idturma t " +   // Assume que idturma é o objeto Turma no HorarioTurma
+            "JOIN TurmaAluno ta ON ta.turma.id = t.id " + // Liga a inscrição à turma
+            "WHERE ta.aluno.id = :alunoId " + // Filtra pelo aluno logado
             "AND a.dataAula BETWEEN :inicio AND :fim " +
             "ORDER BY a.dataAula ASC, a.horaInicio ASC")
     List<Aula> buscarHorarioDoAluno(
@@ -70,6 +73,7 @@ public interface AulaRepository extends JpaRepository<Aula, Integer> {
     SELECT a FROM Aula a
     JOIN AulaProfessore ap ON ap.aula.id = a.id
     WHERE ap.professor.id = :professorId
+    AND a.estado.id=3
     AND a.dataAula BETWEEN :inicio AND :fim
 """)
     List<Aula> findAulasByProfessorAndSemana(
@@ -77,4 +81,28 @@ public interface AulaRepository extends JpaRepository<Aula, Integer> {
             @Param("inicio") LocalDate inicio,
             @Param("fim") LocalDate fim
     );
-}
+    // Encontra aulas futuras de um horário específico
+    List<Aula> findAllByIdHorario_IdAndDataAulaAfter(Integer horarioId, LocalDate data);
+
+    // Apaga aulas futuras de um horário específico
+    @Modifying
+    @Transactional
+    void deleteByIdHorario_IdAndDataAulaAfter(Integer horarioId, LocalDate data);
+    @Modifying
+
+    @Transactional
+    @Query("UPDATE Aula a SET a.horaInicio = :inicio, a.horaFim = :fim, a.estudio.id = :estId, a.duracaoMinutos = :duracao " +
+            "WHERE a.idHorario.id = :horarioId AND a.dataAula >= :hoje")
+    void updateAulasFuturas(
+            @Param("horarioId") Integer horarioId,
+            @Param("inicio") LocalTime inicio,
+            @Param("fim") LocalTime fim,
+            @Param("estId") Integer estId,
+            @Param("duracao") Integer duracao,
+            @Param("hoje") LocalDate hoje
+    );
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM Aula a WHERE a.idHorario.id = :idHorario AND a.dataAula >= :hoje")
+    void deleteFutureByHorarioId(@Param("idHorario") Integer idHorario, @Param("hoje") LocalDate hoje);}

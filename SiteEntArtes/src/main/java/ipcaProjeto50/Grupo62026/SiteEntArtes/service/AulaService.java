@@ -62,6 +62,8 @@ public class AulaService {
     private final PagamentoRepository pagamentoRepository;
     private final CancelamentoService cancelamentoService;
     private final TipoPagamentoRepository tipoPagamentoRepository;
+    private final FeriadosService feriadosService;
+    private final AulaProfessoreRepository aulaProfessoreRepository;
     //region feito
     // -------------------------------------------------------------------------
     // CRUD base
@@ -231,18 +233,28 @@ public class AulaService {
      * @throws Exception
      */
     @Transactional(rollbackFor = Exception.class)
-    public List<AulaDto> GerarAulasComHorario(HorarioTurmaRequestDto horario,String idProfessor) throws Exception {
+    public List<AulaDto> GerarAulasComHorario(HorarioTurmaRequestDto horario, String idProfessor) throws Exception {
+        // Validações de data
         if (horario.dataInicio().isAfter(horario.dataValidade())) {
             throw new Exception("Data de início superior à Data final");
         }
-        if(horario.dataInicio().isBefore(LocalDate.now())){
+        if (horario.dataInicio().isBefore(LocalDate.now())) {
             throw new Exception("Data de início inferior à Data atual");
         }
 
+        // 1. Validar se a Turma e Modalidade existem antes de começar
+        var turma = turmaService.findById(horario.idturma());
+        if (turma == null || turma.modalidade() == null || turma.modalidade().id() == null) {
+            throw new Exception("Erro: Turma ou Modalidade não encontrada ou ID nulo.");
+        }
+
+        Integer idModalidade = idHasher.decode(turma.modalidade().id());
+
         List<AulaDto> erros = new ArrayList<>();
         List<Aula> adicionados = new ArrayList<>();
-        HorarioTurmaDto horarioDto= aulaFixaService.convertRequestToDto(horario);
-        // 1. Criar primeiro o cabeçalho do horário
+        HorarioTurmaDto horarioDto = aulaFixaService.convertRequestToDto(horario);
+
+        // Salvar cabeçalho
         HorarioTurma horarioTurma = aulaFixaService.save(horarioDto);
 
         DayOfWeek diaAlvo = DayOfWeek.of(horario.diaSemana());
@@ -254,113 +266,154 @@ public class AulaService {
             dataAtual = dataAtual.plusDays(1);
         }
 
-        Integer idModalidade = idHasher.decode(turmaService.findById(horario.idturma()).modalidade().id());
-
-        // 2. Tentar criar cada aula no intervalo
+        // 2. Loop de criação de aulas
         while (!dataAtual.isAfter(dataFim)) {
             AulaDto novaAula = horarioParaAulaDto(horarioDto, dataAtual);
-
-
             try {
-                // Assume-se que criarAula já faz a lógica de negócio e devolve a entidade
+                if (feriadosService.isFeriado(novaAula.dataAula())) {
+                    throw new Exception("Erro, aula está a ser marcada em feriado");
+                }
+                System.out.println("PAssoeifae");
                 Aula aulaGuardada = criarAula(novaAula, idModalidade);
-
-                // Associar o horário à aula antes de adicionar à lista
+                System.out.println("qwdqdwqdqd");
                 aulaGuardada.setIdHorario(horarioTurma);
                 adicionados.add(aulaGuardada);
 
             } catch (Exception e) {
                 erros.add(novaAula);
-                System.out.println("Erro "+ e.getMessage());
+                // Isso explica o erro aparecer várias vezes: ele falha para cada semana
+                System.out.println("Erro na data " + dataAtual + ": " + e.getMessage());
             }
             dataAtual = dataAtual.plusWeeks(1);
         }
 
         if (adicionados.isEmpty()) {
-            // O @Transactional fará o rollback do horarioTurma guardado acima
             throw new Exception("Erro: Nenhuma aula pôde ser criada no intervalo selecionado.");
         }
-        List<Aula> aulas= aulaRepository.saveAll(adicionados);
-        for(Aula aula : aulas){
-            aulaProfessorService.save(new AulaProfessorDto(idProfessor,idHasher.encode( aula.getId())));
+
+        // 3. Persistir e associar ao professor
+        // IMPORTANTE: use o retorno do saveAll, pois ele contém os IDs gerados pelo banco
+        List<Aula> aulasSalvas = aulaRepository.saveAll(adicionados);
+
+        for (Aula aula : aulasSalvas) {
+            if (aula.getId() == null) {
+                System.out.println("Aviso: ID da aula " + aula.getDataAula() + " veio nulo do banco!");
+                continue;
+            }
+            // Encode do ID da aula
+            String aulaHash = idHasher.encode(aula.getId());
+            aulaProfessorService.save(new AulaProfessorDto(idProfessor, aulaHash));
         }
+
         return erros;
-    }
-    @Transactional
+    }    @Transactional
     public void EliminarAulasComHorario(Integer idHorario) throws Exception {
         aulaFixaService.delete(idHorario);
         aulaRepository.deleteAllByIdHorario_Id(idHorario);
     }
     @Transactional
     public void EliminarAulasComHorario(String idHorario) throws Exception {
-        aulaFixaService.delete(idHasher.decode(idHorario));
+
+        aulaProfessorService.deleteAllByHorarioId(idHorario);
         aulaRepository.deleteAllByIdHorario_Id(idHasher.decode(idHorario));
+        aulaFixaService.delete(idHasher.decode(idHorario));
     }
     @Transactional
-    public List<AulaDto> atualizaPorHorario(HorarioTurmaRequestDto horarioTurmaDto,String id,String idProfessor) throws Exception {
+    public void EliminarAulasFuturasComHorario(String idHorarioStr) throws Exception {
+        Integer idHorario = idHasher.decode(idHorarioStr);
+        LocalDate hoje = LocalDate.now();
 
-        HorarioTurma horarioTurma = horarioFixoRepository
-                .findById(idHasher.decode(id))
-                .orElseThrow(() -> new Exception("Erro ao encontrar horário"));
+        // 1. Apaga as ligações Professor-Aula (tabela de junção) das aulas futuras
+        aulaProfessoreRepository.deleteFutureByHorarioId(idHorario, hoje);
 
-        HorarioTurmaDto tempDto = aulaFixaService.convertRequestToDto(horarioTurmaDto);
-        HorarioTurmaDto horarioComId = new HorarioTurmaDto(
-                id, // O ID que queres atribuir
-                tempDto.idcriadoPor(),
-                tempDto.idturmaId(),
-                tempDto.dataInicio(),
-                tempDto.dataValidade(),
-                tempDto.diaSemana(),
-                tempDto.duracaoMinutos(),
-                tempDto.horaInicio(),
-                tempDto.horaFim(),
-                tempDto.estudioId()
-        );
-        List<Aula> aulasAtualizadas = new ArrayList<>();
-        if(!Objects.equals(horarioComId.diaSemana(), horarioTurma.getDiaSemana())){
-            EliminarAulasComHorario(horarioComId.id());
-            return GerarAulasComHorario(horarioTurmaDto,idProfessor);
-        }
-        List<Aula> aulas = aulaRepository.findAllByIdHorario_Id(horarioTurma.getId());
-        if (aulas.isEmpty()) return new ArrayList<>();
-        for (Aula aula : aulas) {
+        // 2. Apaga as Aulas futuras
+        aulaRepository.deleteFutureByHorarioId(idHorario, hoje);
 
-            // Atualizar campos com base no horário
-            aula.setHoraInicio(horarioComId.horaInicio());
-            aula.setHoraFim(horarioComId.horaFim());
-            aula.setDuracaoMinutos(horarioComId.duracaoMinutos());
+        // NOTA: Não apagamos o aulaFixaService (HorarioTurma) aqui,
+        // porque ele ainda tem aulas no passado associadas a ele!
+    }
+    @Transactional(rollbackFor = Exception.class)
+    public List<AulaDto> atualizaPorHorario(HorarioTurmaRequestDto dto, String id, String idProfessor,String idAtualizador) throws Exception {
 
-            aula.setEstudio(
-                    estudioService.findEstudiobyId(
-                            idHasher.decode(horarioComId.estudioId().id())
-                    )
+        Integer idHorarioDecodificado = idHasher.decode(id);
+        HorarioTurma horarioExistente = horarioFixoRepository.findById(idHorarioDecodificado)
+                .orElseThrow(() -> new Exception("Erro: Horário não encontrado"));
+
+        LocalDate hoje = LocalDate.now();
+
+        // CASO A: O DIA DA SEMANA MUDOU
+        if (!Objects.equals(dto.diaSemana(), horarioExistente.getDiaSemana())) {
+
+            // Chamamos o teu método que já trata da limpeza segura do futuro
+            EliminarAulasFuturasComHorario(id);
+
+            // Preparamos o DTO para o gerador começar de hoje
+            HorarioTurmaRequestDto dtoNovoPeriodo = new HorarioTurmaRequestDto(
+                    null,
+                    idAtualizador,
+                    dto.idturma(),
+                    hoje,
+                    dto.dataValidade(),
+                    dto.diaSemana(),
+                    dto.duracaoMinutos(),
+                    dto.horaInicio(),
+                    dto.horaFim(),
+                    dto.estudioId()
             );
 
-            aulasAtualizadas.add(aulaRepository.save(aula));
-        }
-        aulaFixaService.update(horarioComId.id(),horarioComId);
-        // Converter para DTO
-        return aulasAtualizadas.stream()
-                .map(this::converterParaDto)
-                .toList();
-    }
+            // Atualizamos o cabeçalho existente
+            aulaFixaService.update(id, aulaFixaService.convertRequestToDto(dto));
 
-    @Transactional
-    public Aula criarAula(AulaDto aulaDto, Integer modalidade) throws Exception {
-        boolean conflito = estudioService.conflitoestudio(aulaDto.id());
+            // Geramos as novas aulas para o novo dia da semana
+            return GerarAulasComHorario(dtoNovoPeriodo, idProfessor);
+        }
+
+        // CASO B: MUDANÇA APENAS DE HORA OU ESTÚDIO
+        else {
+            Integer idEstudioNovo = idHasher.decode(dto.estudioId());
+
+            aulaRepository.updateAulasFuturas(
+                    idHorarioDecodificado,
+                    dto.horaInicio(),
+                    dto.horaFim(),
+                    idEstudioNovo,
+                    dto.duracaoMinutos(),
+                    hoje
+            );
+
+            aulaFixaService.update(id, aulaFixaService.convertRequestToDto(dto));
+
+            return new ArrayList<>();
+        }
+    }    public Aula criarAula(AulaDto aulaDto, Integer modalidade) throws Exception {
+        // 1. Descodificar o ID do estúdio uma única vez para usar nas validações
+        Integer idEstudioDecodificado = idHasher.decode(aulaDto.estudio().id());
+
+        estudioModalidadeRepository
+                .findByEstudio_IdAndModalidade_Id(
+                        idEstudioDecodificado,
+                        modalidade)
+                .orElseThrow(() -> new Exception("Este estúdio não permite esta modalidade!"));
+
+        // 2. Verificar conflito usando os dados de tempo (Data, Início, Fim)
+        // Passamos os parâmetros individuais em vez do ID da aula
+        boolean conflito = estudioService.conflitoestudio(
+                idEstudioDecodificado,
+                aulaDto.dataAula(),
+                aulaDto.horaInicio(),
+                aulaDto.horaFim()
+        );
+
         if (conflito) {
             throw new Exception("Conflito de horário: O estúdio '" +
                     aulaDto.estudio().nome() + "' já tem uma aula agendada entre " +
                     aulaDto.horaInicio() + " e " + aulaDto.horaFim() +
                     " no dia " + aulaDto.dataAula());
         }
-        estudioModalidadeRepository
-                .findByEstudio_IdAndModalidade_Id(
-                        idHasher.decode(aulaDto.estudio().id()),
-                        modalidade)
-                .orElseThrow(() -> new Exception("Este estúdio não permite esta modalidade!"));
 
-        // Convert DTO → entity and save
+        // 3. Verificar se o estúdio suporta a modalidade
+
+        // 4. Converter DTO → Entidade e salvar
         Aula aula = aulaDTOparaAula(aulaDto);
         return aulaRepository.save(aula);
     }
@@ -581,15 +634,18 @@ public class AulaService {
     public void cancelarInscricaoAluno(String alunoId, String aulaId) throws Exception {
         Aula aulafalta= this.buscarPorId(aulaId).orElseThrow(()->new Exception("Aula não existe"));
         AulaAlunoId id = new AulaAlunoId(idHasher.decode(aulaId), idHasher.decode(alunoId));
-
         if (!aulaAlunoRepository.existsById(id)) {
             throw new Exception("Aluno não está inscrito nesta aula");
         }
-        if (aulaAlunoRepository.countByAulaId(idHasher.decode(aulaId)) == 1) {
-            AulaDto aula = atualizaEstado(aulaId, idHasher.encode(ID_ESTADO_CANCELADA));
-            LocalDateTime momentoDaAula = LocalDateTime.of(aula.dataAula(), aula.horaInicio());
-            if(!LocalDateTime.now().isBefore(momentoDaAula.minusHours(48))){
-                    aplicaSancoes(alunoId,aulafalta,idHasher.encode(1));
+        if(aulafalta.getEstado().getId()!=ID_ESTADO_PENDENTE) {
+
+
+            if (aulaAlunoRepository.countByAulaId(idHasher.decode(aulaId)) == 1) {
+                AulaDto aula = atualizaEstado(aulaId, idHasher.encode(ID_ESTADO_CANCELADA));
+                LocalDateTime momentoDaAula = LocalDateTime.of(aula.dataAula(), aula.horaInicio());
+                if (!LocalDateTime.now().isBefore(momentoDaAula.minusHours(48))) {
+                    aplicaSancoes(alunoId, aulafalta, idHasher.encode(1));
+                }
             }
         }
         aulaAlunoRepository.deleteById(id);

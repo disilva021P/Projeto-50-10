@@ -2,6 +2,7 @@ package ipcaProjeto50.Grupo62026.SiteEntArtes.controller.Utilizadores;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ModalidadeDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ProfessoreDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.UtilizadoreResumoDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.service.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,6 +28,12 @@ public class ProfessorController {
             @PageableDefault(page = 0, size = 10) Pageable pageable // @ParameterObject ajuda na documentação Swagger/OpenAPI
     ) {
         return ResponseEntity.ok(professorService.findAllPageable(pageable));
+    }
+    @GetMapping("/selecionar")
+    public ResponseEntity<List<UtilizadoreResumoDto>> getProfessoresSelecionar(
+            @PageableDefault(page = 0, size = 10) Pageable pageable // @ParameterObject ajuda na documentação Swagger/OpenAPI
+    ) {
+        return ResponseEntity.ok(professorService.findAllUtilizador());
     }
     @GetMapping("/{modalidadeId}")
     public ResponseEntity<Page<ProfessoreDto>> getProfessores(

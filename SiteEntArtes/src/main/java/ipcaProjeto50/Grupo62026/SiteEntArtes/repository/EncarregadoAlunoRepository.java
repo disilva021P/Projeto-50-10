@@ -4,6 +4,7 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.EncarregadoAluno;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.EncarregadoAlunoId;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import javax.swing.text.html.Option;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,4 +16,8 @@ public interface EncarregadoAlunoRepository extends JpaRepository<EncarregadoAlu
     Optional<EncarregadoAluno> findByEncarregado_IdAndAluno_Id(Integer idEncarregado, Integer idAluno);
 
     boolean existsByEncarregado_IdAndAluno_Id(Integer idEncarregado, Integer idAluno);
+
+    List<EncarregadoAluno> findAllByAluno_Id(Integer decode);
+
+    boolean existsByAluno_Id(Integer id);
 }

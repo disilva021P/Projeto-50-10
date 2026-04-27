@@ -43,7 +43,7 @@ public class CancelamentoService {
         cancelamento.setUtilizador(utilizador);
         cancelamento.setMarcardo_por(marcado_por);
         cancelamento.setJustificado(false);
-
+        cancelamento.setMotivo(faltaDto.motivo());
         Cancelamento salvo = cancelamentoRepository.save(cancelamento);
 
         // 3. RETORNO: Transforma a Entity salva num DTO com Hashes

@@ -273,7 +273,43 @@ public class UtilizadorService {
         return new TipoUtilizadorDto(id, tipo.getTipoUtilizador());
 
     }
+    @Transactional
+    public void associarAlunoAEncarregado(String idAlunoHashed, String idEncarregadoHashed) throws Exception {
 
+        Integer idAluno = idHasher.decode(idAlunoHashed);
+        Integer idEncarregado = idHasher.decode(idEncarregadoHashed);
+
+        Utilizadore encarregado = utilizadoreRepository.findById(idEncarregado)
+                .orElseThrow(() -> new UtilizadorNaoEncontradoException(idEncarregadoHashed));
+
+        Aluno aluno = alunoRepository.findById(idAluno)
+                .orElseThrow(() -> new Exception("Aluno não encontrado"));
+
+        // Verifica se a associação já existe para não duplicar
+        boolean jaExiste = encarregadoAluno.existsByEncarregado_IdAndAluno_Id(idEncarregado, idAluno);
+        if (jaExiste) {
+            throw new Exception("Este aluno já está associado a este encarregado.");
+        }
+
+        EncarregadoAluno associacao = new EncarregadoAluno();
+        associacao.setEncarregado(encarregado);
+        associacao.setAluno(aluno);
+        encarregadoAluno.save(associacao);
+    }
+
+    // ─── Remover associação aluno-encarregado ─────────────────────────────────
+    @Transactional
+    public void removerAssociacaoAlunoEncarregado(String idAlunoHashed, String idEncarregadoHashed) throws Exception {
+
+        Integer idAluno = idHasher.decode(idAlunoHashed);
+        Integer idEncarregado = idHasher.decode(idEncarregadoHashed);
+
+        EncarregadoAluno associacao = encarregadoAluno
+                .findByEncarregado_IdAndAluno_Id(idEncarregado, idAluno)
+                .orElseThrow(() -> new Exception("Associação não encontrada."));
+
+        encarregadoAluno.delete(associacao);
+    }
     public List<UtilizadoreResumoDto> findEducandosdeEducador(Integer idEducador) {
         return encarregadoAluno.findAllByEncarregado_Id(idEducador)
                 .stream()
@@ -287,6 +323,7 @@ public class UtilizadorService {
     public List<UtilizadoreResumoDto> findEducandosdeEducador(String idEducador) {
         return findEducandosdeEducador(idHasher.decode(idEducador));
     }
+
     private void removeTokensExpirados(){
         tokenRecuperacaoRepository.deleteAllByExpiraEmBefore(LocalDateTime.now());
     }
@@ -361,48 +398,17 @@ public class UtilizadorService {
                 ))
                 .toList();
     }
-
     public List<Utilizadore> findAllCoordenacao() {
         return utilizadoreRepository.findAllByTipo_Id(1);
     }
-
-    // ─── Associar aluno a encarregado ─────────────────────────────────────────
-    // Chamada pela coordenação ao criar um aluno menor de idade
-    @Transactional
-    public void associarAlunoAEncarregado(String idAlunoHashed, String idEncarregadoHashed) throws Exception {
-
-        Integer idAluno = idHasher.decode(idAlunoHashed);
-        Integer idEncarregado = idHasher.decode(idEncarregadoHashed);
-
-        Utilizadore encarregado = utilizadoreRepository.findById(idEncarregado)
-                .orElseThrow(() -> new UtilizadorNaoEncontradoException(idEncarregadoHashed));
-
-        Aluno aluno = alunoRepository.findById(idAluno)
-                .orElseThrow(() -> new Exception("Aluno não encontrado"));
-
-        // Verifica se a associação já existe para não duplicar
-        boolean jaExiste = encarregadoAluno.existsByEncarregado_IdAndAluno_Id(idEncarregado, idAluno);
-        if (jaExiste) {
-            throw new Exception("Este aluno já está associado a este encarregado.");
-        }
-
-        EncarregadoAluno associacao = new EncarregadoAluno();
-        associacao.setEncarregado(encarregado);
-        associacao.setAluno(aluno);
-        encarregadoAluno.save(associacao);
+    public void verificaPermissaoEducando(String educandoId, String educadorId) throws Exception {
+        boolean temPermissao = findEducandosdeEducador(educadorId)
+                .stream()
+                .anyMatch(u -> u.id().equals(educandoId));
+        if (!temPermissao) throw new Exception("Não tem permissão para aceder a este educando");
     }
 
-    // ─── Remover associação aluno-encarregado ─────────────────────────────────
-    @Transactional
-    public void removerAssociacaoAlunoEncarregado(String idAlunoHashed, String idEncarregadoHashed) throws Exception {
-
-        Integer idAluno = idHasher.decode(idAlunoHashed);
-        Integer idEncarregado = idHasher.decode(idEncarregadoHashed);
-
-        EncarregadoAluno associacao = encarregadoAluno
-                .findByEncarregado_IdAndAluno_Id(idEncarregado, idAluno)
-                .orElseThrow(() -> new Exception("Associação não encontrada."));
-
-        encarregadoAluno.delete(associacao);
+    public boolean possuiEducando(String s) {
+        return encarregadoAluno.existsByAluno_Id(idHasher.decode(s));
     }
 }

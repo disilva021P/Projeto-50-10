@@ -41,6 +41,8 @@ public class AulaCoachingService {
     private final ProfessorModalidadeRepository professorModalidadeRepository;
     private final EstudioModalidadeRepository estudioModalidadeRepository;
     private final NotificacoesService notificacoesService;
+    private  final UtilizadorService utilizadorService;
+    private final EncarregadoAlunoRepository encarregadoAlunoRepository;
 
     // =========================================================================
     // Leitura
@@ -92,14 +94,14 @@ public class AulaCoachingService {
         if(offset<0) throw new Exception("Erro: Não pode inscrever-se em aulas passadas");
         LocalDate inicioSemana = calcularInicioSemana(offset);
         LocalDate fimSemana = inicioSemana.plusDays(6);
-        if(modalidade==null || modalidade.isBlank()) return aulaCoachingRepository.buscaAulasCoachingDisponiveis(inicioSemana,fimSemana,pageable).map(aula -> {
-                    try {
-                        return convertToAulaCoachingDto(aula);
-                    } catch (Exception e) {
-                        throw new RuntimeException("Mapping failed", e);
-                    }});
+        if(modalidade==null || modalidade.isBlank()) return aulaCoachingRepository.buscaAulasCoachingDisponiveis(inicioSemana,fimSemana,idDecoded,pageable).map(aula -> {
+            try {
+                return convertToAulaCoachingDto(aula);
+            } catch (Exception e) {
+                throw new RuntimeException("Mapping failed", e);
+            }});
         else {
-            return aulaCoachingRepository.buscaAulasCoachingDisponiveilPorModalidade(inicioSemana,fimSemana,idHasher.decode(modalidade), pageable).map(aula -> {
+            return aulaCoachingRepository.buscaAulasCoachingDisponiveilPorModalidade(inicioSemana,fimSemana,idHasher.decode(modalidade),idDecoded,  pageable).map(aula -> {
                 try {
                     return convertToAulaCoachingDto(aula);
                 } catch (Exception e) {
@@ -160,6 +162,8 @@ public class AulaCoachingService {
      */
     @Transactional
     public AulaCoachingDto salvarMarcarCoaching(AulaCoachingRequestDto dto, String idAluno) throws Exception {
+        System.out.println("DEBUG ID Aluno: " + idAluno);
+        System.out.println("DEBUG DTO: " + dto);
         if(dto.dataAula().isBefore(LocalDate.now()) || (dto.dataAula().equals(LocalDate.now()) && dto.horaInicio().isBefore(LocalTime.now()))){
             throw new Exception("Data de início inferior à Data atual");
         }
@@ -187,7 +191,7 @@ public class AulaCoachingService {
                 .orElseThrow(() -> new Exception("Aluno não encontrado"));
         aulaAlunoRepository.save(new AulaAluno(
                 new AulaAlunoId(aulaCoaching.getId(), idHasher.decode(idAluno)),
-                    aulaCoaching,a
+                aulaCoaching,a
                 // Removido o ";" aqui
         ));
         Professore p = professoreRepository.findById(idHasher.decode(dto.professorId()))
@@ -241,7 +245,7 @@ public class AulaCoachingService {
     public void cancelarInscricao(String alunoId, String aulaId) throws Exception {
         Integer idAula =idHasher.decode(aulaId);
         AulaCoaching coaching = aulaCoachingRepository.findById(idAula)
-                                .orElseThrow(() -> new Exception("Aula de coaching não encontrada"));
+                .orElseThrow(() -> new Exception("Aula de coaching não encontrada"));
         if (coaching.getEstado().getId() == AulaService.ID_ESTADO_CANCELADA) {
             throw new Exception("Não é possível cancelar a inscrição numa aula já cancelada");
         }
@@ -258,13 +262,11 @@ public class AulaCoachingService {
         if(coaching.getEstado().getId() == AulaService.ID_ESTADO_PENDENTE){
             aulaService.cancelarInscricaoAluno(alunoId, aulaId);
             aulaProfessoreRepository.deleteAllByAula_Id(idAula);
-            aulaRepository.deleteById(idAula);
             aulaCoachingRepository.deleteById(idAula);
             return;
         }
 
         aulaService.cancelarInscricaoAluno(alunoId, aulaId);
-        return;
     }
 
     /**
@@ -277,24 +279,39 @@ public class AulaCoachingService {
                 .orElseThrow(() -> new Exception("Aula de coaching não encontrada"));
         Professore professore = professorService.findById(professorId);
         boolean aulaProfessore = aulaProfessoreRepository.existsByAula_IdAndProfessor_Id(coaching.getId(), idHasher.decode(professorId));
-        if(!aulaProfessore) {
+        if (!aulaProfessore) {
             throw new Exception("Professor sem acesso à Aula");
         }
         if (coaching.getEstado().getId() != AulaService.ID_ESTADO_PENDENTE) {
             throw new Exception("Só é possível confirmar coachings no estado PENDENTE. Estado atual: "
                     + coaching.getEstado().getEstado());
         }
-        for(AulaAlunoDto aulaAluno: aulaAlunoService.findAllByAulaId(aulaId))
-        notificacoesService.criarNotificacao(
-                idHasher.decode(aulaAluno.idAluno()),
-                professore.getId(),
-                "Aula de coaching marcada! ",
-                "Aula de coaching de"+ coaching.getDataAula() +" das "+
-                        coaching.getHoraInicio() + " às " + coaching.getHoraFim() + ".\nFoi confirmada pelo professor " + professore.getNome()
-                ,
-                "PEDIDO COACHING",
-                idHasher.encode( coaching.getId())
-        );
+        for (AulaAlunoDto aulaAlunodto : aulaAlunoService.findAllByAulaId(aulaId)) {
+            if (utilizadorService.possuiEducando(aulaAlunodto.idAluno())) {
+                for (EncarregadoAluno ea : encarregadoAlunoRepository.findAllByAluno_Id(idHasher.decode(aulaAlunodto.idAluno()))) {
+                    notificacoesService.criarNotificacao(
+                            ea.getEncarregado().getId(),
+                            professore.getId(),
+                            "Aula de coaching marcada! ",
+                            "Aula de coaching de" + coaching.getDataAula() + " das " +
+                                    coaching.getHoraInicio() + " às " + coaching.getHoraFim() + ".\nFoi confirmada pelo professor " + professore.getNome()
+                            ,
+                            "PEDIDO COACHING",
+                            idHasher.encode(coaching.getId())
+                    );
+                }
+            }
+            notificacoesService.criarNotificacao(
+                    idHasher.decode(aulaAlunodto.idAluno()),
+                    professore.getId(),
+                    "Aula de coaching marcada! ",
+                    "Aula de coaching de" + coaching.getDataAula() + " das " +
+                            coaching.getHoraInicio() + " às " + coaching.getHoraFim() + ".\nFoi confirmada pelo professor " + professore.getNome()
+                    ,
+                    "PEDIDO COACHING",
+                    idHasher.encode(coaching.getId())
+            );
+        }
         coaching.setEstado(estadoAuloService.findbyId(AulaService.ID_ESTADO_AGENDADA));
         return convertToAulaCoachingDto(aulaCoachingRepository.save(coaching));
     }
@@ -418,7 +435,7 @@ public class AulaCoachingService {
     @Transactional
     public void eliminar(String id) throws Exception {
         Integer idReal = idHasher.decode( id);
-       AulaCoaching coaching= aulaCoachingRepository.findById(idReal)
+        AulaCoaching coaching= aulaCoachingRepository.findById(idReal)
                 .orElseThrow(() -> new Exception("Aula de coaching não encontrada"));
         if(coaching.getEstado().getId() == AulaService.ID_ESTADO_PENDENTE){
             aulaAlunoRepository.deleteAllByAula_Id(idReal);
