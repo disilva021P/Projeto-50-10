@@ -47,6 +47,7 @@ public class UtilizadorService {
     private final EmailService emailService;
     private final AlunoRepository alunoRepository;
     private final ProfessoreRepository professoreRepository;
+
     // ─── Listar todos, com filtro opcional por tipo ───────────────────────────
     public Page<UtilizadorResponseDto> listarTodos(String tipoFiltro, Pageable pageable) {
         Page<Utilizadore> lista;
@@ -330,7 +331,6 @@ public class UtilizadorService {
     private void removeTokensExpirados(){
         tokenRecuperacaoRepository.deleteAllByExpiraEmBefore(LocalDateTime.now());
     }
-
     public String geraToken(String email) throws Exception {
         removeTokensExpirados();
         Utilizadore utilizador = utilizadoreRepository.findByEmail(email)
@@ -364,7 +364,6 @@ public class UtilizadorService {
             }
         return token;
     }
-
     public void atualizaPassSemLogin(AlterarPasswordSemLoginDto dto) throws Exception {
         // 1. Procurar o token no banco pelo ID do utilizador (ou apenas pelo hash se preferir)
         // Aqui assumo que o DTO traz o token digitado e a nova senha
@@ -391,7 +390,6 @@ public class UtilizadorService {
         // 5. Apagar o token para não ser usado de novo
         tokenRecuperacaoRepository.delete(recuperacao);
     }
-
     public List<UtilizadoreResumoDto> listarContactosDisponiveis(String idLogadoHashed) {
         // Descodificamos o ID para saber quem é o utilizador atual
         Integer idRealLogado = idHasher.decode(idLogadoHashed);
@@ -404,20 +402,17 @@ public class UtilizadorService {
                 ))
                 .toList();
     }
-
     public List<Utilizadore> findAllCoordenacao() {
         return utilizadoreRepository.findAllByTipo_Id(1);
     }
-
     public void verificaPermissaoEducando(String educandoId, String educadorId) throws Exception {
         boolean temPermissao = findEducandosdeEducador(educadorId)
                 .stream()
                 .anyMatch(u -> u.id().equals(educandoId));
         if (!temPermissao) throw new Exception("Não tem permissão para aceder a este educando");
     }
-
-    public boolean possuiEducando(String s) {
-        return encarregadoAluno.existsByAluno_Id(idHasher.decode(s));
+    public boolean possuiEducando(String idAluno){
+        return encarregadoAluno.existsByAluno_Id(idHasher.decode(idAluno));
     }
 
     public Optional<Utilizadore> findByEmail(@NotBlank(message = "O email não pode estar vazio") @Email(message = "Formato de email inválido") String email) {

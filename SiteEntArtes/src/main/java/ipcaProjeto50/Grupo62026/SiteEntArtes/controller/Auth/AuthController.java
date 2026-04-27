@@ -45,7 +45,7 @@ public class AuthController {
 
             // 2. VERIFICAÇÃO DO ATIVO
             if (!user.getAtivo()) { // Assume que o campo é boolean 'ativo'
-                throw new LoginInvalidoException("Esta conta não pode ser acessada! Contacte a coordenacao.");
+                 throw new LoginInvalidoException("Esta conta não pode ser acessada! Contacte a coordenacao.");
             }
             // 1. Autenticar as credenciais
             Authentication auth = authenticationManager.authenticate(

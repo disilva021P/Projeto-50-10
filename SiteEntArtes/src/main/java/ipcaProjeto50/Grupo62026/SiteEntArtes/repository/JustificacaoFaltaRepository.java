@@ -12,5 +12,7 @@ public interface JustificacaoFaltaRepository extends JpaRepository<JustificacaoF
 
     // Buscar justificação de uma falta específica
     Optional<JustificacaoFalta> findByIdfalta_Id(Integer faltaId);
+
+    boolean existsByIdfalta_Id(Integer idReal);
     // Justificações pendentes (ainda não aceites)
 }

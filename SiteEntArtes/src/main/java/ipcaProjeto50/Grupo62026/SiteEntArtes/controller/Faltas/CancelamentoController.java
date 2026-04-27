@@ -54,6 +54,7 @@ public class CancelamentoController {
     @PreAuthorize("hasRole('COORDENACAO')")
     public ResponseEntity<?> remover(@PathVariable String id) {
         try {
+            justificacaoService.removerJustificacao(id);
             cancelamentoService.removerFalta(id);
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
@@ -74,32 +75,71 @@ public class CancelamentoController {
 
     // --- LISTAGENS ---
 
+    // --- ENDPOINTS PARA O PRÓPRIO UTILIZADOR (ALUNO/PROFESSOR) ---
+
+        @GetMapping("/meu-perfil/detalhe")
+    @PreAuthorize("hasAnyRole('ALUNO', 'PROFESSOR')")
+    public ResponseEntity<List<FaltaDto>> listarMinhasFaltas() {
+        // Extrai o ID diretamente do Token de quem está logado
+        return ResponseEntity.ok(cancelamentoService.listarFaltasPorUtilizador(Utils.getAuthenticatedUserId()));
+    }
+    @GetMapping("/encarregado/educandos/estatisticas")
+    @PreAuthorize("hasRole('ENCARREGADO')")
+    public ResponseEntity<FaltaResumoDto> obterEstatisticasDosEducandos() {
+        // Obtém o resumo somado de todos os educandos do encarregado logado
+        FaltaResumoDto resumo = cancelamentoService.obterResumoEstatisticasEducandos(Utils.getAuthenticatedUserId());
+        return ResponseEntity.ok(resumo);
+    }
+    @GetMapping("/meu-perfil/estatisticas")
+    @PreAuthorize("hasAnyRole('ALUNO', 'PROFESSOR')")
+    public ResponseEntity<FaltaResumoDto> obterMinhasEstatisticas() {
+        // Extrai o ID diretamente do Token de quem está logado
+
+        return ResponseEntity.ok(cancelamentoService.obterResumoEstatisticas(Utils.getAuthenticatedUserId()));
+    }
+    @GetMapping("/professor/{aulaId}/faltas")
+    @PreAuthorize("hasRole('PROFESSOR')")
+    public ResponseEntity<List<FaltaDto>> listarFaltasDaMinhasAula(@PathVariable("aulaId") String aulaId) {
+        // 1. Obtém o professor autenticado
+        // 2. Chama o serviço passando o ID ou o objeto do professor
+        return ResponseEntity.ok(cancelamentoService.listarFaltasPorProfessorAula(Utils.getAuthenticatedUserId(),aulaId));
+    }
+// --- ENDPOINTS ADMINISTRATIVOS (COORDENAÇÃO) ---
+// Mantemos os originais, mas agora restritos apenas à COORDENACAO
+// (ou PROFESSOR se ele tiver permissão de ver de outros alunos)
+
     @GetMapping("/utilizador/{idHash}/detalhe")
-    @PreAuthorize("hasAnyRole('ALUNO', 'PROFESSOR', 'COORDENACAO')")
-    public ResponseEntity<List<FaltaResponseDto>> listarFaltasPorUtilizador(@PathVariable String idHash) {
+    @PreAuthorize("hasRole('COORDENACAO')")
+    public ResponseEntity<List<FaltaDto>> listarFaltasPorUtilizador(@PathVariable String idHash) {
         return ResponseEntity.ok(cancelamentoService.listarFaltasPorUtilizador(idHash));
     }
 
     @GetMapping("/aluno/{alunoId}/estatisticas")
-    @PreAuthorize("hasAnyRole('ALUNO', 'PROFESSOR', 'COORDENACAO')")
+    @PreAuthorize("hasRole('COORDENACAO')")
     public ResponseEntity<FaltaResumoDto> obterResumoEstatisticas(@PathVariable String alunoId) {
         return ResponseEntity.ok(cancelamentoService.obterResumoEstatisticas(alunoId));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('PROFESSOR', 'COORDENACAO')")
+    @PreAuthorize("hasAnyRole('COORDENACAO')")
     public ResponseEntity<List<FaltaDto>> listarTodas() {
         return ResponseEntity.ok(cancelamentoService.listarTodas());
     }
 
     @GetMapping("/pendentes")
-    @PreAuthorize("hasAnyRole('PROFESSOR', 'COORDENACAO')")
+    @PreAuthorize("hasAnyRole('COORDENACAO')")
     public ResponseEntity<List<FaltaDto>> listarPendentes() {
         return ResponseEntity.ok(cancelamentoService.listarPendentes());
     }
+    @GetMapping("/encarregado/educandos/faltas")
+    @PreAuthorize("hasRole('ENCARREGADO')")
+    public ResponseEntity<List<FaltaDto>> listarFaltasDosMeusEducandos() {
+        // O serviço deve buscar os IDs dos alunos associados ao ID do Encarregado logado
+        return ResponseEntity.ok(cancelamentoService.listarFaltasDosEducandos(Utils.getAuthenticatedUserId()));
+    }
     // Encarregado submete justificação com PDF
     @PostMapping("/{id}/justificar")
-    @PreAuthorize("hasAnyRole('ENCARREGADO', 'PROFESSOR')")
+    @PreAuthorize("hasAnyRole('ALUNO','ENCARREGADO', 'PROFESSOR','COORDENCAO')")
     public ResponseEntity<?> submeterJustificacao(
             @PathVariable String id,
             @RequestParam("pdf") MultipartFile pdf,

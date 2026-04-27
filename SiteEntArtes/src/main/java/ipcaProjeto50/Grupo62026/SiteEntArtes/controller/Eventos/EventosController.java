@@ -10,6 +10,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/eventos")
@@ -102,6 +103,16 @@ public class EventosController
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    //O aluno inscreve-se no evento
+    @PostMapping("/{eventoId}/inscrever")
+    public ResponseEntity<Void> inscrever(
+            @PathVariable String eventoId,
+            @RequestParam String utilizadorId
+    ) throws Exception {
+        eventoService.inscreverParticipante(eventoId, utilizadorId);
+        return ResponseEntity.ok().build();
     }
 
     // O aluno ou a coordenação cancelam a inscrição

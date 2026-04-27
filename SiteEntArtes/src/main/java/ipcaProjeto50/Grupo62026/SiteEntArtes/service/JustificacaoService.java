@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 @Service
@@ -26,11 +27,12 @@ public class JustificacaoService {
     public void submeterJustificacao(String faltaIdHash, byte[] pdfData, String motivoEncarregado) throws Exception {
         // 1. Descodificar o ID
         Integer idReal = idHasher.decode(faltaIdHash);
-
+        if(justificacaoFaltaRepository.existsByIdfalta_Id(idReal)){
+            throw new Exception("Falta já tem uma justificação!");
+        }
         // 2. Ir buscar o cancelamento que o professor criou
         Cancelamento falta = cancelamentoRepository.findById(idReal)
-                .orElseThrow(() -> new RuntimeException("Falta não encontrada"));
-
+                .orElseThrow(() -> new Exception("Falta não encontrada"));
         // 3. O encarregado detalha o motivo
         falta.setMotivo(motivoEncarregado);
         cancelamentoRepository.save(falta);
@@ -53,6 +55,38 @@ public class JustificacaoService {
         }
         justificacaoFaltaRepository.save(jf);
     }
+    @Transactional
+    public void removerJustificacao(String faltaIdHash) throws Exception {
+        // 1. Descodificar o ID
+        Integer idReal = idHasher.decode(faltaIdHash);
+
+        // 2. Verificar se a justificação existe
+        Optional<JustificacaoFalta> jf = justificacaoFaltaRepository.findByIdfalta_Id(idReal);
+        if(jf.isEmpty()) return;;
+
+        // 3. Opcional: Limpar os campos de justificação no Cancelamento (Falta)
+        // Se apagamos o PDF, a falta volta a ser "Injustificada" e sem data de validação
+        Cancelamento falta = jf.get().getIdfalta();
+        falta.setJustificado(false);
+        falta.setJustificadoEm(null);
+        // falta.setMotivo(null); // Descomenta se quiseres apagar também o texto do motivo
+
+        cancelamentoRepository.save(falta);
+
+        // 4. Apagar o registo da JustificacaoFalta (o PDF)
+        justificacaoFaltaRepository.delete(jf.get());
+
+        // 5. Notificar o utilizador (Opcional)
+        notificacoesService.criarNotificacao(
+                falta.getUtilizador().getId(),
+                null, // Sistema
+                "Justificação Removida",
+                "A documentação da sua falta para a aula de " + falta.getAula().getDataAula() + " foi removida.",
+                "JUSTIFICACAO REMOVIDA",
+                idHasher.encode(falta.getId())
+        );
+    }
+    @Transactional
     public void validarFalta(String faltaIdHash, boolean aprovada, String idAprovado_por) throws Exception {
         // 1. Descodificar o ID
         Integer idReal = idHasher.decode(faltaIdHash);

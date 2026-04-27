@@ -82,8 +82,10 @@ public class HorarioController {
             @RequestParam(name = "modalidade", required = false) String modalidade,
             @PageableDefault(size = 10, sort = "dataAula") Pageable pageable) {
         try {
+            System.out.println("Passei por aqui!!!!!!!");
             Page<AulaCoachingDto> aulas = aulaCoachingService.findAllPorAlunoIDModalidadePage(
                     getUserId(), modalidade, offset, pageable);
+            System.out.println(aulas.getTotalElements());
             return ResponseEntity.ok(aulas);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -112,7 +114,7 @@ public class HorarioController {
                     .body("Erro ao cancelar inscrição no coaching: " + e.getMessage());
         }
     }
-    
+
 
     // endregion
 

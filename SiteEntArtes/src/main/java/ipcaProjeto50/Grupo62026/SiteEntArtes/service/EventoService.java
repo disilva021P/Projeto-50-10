@@ -16,6 +16,7 @@ import org.springframework.data.web.PagedModel;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 @Service
@@ -173,5 +174,40 @@ public class EventoService {
                 .orElseThrow(() -> new Exception("Estado inválido"));
         evento.setEstadoAula(novoEstado);
         eventoRepository.save(evento);
+    }
+
+    @Transactional
+    public void inscreverParticipante(String eventoHashId, String utilizadorHashId) throws Exception {
+        Integer eventoId = idHasher.decode(eventoHashId);
+        Integer utilizadorId = idHasher.decode(utilizadorHashId);
+
+        ParticipantesEventoId idComposto = new ParticipantesEventoId(eventoId, utilizadorId);
+
+        Optional<ParticipantesEvento> inscricaoExistente = participantesEventoRepository.findById(idComposto);
+
+        if (inscricaoExistente.isPresent()) {
+            ParticipantesEvento pe = inscricaoExistente.get();
+            if (pe.getCancelado()) {
+                pe.setCancelado(false);
+                participantesEventoRepository.save(pe);
+                return;
+            } else {
+                throw new Exception("Utilizador já está inscrito e ativo neste evento.");
+            }
+        }
+
+        Evento evento = eventoRepository.findById(eventoId)
+                .orElseThrow(() -> new Exception("Evento não encontrado"));
+        Utilizadore utilizador = utilizadoreRepository.findById(utilizadorId)
+                .orElseThrow(() -> new Exception("Utilizador não encontrado"));
+
+        ParticipantesEvento inscricao = new ParticipantesEvento();
+        inscricao.setId(idComposto);
+        inscricao.setEvento(evento);
+        inscricao.setUtilizador(utilizador);
+        inscricao.setPago(false);
+        inscricao.setCancelado(false);
+
+        participantesEventoRepository.save(inscricao);
     }
 }

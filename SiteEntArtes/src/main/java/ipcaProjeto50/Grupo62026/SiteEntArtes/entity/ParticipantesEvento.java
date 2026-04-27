@@ -31,4 +31,8 @@ public class ParticipantesEvento {
 
     @Column(name = "cancelado", nullable = false)
     private boolean cancelado = false;
+
+    public boolean getCancelado() {
+        return cancelado;
+    }
 }
