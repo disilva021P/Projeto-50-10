@@ -2,15 +2,13 @@ package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.AulaDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Aula;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Estudio;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.EstudioDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.EstudioModalidade;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Modalidade;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.AulaRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.EstudioModalidadeRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.EstudioRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.ModalidadeRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -70,29 +68,53 @@ public class EstudioService {
 
     // Método para adicionar modalidade ao estúdio
     public EstudioDto adicionarModalidade(String estudioId, String modalidadeId) throws Exception {
-        Estudio estudio = estudioRepository.findById(idHasher.decode(estudioId))
+        // 1. Descodificar os IDs que vêm da URL
+        Integer idEstudioReal = idHasher.decode(estudioId);
+        Integer idModalidadeReal = idHasher.decode(modalidadeId);
+
+        // 2. Validar se ambas as entidades existem
+        Estudio estudio = estudioRepository.findById(idEstudioReal)
                 .orElseThrow(() -> new Exception("Estúdio não encontrado"));
 
-        Modalidade modalidade = modalidadeRepository.findById(idHasher.decode(modalidadeId))
+        Modalidade modalidade = modalidadeRepository.findById(idModalidadeReal)
                 .orElseThrow(() -> new Exception("Modalidade não encontrada"));
 
-        // Assume que a entidade Estudio tem uma lista: List<Modalidade> modalidades
+        // 3. Criar a Chave Composta manualmente
+        // Certifica-te que o nome da classe é exatamente este (ou o que definiste)
+        EstudioModalidadeId idChave = new EstudioModalidadeId();
+        idChave.setEstudioId(idEstudioReal);
+        idChave.setModalidadeId(idModalidadeReal);
 
-        estudioModalidadeRepository.save( new EstudioModalidade(null, estudio,modalidade));
-        return converterParaDto(estudioRepository.save(estudio));
+        // 4. Criar o objeto de ligação
+        EstudioModalidade relacao = new EstudioModalidade();
+        relacao.setId(idChave); // Define a ID composta
+        relacao.setEstudio(estudio);
+        relacao.setModalidade(modalidade);
+
+        // 5. Salvar na tabela intermédia
+        estudioModalidadeRepository.save(relacao);
+
+        // 6. Retornar o DTO (convertendo a entidade estúdio atualizada)
+        return converterParaDto(estudio);
     }
+    @Transactional // Importante para operações de remoção
     public void removerModalidade(String estudioId, String modalidadeId) throws Exception {
         // 1. Descodificar os IDs
-        Integer idEstudio = idHasher.decode(estudioId);
-        Integer idModalidade = idHasher.decode(modalidadeId);
+        Integer idEstudioReal = idHasher.decode(estudioId);
+        Integer idModalidadeReal = idHasher.decode(modalidadeId);
 
-        // 2. Procurar a associação na tabela intermédia
-        // Nota: Deves ter este método definido no teu EstudioModalidadeRepository
-        EstudioModalidade associacao = estudioModalidadeRepository.findByEstudio_IdAndModalidade_Id(idEstudio, idModalidade)
-                .orElseThrow(() -> new Exception("Esta modalidade não está associada a este estúdio!"));
+        // 2. Criar a ID Composta
+        EstudioModalidadeId idChave = new EstudioModalidadeId();
+        idChave.setEstudioId(idEstudioReal);
+        idChave.setModalidadeId(idModalidadeReal);
 
-        // 3. Remover o registo
-        estudioModalidadeRepository.delete(associacao);
+        // 3. Verificar se existe antes de apagar (para lançar a exceção correta)
+        if (!estudioModalidadeRepository.existsById(idChave)) {
+            throw new Exception("Esta modalidade não está associada a este estúdio!");
+        }
+
+        // 4. Apagar diretamente pela ID
+        estudioModalidadeRepository.deleteById(idChave);
     }
     EstudioDto converterParaDto(Estudio estudio){
         if(estudio==null) return null;
