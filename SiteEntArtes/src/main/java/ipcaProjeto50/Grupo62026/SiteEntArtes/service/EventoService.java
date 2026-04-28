@@ -3,6 +3,7 @@ package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.CriarEventosDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.EventoDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ParticipanteDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.UtilizadoreResumoDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.EstadoAulaRepository;
@@ -30,6 +31,8 @@ public class EventoService {
 
 
     private EventoDto toDto(Evento evento) {
+        String participantes="0";
+        if(evento.getId()!=null) participantes = String.valueOf(participantesEventoRepository.countByEvento_Id(evento.getId()));
         return new EventoDto(
                 idHasher.encode(evento.getId()),
                 evento.getNome(),
@@ -38,6 +41,8 @@ public class EventoService {
                 evento.getHoraInicio(),
                 evento.getHoraFim(),
                 evento.getLocal(),
+                participantes,
+                String.valueOf(evento.getMaxParticipantes()),
                 new UtilizadoreResumoDto(idHasher.encode(evento.getCriadoPor().getId()), evento.getCriadoPor().getNome())
         );
     }
@@ -75,7 +80,12 @@ public class EventoService {
         evento.setNome(dto.nome());
         evento.setDescricao(dto.descricao());
         evento.setDataEvento(dto.dataEvento());
+        evento.setHoraInicio(dto.horaInicio());
+        evento.setHoraFim(dto.horaFim());
+        evento.setMaxParticipantes(dto.maxParticipantes());
         evento.setLocal(dto.local());
+        evento.setPreco(dto.preco());
+        evento.setEstadoAula(estadoAulaRepository.findById(3).orElseThrow());
         evento.setCriadoPor(criador);
         Evento saved = eventoRepository.save(evento);
 
@@ -209,5 +219,15 @@ public class EventoService {
         inscricao.setCancelado(false);
 
         participantesEventoRepository.save(inscricao);
+    }
+    public List<ParticipanteDto> listarParticipantes(String eventoIdHash) {
+        Integer eventoId = idHasher.decode(eventoIdHash);
+        return participantesEventoRepository.findByEventoId(eventoId).stream()
+                .map(p -> new ParticipanteDto(
+                        p.getUtilizador().getNome(),
+                        p.getUtilizador().getEmail(),
+                        p.isPago(),
+                        p.getCancelado()
+                )).toList();
     }
 }

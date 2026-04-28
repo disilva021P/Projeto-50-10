@@ -12,5 +12,7 @@ public record EventoDto(
         LocalTime horaInicio,
         LocalTime horaFim,
         String local,
+        String numInscritos,
+        String maxParticipantes,
         UtilizadoreResumoDto criadoPor
 ) implements Serializable {}

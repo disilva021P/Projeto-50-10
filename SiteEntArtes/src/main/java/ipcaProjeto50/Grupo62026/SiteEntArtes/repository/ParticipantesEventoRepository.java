@@ -31,4 +31,5 @@ public interface ParticipantesEventoRepository extends JpaRepository<Participant
     @Transactional
     @Modifying
     void deleteByEventoIdAndUtilizadorId(Integer eventoId, Integer utilizadorId);
+    long countByEvento_Id(Integer eventoId);
 }

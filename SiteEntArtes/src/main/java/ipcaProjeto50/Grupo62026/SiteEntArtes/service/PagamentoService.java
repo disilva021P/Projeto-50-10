@@ -48,6 +48,12 @@ public class PagamentoService {
     @Transactional
     public PagamentoDto criar(PagamentoDto dto) throws Exception {
 
+        if(dto.dataPagamento()!=null && dto.dataPagamento().isBefore(LocalDate.now())){
+            throw new Exception("Só pode marcar pagamentos futuros");
+        }
+        if (dto.valorPagamento().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new Exception("Valor não pode ser 0 ou menor que 0");
+        }
         //  Criamos uma Entity vazia
         Pagamento entidade = new Pagamento();
 
@@ -61,12 +67,14 @@ public class PagamentoService {
                 .orElseThrow(() -> new Exception("Utilizador nao encontrado"));
         TipoPagamento tipoPagamento= tipoPagamentoRepository.findById(idReal2)
                 .orElseThrow(() -> new Exception("Tipo nao encontrado"));
-        Aula aula = aulaRepository.findById(idHasher.decode( dto.id())).orElseThrow(()->new Exception("Aula não encontrada"));
+        Aula aula=null;
+
+        if(dto.id()!=null)aula = aulaRepository.findById(idHasher.decode( dto.id())).orElseThrow(()->new Exception("Aula não encontrada"));
         //  Passamos os dados do DTO (que veio do JS) para a Entity
         entidade.setValorPagamento(dto.valorPagamento());
         entidade.setDescricao(dto.descricao());
         entidade.setPago(false); // Por defeito, ninguém começa com a conta paga
-        entidade.setDataPagamento(LocalDate.now());
+        entidade.setDataPagamento(dto.dataPagamento() != null ? dto.dataPagamento() : LocalDate.now());
         entidade.setIdTipoPagamento(tipoPagamento);
         entidade.setAula(aula);
 
@@ -92,7 +100,7 @@ public class PagamentoService {
 
         pagamento.setValorPagamento(dto.valorPagamento());
         pagamento.setDescricao(dto.descricao());
-        pagamento.setDataPagamento(dto.dataPagamento());
+        pagamento.setDataPagamento(dto.dataPagamento() != null ? dto.dataPagamento() : LocalDate.now());
         pagamento.setIdTipoPagamento(tipoPagamento);
 
         // 4. Se precisares de mudar o dono do pagamento (Utilizador)

@@ -19,6 +19,6 @@ public class PagamentosEstatisiticaCoordenacao {
     public BigDecimal getDiferenca() {
         BigDecimal pago = getTotalPago != null ? getTotalPago : BigDecimal.ZERO;
         BigDecimal divida = getTotalPorPagar != null ? getTotalPorPagar : BigDecimal.ZERO;
-        return divida.subtract(pago);
+        return pago.subtract(divida);
     }
 }

@@ -1,7 +1,9 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.controller.Eventos;
 
+import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.Utils;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.CriarEventosDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.EventoDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ParticipanteDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.service.EventoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +16,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/eventos")
+@CrossOrigin(allowedHeaders = "*")
 public class EventosController
 {
     private final EventoService eventoService;
@@ -42,12 +45,12 @@ public class EventosController
     @PreAuthorize("hasAuthority('COORDENACAO')")
     @PostMapping
     public ResponseEntity<EventoDto> criarEvento(
-            @AuthenticationPrincipal String userId,
             @RequestBody CriarEventosDto dto) {
         try {
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(eventoService.criarEvento(userId, dto));
+                    .body(eventoService.criarEvento(Utils.getAuthenticatedUserId(), dto));
         } catch (Exception e) {
+            System.out.println(e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
@@ -146,5 +149,9 @@ public class EventosController
     public ResponseEntity<List<EventoDto>> listarPorUtilizador(@PathVariable String utilizadorId) {
         List<EventoDto> eventos = eventoService.findEventosPorUtilizador(utilizadorId);
         return ResponseEntity.ok(eventos);
+    }
+    @GetMapping("/{id}/participantes")
+    public ResponseEntity<List<ParticipanteDto>> getParticipantes(@PathVariable String id) {
+        return ResponseEntity.ok(eventoService.listarParticipantes(id));
     }
 }
