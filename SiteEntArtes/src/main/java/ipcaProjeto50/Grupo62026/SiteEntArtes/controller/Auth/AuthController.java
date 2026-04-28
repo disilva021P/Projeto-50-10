@@ -35,8 +35,10 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginDTO loginData, HttpServletRequest request) {
+        String ip=null;
+
         try {
-            String ip = request.getRemoteAddr();
+            ip = request.getRemoteAddr();
             if (loginService.ipEstaBloqueado(ip)) {
                 throw new Exception("O ip está bloqueado por excesso de tentativas!");
             }
@@ -66,15 +68,19 @@ public class AuthController {
             if (user.getTipo() != null) {
                 response.put("tipoId", user.getTipo().getTipoUtilizador());
             }
-
+            loginService.registarTentativa(user,ip, true);
             return ResponseEntity.ok(response);
 
         } catch (LoginInvalidoException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+                loginService.registarTentativa(null,ip, false);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+
         }
         catch (AuthenticationException e) {
+            loginService.registarTentativa(null,ip, false);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Email ou Password incorretos");
         } catch (Exception e) {
+            loginService.registarTentativa(null,ip, false);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
