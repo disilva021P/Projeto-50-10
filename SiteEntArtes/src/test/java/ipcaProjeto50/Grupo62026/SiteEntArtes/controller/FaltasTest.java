@@ -53,7 +53,7 @@ public class FaltasTest {
     @DisplayName("[OK] Professor marca falta a um aluno -> 201 Created")
     @WithMockUser(username = "prof1", roles = "PROFESSOR")
     void professorMarcaFalta() throws Exception {
-        var dto = new FaltaDto("aula1", "aluno1", null, false, null);
+        var dto = new FaltaDto("aula1", "aluno1", null, false, null,"PENDENTE");
 
         Mockito.when(cancelamentoService.marcarFalta(any(FaltaDto.class), eq("prof1")))
                 .thenReturn(dto);
@@ -120,7 +120,7 @@ public class FaltasTest {
     @DisplayName("[ERRO] Professor marca falta com dados invalidos -> 400")
     @WithMockUser(username = "prof1", roles = "PROFESSOR")
     void professorMarcaFaltaDadosInvalidos() throws Exception {
-        var dto = new FaltaDto(null, null, null, false, null);
+        var dto = new FaltaDto(null, null, null, false, null,"PENDENTE");
 
         Mockito.when(cancelamentoService.marcarFalta(any(), any()))
                 .thenThrow(new RuntimeException("Aula ou aluno nao encontrado"));
@@ -163,7 +163,7 @@ public class FaltasTest {
         // O BPMN mostra Encarregado a enviar justificacao mas o PUT /{id}
         // usa hasAnyRole('PROFESSOR','COORDENACAO') -> ENCARREGADO recebe 403
         // BUG: devia existir endpoint proprio com role ENCARREGADO
-        var dto = new FaltaDto("aula1", "aluno1", "Filho esteve doente", false, null);
+        var dto = new FaltaDto("aula1", "aluno1", "Filho esteve doente", false, null,"EM ANALISE");
 
         mockMvc.perform(put("/api/faltas/{id}", "falta1")
                         .with(csrf())
@@ -267,7 +267,7 @@ public class FaltasTest {
     @DisplayName("[OK] Coordenacao tambem pode marcar falta -> 201 Created")
     @WithMockUser(username = "coord1", roles = "COORDENACAO")
     void coordenacaoMarcaFalta() throws Exception {
-        var dto = new FaltaDto("aula1", "aluno1", null, false, null);
+        var dto = new FaltaDto("aula1", "aluno1", null, false, null,"PENDENTE");
 
         Mockito.when(cancelamentoService.marcarFalta(any(), eq("coord1"))).thenReturn(dto);
 
@@ -282,7 +282,7 @@ public class FaltasTest {
     @DisplayName("[OK] Coordenacao atualiza uma falta -> 200")
     @WithMockUser(username = "coord1", roles = "COORDENACAO")
     void coordenacaoAtualizaFalta() throws Exception {
-        var dto = new FaltaDto("aula1", "aluno1", "Justificacao corrigida", true, null);
+        var dto = new FaltaDto("aula1", "aluno1", "Justificacao corrigida", true, null,"PENDENTE");
 
         Mockito.when(cancelamentoService.atualizarFalta(eq("falta1"), any())).thenReturn(dto);
 
@@ -346,7 +346,7 @@ public class FaltasTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new FaltaDto("aula1", "aluno1", null, false, null))))
+                                new FaltaDto("aula1", "aluno1", null, false, null,"PENDENTE"))))
                 .andExpect(status().isForbidden());
     }
 
@@ -384,7 +384,7 @@ public class FaltasTest {
     @DisplayName("[FALHA INTENCIONAL] Professor marca falta -> espera 200 mas controller devolve 201")
     @WithMockUser(username = "prof1", roles = "PROFESSOR")
     void professorMarcaFalta_FalhaIntencional() throws Exception {
-        var dto = new FaltaDto("aula1", "aluno1", null, false, null);
+        var dto = new FaltaDto("aula1", "aluno1", null, false, null,"PENDENTE");
         Mockito.when(cancelamentoService.marcarFalta(any(), any())).thenReturn(dto);
 
         mockMvc.perform(post("/api/faltas/marcar")
@@ -417,7 +417,7 @@ public class FaltasTest {
     @DisplayName("[FALHA INTENCIONAL] Coordenacao atualiza inexistente -> espera 200 mas devolve 404")
     @WithMockUser(username = "coord1", roles = "COORDENACAO")
     void coordenacaoAtualizaFaltaInexistente_FalhaIntencional() throws Exception {
-        var dto = new FaltaDto("aulaX", "alunoX", "Justificacao", true, null);
+        var dto = new FaltaDto("aulaX", "alunoX", "Justificacao", true, null,"PENDENTE");
         Mockito.when(cancelamentoService.atualizarFalta(eq("naoExiste"), any()))
                 .thenThrow(new RuntimeException("Nao encontrada"));
 
