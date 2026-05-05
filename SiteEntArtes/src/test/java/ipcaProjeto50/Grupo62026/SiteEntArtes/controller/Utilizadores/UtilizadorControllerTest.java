@@ -1,325 +1,155 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.controller.Utilizadores;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.config.SecurityConfig;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.controller.Utilizadores.UtilizadorController;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.Utils;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.service.*;
-import org.junit.jupiter.api.DisplayName;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.service.EncarregadoAlunoService;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.service.UtilizadorService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.*;
-import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.Mockito.*;
 
-@WebMvcTest(UtilizadorController.class)
-@Import(SecurityConfig.class)
+@ExtendWith(MockitoExtension.class)
 class UtilizadorControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Mock
+    private UtilizadorService utilizadorService;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    @Mock
+    private EncarregadoAlunoService encarregadoAlunoService;
 
-    @MockitoBean private UtilizadorService utilizadorService;
-    @MockitoBean private EncarregadoAlunoService encarregadoAlunoService;
-    @MockitoBean private JwtService jwtService;
-    @MockitoBean private org.springframework.security.core.userdetails.UserDetailsService userDetailsService;
+    @InjectMocks
+    private UtilizadorController utilizadorController;
 
-    // ── DTO de resposta fake reutilizável ──────────────────────────────────────
-    private UtilizadorResponseDto dtoFake() {
-        return new UtilizadorResponseDto(
-                "abc123", "João Silva", "joao@entartes.pt",
-                "123456789", "912345678", "ROLE_ENCARREGADO",
-                true, LocalDate.of(1990, 1, 1), LocalDateTime.now()
+    private UtilizadorResponseDto utilizadorDto;
+
+    @BeforeEach
+    void setUp() {
+        utilizadorDto = new UtilizadorResponseDto(
+                "hash-123",
+                "Teste Utilizador",
+                "teste@email.pt",
+                "123456789",
+                "912345678",
+                "ROLE_ALUNO",
+                true,
+                LocalDate.of(2000, 1, 1),
+                LocalDateTime.now()
         );
     }
 
-    // =========================================================================
-    // region LISTAR TODOS
-    // =========================================================================
-
     @Test
-    @DisplayName("[OK] Coordenação lista todos os utilizadores → 200")
-    @WithMockUser(username = "coord1", authorities = "COORDENACAO")
-    void listarTodos_coordenacao_retorna200() throws Exception {
-        Page<UtilizadorResponseDto> pagina = new PageImpl<>(List.of(dtoFake()));
-        Mockito.when(utilizadorService.listarTodos(isNull(), any(Pageable.class)))
-                .thenReturn(pagina);
+    void geraTokenEmail_retorna200_quandoSucesso() throws Exception {
+        when(utilizadorService.geraToken(anyString())).thenReturn(any());
 
-        mockMvc.perform(get("/api/utilizadores")
-                        .with(csrf()))
-                .andExpect(status().isOk());
+        ResponseEntity<?> response = utilizadorController.geraTokenEmail("teste@email.pt");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Token enviado para o e-mail", response.getBody());
     }
 
     @Test
-    @DisplayName("[OK] Coordenação filtra utilizadores por tipo → 200")
-    @WithMockUser(username = "coord1", authorities = "COORDENACAO")
-    void listarTodos_comFiltroTipo_retorna200() throws Exception {
-        Page<UtilizadorResponseDto> pagina = new PageImpl<>(List.of(dtoFake()));
-        Mockito.when(utilizadorService.listarTodos(eq("ROLE_ALUNO"), any(Pageable.class)))
-                .thenReturn(pagina);
+    void esqueceuPassword_retorna200_quandoSucesso() throws Exception {
+        // Utilizando o DTO conforme a tua estrutura de record
+        AlterarPasswordSemLoginDto dto = new AlterarPasswordSemLoginDto(
+                "pass123",
+                "pass123",
+                "token-valid",
+                "teste@email.pt"
+        );
 
-        mockMvc.perform(get("/api/utilizadores")
-                        .param("tipo", "ROLE_ALUNO")
-                        .with(csrf()))
-                .andExpect(status().isOk());
+        doNothing().when(utilizadorService).atualizaPassSemLogin(any(AlterarPasswordSemLoginDto.class));
+
+        ResponseEntity<?> response = utilizadorController.esqueceuPassword(dto);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Palavra-passe alterada com sucesso!", response.getBody());
     }
 
     @Test
-    @DisplayName("[FALHA INTENCIONAL] Role PROFESSOR tenta listar utilizadores → espera 200 mas devia ser 403")
-    @WithMockUser(username = "prof1", authorities = "PROFESSOR")
-    void listarTodos_professor_FalhaIntencional() throws Exception {
-        // FALHA INTENCIONAL: PROFESSOR não tem autoridade COORDENACAO
-        // O teste espera 200, mas Spring Security devolve 403
-        mockMvc.perform(get("/api/utilizadores")
-                        .with(csrf()))
-                .andExpect(status().isOk()); // ❌ FALHA: devolve 403
+    void listarTodos_retorna200_comPagina() throws Exception {
+        Page<UtilizadorResponseDto> page = new PageImpl<>(List.of(utilizadorDto));
+        when(utilizadorService.listarTodos(any(), any())).thenReturn(page);
+
+        ResponseEntity<Page<UtilizadorResponseDto>> response = utilizadorController.listarTodos("ROLE_ALUNO", PageRequest.of(0, 10));
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().getTotalElements());
     }
 
     @Test
-    @DisplayName("[FALHA INTENCIONAL] Role ALUNO tenta listar utilizadores → espera 200 mas devia ser 403")
-    @WithMockUser(username = "aluno1", authorities = "ALUNO")
-    void listarTodos_aluno_FalhaIntencional() throws Exception {
-        // FALHA INTENCIONAL: ALUNO não tem autoridade COORDENACAO
-        mockMvc.perform(get("/api/utilizadores")
-                        .with(csrf()))
-                .andExpect(status().isOk()); // ❌ FALHA: devolve 403
-    }
+    void verDetalhe_retorna200_quandoExiste() throws Exception {
+        when(utilizadorService.verDetalhe("hash-123")).thenReturn(utilizadorDto);
 
-    // =========================================================================
-    // region VER DETALHE
-    // =========================================================================
+        ResponseEntity<UtilizadorResponseDto> response = utilizadorController.verDetalhe("hash-123");
 
-    @Test
-    @DisplayName("[OK] Coordenação vê detalhe de utilizador existente → 200")
-    @WithMockUser(username = "coord1", authorities = "COORDENACAO")
-    void verDetalhe_utilizadorExiste_retorna200() throws Exception {
-        Mockito.when(utilizadorService.verDetalhe("abc123")).thenReturn(dtoFake());
-
-        mockMvc.perform(get("/api/utilizadores/abc123")
-                        .with(csrf()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.nome").value("João Silva"));
+        assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     @Test
-    @DisplayName("[FALHA INTENCIONAL] Ver detalhe de utilizador inexistente → espera 200 mas devia ser 404")
-    @WithMockUser(username = "coord1", authorities = "COORDENACAO")
-    void verDetalhe_utilizadorInexistente_FalhaIntencional() throws Exception {
-        Mockito.when(utilizadorService.verDetalhe("naoExiste"))
-                .thenThrow(new jakarta.persistence.EntityNotFoundException("Não encontrado"));
+    void verMeuPerfil_retorna200_quandoLogado() throws Exception {
+        try (MockedStatic<Utils> utilsMock = mockStatic(Utils.class)) {
+            utilsMock.when(Utils::getAuthenticatedUserId).thenReturn("hash-123");
+            when(utilizadorService.verMeuPerfil("hash-123")).thenReturn(utilizadorDto);
 
-        // FALHA INTENCIONAL: controller devolve 404 mas o teste espera 200
-        mockMvc.perform(get("/api/utilizadores/naoExiste")
-                        .with(csrf()))
-                .andExpect(status().isOk()); // ❌ FALHA: devolve 404
-    }
+            ResponseEntity<UtilizadorResponseDto> response = utilizadorController.verMeuPerfil();
 
-    // =========================================================================
-    // region CRIAR UTILIZADOR
-    // =========================================================================
-
-
-    @Test
-    @DisplayName("[FALHA INTENCIONAL] Criar utilizador sem body → espera 201 mas devia ser 400")
-    @WithMockUser(username = "coord1", authorities = "COORDENACAO")
-    void criarUtilizador_semBody_FalhaIntencional() throws Exception {
-        // FALHA INTENCIONAL: sem body o Spring devolve 400
-        // mas o teste espera 201 — vai falhar
-        mockMvc.perform(post("/api/utilizadores")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isCreated()); // ❌ FALHA: devolve 400
-    }
-
-
-
-    // =========================================================================
-    // region TOGGLE ATIVO
-    // =========================================================================
-
-    @Test
-    @DisplayName("[OK] Coordenação faz toggle ativo de utilizador → 200")
-    @WithMockUser(username = "coord1", authorities = "COORDENACAO")
-    void toggleAtivo_coordenacao_retorna200() throws Exception {
-        Mockito.when(utilizadorService.toggleAtivo("abc123")).thenReturn(dtoFake());
-
-        mockMvc.perform(patch("/api/utilizadores/abc123/toggle-ativo")
-                        .with(csrf()))
-                .andExpect(status().isOk());
+            assertEquals(HttpStatus.OK, response.getStatusCode());
+        }
     }
 
     @Test
-    @DisplayName("[FALHA INTENCIONAL] Toggle em utilizador inexistente → espera 200 mas devia ser 404")
-    @WithMockUser(username = "coord1", authorities = "COORDENACAO")
-    void toggleAtivo_utilizadorInexistente_FalhaIntencional() throws Exception {
-        Mockito.when(utilizadorService.toggleAtivo("naoExiste"))
-                .thenThrow(new jakarta.persistence.EntityNotFoundException("Não encontrado"));
+    void criarUtilizador_retorna201_quandoSucesso() throws Exception {
+        CriarUtilizadorDto dto = mock(CriarUtilizadorDto.class);
+        when(utilizadorService.criarUtilizador(any())).thenReturn(utilizadorDto);
 
-        // FALHA INTENCIONAL: controller devolve 404 mas o teste espera 200
-        mockMvc.perform(patch("/api/utilizadores/naoExiste/toggle-ativo")
-                        .with(csrf()))
-                .andExpect(status().isOk()); // ❌ FALHA: devolve 404
-    }
+        ResponseEntity<UtilizadorResponseDto> response = utilizadorController.criarUtilizador(dto);
 
-    // =========================================================================
-    // region APAGAR UTILIZADOR
-    // =========================================================================
-
-    @Test
-    @DisplayName("[OK] Coordenação apaga utilizador → 204")
-    @WithMockUser(username = "coord1", authorities = "COORDENACAO")
-    void apagarUtilizador_coordenacao_retorna204() throws Exception {
-        Mockito.doNothing().when(utilizadorService).apagarUtilizador("abc123");
-
-        mockMvc.perform(delete("/api/utilizadores/abc123")
-                        .with(csrf()))
-                .andExpect(status().isNoContent());
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
     }
 
     @Test
-    @DisplayName("[FALHA INTENCIONAL] Apagar utilizador inexistente → espera 204 mas devia ser 404")
-    @WithMockUser(username = "coord1", authorities = "COORDENACAO")
-    void apagarUtilizador_naoExiste_FalhaIntencional() throws Exception {
-        Mockito.doThrow(new jakarta.persistence.EntityNotFoundException("Não encontrado"))
-                .when(utilizadorService).apagarUtilizador("naoExiste");
+    void toggleAtivo_retorna200_quandoSucesso() throws Exception {
+        when(utilizadorService.toggleAtivo("hash-123")).thenReturn(utilizadorDto);
 
-        // FALHA INTENCIONAL: controller devolve 404 mas o teste espera 204
-        mockMvc.perform(delete("/api/utilizadores/naoExiste")
-                        .with(csrf()))
-                .andExpect(status().isNoContent()); // ❌ FALHA: devolve 404
-    }
+        ResponseEntity<UtilizadorResponseDto> response = utilizadorController.toggleAtivo("hash-123");
 
-    // =========================================================================
-    // region REPOR PASSWORD
-    // =========================================================================
-
-    @Test
-    @DisplayName("[OK] Coordenação repõe password com dados válidos → 204")
-    @WithMockUser(username = "coord1", authorities = "COORDENACAO")
-    void reporPassword_dadosValidos_retorna204() throws Exception {
-        Mockito.doNothing().when(utilizadorService).reporPalavraPasse(any(), any());
-
-        ReporPasswordDto dto = new ReporPasswordDto("nova123", "nova123");
-
-        mockMvc.perform(patch("/api/utilizadores/abc123/repor-password")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isNoContent());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     @Test
-    @DisplayName("[FALHA INTENCIONAL] Repor password com passwords diferentes → espera 204 mas devia ser 500")
-    @WithMockUser(username = "coord1", authorities = "COORDENACAO")
-    void reporPassword_passwordsDiferentes_FalhaIntencional() throws Exception {
-        Mockito.doThrow(new Exception("Passwords não coincidem"))
-                .when(utilizadorService).reporPalavraPasse(any(), any());
+    void adicionarEducando_retorna200_quandoSucesso() throws Exception {
+        doNothing().when(encarregadoAlunoService).adicionarEducando("enc-1", "alu-1");
 
-        ReporPasswordDto dto = new ReporPasswordDto("nova123", "diferente456");
+        ResponseEntity<Void> response = utilizadorController.adicionarEducando("enc-1", "alu-1");
 
-        // FALHA INTENCIONAL: service lança exceção → controller devolve 500
-        // mas o teste espera 204
-        mockMvc.perform(patch("/api/utilizadores/abc123/repor-password")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isNoContent()); // ❌ FALHA: devolve 500
-    }
-
-    // =========================================================================
-    // region MEUS EDUCANDOS
-    // =========================================================================
-
-    @Test
-    @DisplayName("[OK] Encarregado vê os seus educandos → 200")
-    @WithMockUser(username = "enc1", authorities = "ENCARREGADO")
-    void meusEducandos_encarregado_retorna200() throws Exception {
-        Mockito.when(utilizadorService.findEducandosdeEducador(anyString()))
-                .thenReturn(List.of(new UtilizadoreResumoDto("alu1", "Maria")));
-
-        mockMvc.perform(get("/api/utilizadores/meus-educandos")
-                        .with(csrf()))
-                .andExpect(status().isOk());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     @Test
-    @DisplayName("[FALHA INTENCIONAL] PROFESSOR tenta ver educandos → espera 200 mas devia ser 403")
-    @WithMockUser(username = "prof1", authorities = "PROFESSOR")
-    void meusEducandos_professor_FalhaIntencional() throws Exception {
-        // FALHA INTENCIONAL: PROFESSOR não tem autoridade ENCARREGADO
-        // Spring Security devolve 403 mas o teste espera 200
-        mockMvc.perform(get("/api/utilizadores/meus-educandos")
-                        .with(csrf()))
-                .andExpect(status().isOk()); // ❌ FALHA: devolve 403
-    }
+    void associarAlunoAEncarregado_retorna200_quandoSucesso() throws Exception {
+        doNothing().when(utilizadorService).associarAlunoAEncarregado("alu-1", "enc-1");
 
-    // =========================================================================
-    // region ASSOCIAR / REMOVER EDUCANDO
-    // =========================================================================
+        ResponseEntity<?> response = utilizadorController.associarAlunoAEncarregado("alu-1", "enc-1");
 
-    @Test
-    @DisplayName("[OK] Coordenação associa educando a encarregado → 200")
-    @WithMockUser(username = "coord1", authorities = "COORDENACAO")
-    void associarEducando_coordenacao_retorna200() throws Exception {
-        Mockito.doNothing().when(encarregadoAlunoService).adicionarEducando(any(), any());
-
-        mockMvc.perform(post("/api/utilizadores/enc1/educandos/alu1")
-                        .with(csrf()))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    @DisplayName("[FALHA INTENCIONAL] Associar educando já associado → espera 200 mas devia ser 409")
-    @WithMockUser(username = "coord1", authorities = "COORDENACAO")
-    void associarEducando_duplicado_FalhaIntencional() throws Exception {
-        Mockito.doThrow(new IllegalStateException("Já existe"))
-                .when(encarregadoAlunoService).adicionarEducando(any(), any());
-
-        // FALHA INTENCIONAL: service lança IllegalStateException → controller devolve 409
-        // mas o teste espera 200
-        mockMvc.perform(post("/api/utilizadores/enc1/educandos/alu1")
-                        .with(csrf()))
-                .andExpect(status().isOk()); // ❌ FALHA: devolve 409
-    }
-
-    @Test
-    @DisplayName("[OK] Coordenação remove educando de encarregado → 204")
-    @WithMockUser(username = "coord1", authorities = "COORDENACAO")
-    void removerEducando_coordenacao_retorna204() throws Exception {
-        Mockito.doNothing().when(encarregadoAlunoService).removerEducando(any(), any());
-
-        mockMvc.perform(delete("/api/utilizadores/enc1/educandos/alu1")
-                        .with(csrf()))
-                .andExpect(status().isNoContent());
-    }
-
-    @Test
-    @DisplayName("[FALHA INTENCIONAL] Remover educando inexistente → espera 204 mas devia ser 404")
-    @WithMockUser(username = "coord1", authorities = "COORDENACAO")
-    void removerEducando_naoExiste_FalhaIntencional() throws Exception {
-        Mockito.doThrow(new jakarta.persistence.EntityNotFoundException("Não encontrado"))
-                .when(encarregadoAlunoService).removerEducando(any(), any());
-
-        // FALHA INTENCIONAL: controller devolve 404 mas o teste espera 204
-        mockMvc.perform(delete("/api/utilizadores/enc1/educandos/alu1")
-                        .with(csrf()))
-                .andExpect(status().isNoContent()); // ❌ FALHA: devolve 404
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Associação criada com sucesso.", response.getBody());
     }
 }

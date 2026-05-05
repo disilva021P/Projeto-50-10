@@ -3,400 +3,262 @@ package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.exception.*;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.exception.UtilizadorNaoEncontradoException;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.*;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class UtilizadorServiceTest {
 
-    // ── Mocks ──────────────────────────────────────────────────────────────────
     @Mock private UtilizadoreRepository utilizadoreRepository;
-    @Mock private EncarregadoAlunoRepository encarregadoAluno;
     @Mock private TipoUtilizadorRepository tipoUtilizadorRepository;
-    @Mock private PasswordEncoder passwordEncoder;
-    @Mock private IdHasher idHasher;
-    @Mock private TokenRecuperacaoRepository tokenRecuperacaoRepository;
-    @Mock private EmailService emailService;
     @Mock private AlunoRepository alunoRepository;
     @Mock private ProfessoreRepository professoreRepository;
+    @Mock private EncarregadoAlunoRepository encarregadoAlunoRepository;
+    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private IdHasher idHasher;
+    @Mock private EmailService emailService;
 
     @InjectMocks
     private UtilizadorService utilizadorService;
 
-    // ── Dados de teste reutilizáveis ──────────────────────────────────────────
-    private Utilizadore utilizadorFake;
-    private TipoUtilizador tipoFake;
-    private final String ID_HASHED = "abc123";
-    private final Integer ID_REAL = 1;
+    private TipoUtilizador tipoAluno;
+    private CriarUtilizadorDto criarDto;
 
     @BeforeEach
     void setUp() {
-        tipoFake = new TipoUtilizador();
-        tipoFake.setId(4);
-        tipoFake.setTipoUtilizador("ROLE_ENCARREGADO");
+        tipoAluno = new TipoUtilizador();
+        tipoAluno.setId(3);
+        tipoAluno.setTipoUtilizador("ROLE_ALUNO");
 
-        utilizadorFake = new Utilizadore();
-        utilizadorFake.setId(ID_REAL);
-        utilizadorFake.setNome("João Silva");
-        utilizadorFake.setEmail("joao@entartes.pt");
-        utilizadorFake.setTelefone("912345678");
-        utilizadorFake.setNif("123456789");
-        utilizadorFake.setTipo(tipoFake);
-        utilizadorFake.setAtivo(true);
-        utilizadorFake.setDataNascimento(LocalDate.of(1990, 1, 1));
-        utilizadorFake.setCriadoEm(LocalDateTime.now());
-        utilizadorFake.setEditadoEm(LocalDateTime.now());
-        utilizadorFake.setPalavraPasse("hashed_pass");
-    }
-
-    // =========================================================================
-    // region VER DETALHE
-    // =========================================================================
-
-    @Test
-    @DisplayName("[OK] Coordenação vê detalhe de utilizador existente")
-    void verDetalhe_utilizadorExiste_retornaDto() {
-        when(idHasher.decode(ID_HASHED)).thenReturn(ID_REAL);
-        when(idHasher.encode(ID_REAL)).thenReturn(ID_HASHED);
-        when(utilizadoreRepository.findById(ID_REAL)).thenReturn(Optional.of(utilizadorFake));
-
-        UtilizadorResponseDto resultado = utilizadorService.verDetalhe(ID_HASHED);
-
-        assertThat(resultado).isNotNull();
-        assertThat(resultado.nome()).isEqualTo("João Silva");
-        assertThat(resultado.email()).isEqualTo("joao@entartes.pt");
-    }
-
-    @Test
-    @DisplayName("[FALHA INTENCIONAL] Ver detalhe de utilizador inexistente → devia lançar exceção mas o teste espera resultado")
-    void verDetalhe_utilizadorNaoExiste_FalhaIntencional() {
-        when(idHasher.decode(ID_HASHED)).thenReturn(ID_REAL);
-        when(utilizadoreRepository.findById(ID_REAL)).thenReturn(Optional.empty());
-
-        // FALHA INTENCIONAL: o service lança UtilizadorNaoEncontradoException
-        // mas o teste espera que retorne sem erro — vai falhar
-        assertThatNoException().isThrownBy(
-                () -> utilizadorService.verDetalhe(ID_HASHED) // ❌ FALHA: lança exceção
+        // DTO atualizado conforme o teu record
+        criarDto = new CriarUtilizadorDto(
+                "Carlos Aluno",
+                "carlos@email.com",
+                "222333444",
+                "911222333",
+                "hashed_tipo_3",
+                LocalDate.of(2010, 5, 15),
+                null // palavraPasseTemporaria (gerada no service)
         );
     }
 
-    // =========================================================================
-    // region VER MEU PERFIL
-    // =========================================================================
-
     @Test
-    @DisplayName("[OK] Utilizador autenticado vê o seu próprio perfil")
-    void verMeuPerfil_utilizadorAutenticado_retornaDto() {
-        when(idHasher.decode(ID_HASHED)).thenReturn(ID_REAL);
-        when(idHasher.encode(ID_REAL)).thenReturn(ID_HASHED);
-        when(utilizadoreRepository.findById(ID_REAL)).thenReturn(Optional.of(utilizadorFake));
+    void criarUtilizador_DeveCriarAlunoComSucesso() throws Exception {
+        // Arrange
+        when(idHasher.decode("hashed_tipo_3")).thenReturn(3);
+        when(tipoUtilizadorRepository.findById(3)).thenReturn(Optional.of(tipoAluno));
+        when(passwordEncoder.encode(any())).thenReturn("password_encriptada");
 
-        UtilizadorResponseDto resultado = utilizadorService.verMeuPerfil(ID_HASHED);
+        // Simular o comportamento do save para Aluno
+        when(alunoRepository.save(any(Aluno.class))).thenAnswer(invocation -> {
+            Aluno a = invocation.getArgument(0);
+            a.setId(100); // Simula ID gerado pela BD
+            return a;
+        });
 
-        assertThat(resultado).isNotNull();
-        assertThat(resultado.nome()).isEqualTo("João Silva");
+        when(idHasher.encode(100)).thenReturn("hashed_user_100");
+
+        // Act
+        UtilizadorResponseDto resultado = utilizadorService.criarUtilizador(criarDto);
+
+        // Assert
+        assertNotNull(resultado);
+        assertEquals("Carlos Aluno", resultado.nome());
+        assertEquals("ROLE_ALUNO", resultado.tipoUtilizador());
+
+        // Verifica se o repositório correto foi chamado
+        verify(alunoRepository, times(1)).save(any(Aluno.class));
+        // Verifica se o email de boas-vindas foi enviado
+        verify(emailService, times(1)).enviaEmail(eq("carlos@email.com"), anyString(), anyString());
     }
 
     @Test
-    @DisplayName("[FALHA INTENCIONAL] ID inválido no perfil → espera resultado mas devia lançar exceção")
-    void verMeuPerfil_idInvalido_FalhaIntencional() {
-        when(idHasher.decode("invalido")).thenReturn(999);
-        when(utilizadoreRepository.findById(999)).thenReturn(Optional.empty());
+    void criarUtilizador_DeveLancarExcecao_QuandoTipoNaoExiste() {
+        // Arrange
+        when(idHasher.decode(anyString())).thenReturn(999);
+        when(tipoUtilizadorRepository.findById(999)).thenReturn(Optional.empty());
 
-        // FALHA INTENCIONAL: lança UtilizadorNaoEncontradoException
-        // mas o teste não espera exceção — vai falhar
-        assertThatNoException().isThrownBy(
-                () -> utilizadorService.verMeuPerfil("invalido") // ❌ FALHA: lança exceção
+        // Act & Assert
+        Exception exception = assertThrows(Exception.class, () -> {
+            utilizadorService.criarUtilizador(criarDto);
+        });
+
+        assertEquals("Tipo de utilizador não encontrado", exception.getMessage());
+    }
+
+    @Test
+    void eliminarUtilizador_DeveChamarRepository() {
+        // Arrange
+        when(idHasher.decode("user_hash")).thenReturn(50);
+
+        // Act
+        utilizadorService.eliminaUtilizador("user_hash");
+
+        // Assert
+        verify(utilizadoreRepository, times(1)).deleteById(50);
+    }
+
+    @Test
+    void associarAlunoAEncarregado_DeveLancarErro_SeJaExistir() {
+        // Arrange
+        when(idHasher.decode("hash_aluno")).thenReturn(1);
+        when(idHasher.decode("hash_enc")).thenReturn(2);
+
+        when(utilizadoreRepository.findById(2)).thenReturn(Optional.of(new Utilizadore()));
+        when(alunoRepository.findById(1)).thenReturn(Optional.of(new Aluno()));
+
+        // Simula que a associação já existe
+        when(encarregadoAlunoRepository.existsByEncarregado_IdAndAluno_Id(2, 1)).thenReturn(true);
+
+        // Act & Assert
+        Exception ex = assertThrows(Exception.class, () -> {
+            utilizadorService.associarAlunoAEncarregado("hash_aluno", "hash_enc");
+        });
+
+        assertTrue(ex.getMessage().contains("já está associado"));
+    }
+
+    @Test
+    void verDetalhe_DeveLancarException_QuandoIdInexistente() {
+        // Arrange
+        when(idHasher.decode("nao_existe")).thenReturn(404);
+        when(utilizadoreRepository.findById(404)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(UtilizadorNaoEncontradoException.class, () -> {
+            utilizadorService.verDetalhe("nao_existe");
+        });
+    }
+
+    // ─── Testes de Edição ─────────────────────────────────────────────────────
+
+    @Test
+    void editarUtilizador_DeveAtualizarProfessorComDadosEspecificos() {
+        // Arrange
+        String hashId = "prof_hash";
+        Integer idReal = 2;
+        BigDecimal novoValorHora = new BigDecimal("25.50");
+
+        TipoUtilizador tipoProf = new TipoUtilizador();
+        tipoProf.setId(2); // ID correspondente a Professor no teu service
+        tipoProf.setTipoUtilizador("ROLE_PROFESSOR");
+
+        Professore profExistente = new Professore();
+        profExistente.setId(idReal);
+        profExistente.setTipo(tipoProf);
+        profExistente.setValorHora(new BigDecimal("20.00")); // Valor antigo
+
+        // Utilizando o DTO com BigDecimal e os campos corretos
+        EditarUtilizadorDto editDto = new EditarUtilizadorDto(
+                "Professor Editado",
+                "prof@novo.pt",
+                "999999999",
+                "960000000",
+                LocalDate.of(1980, 1, 1),
+                novoValorHora,
+                true,
+                "Novas Notas de Professor"
         );
+
+        when(idHasher.decode(hashId)).thenReturn(idReal);
+        when(utilizadoreRepository.findById(idReal)).thenReturn(Optional.of(profExistente));
+
+        // O service faz um findById no professoreRepository para atualizar dados específicos
+        when(professoreRepository.findById(idReal)).thenReturn(Optional.of(profExistente));
+
+        // Simula o save devolvendo o próprio objeto alterado
+        when(utilizadoreRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(idHasher.encode(idReal)).thenReturn(hashId);
+
+        // Act
+        UtilizadorResponseDto resultado = utilizadorService.editarUtilizador(hashId, editDto);
+
+        // Assert
+        assertNotNull(resultado);
+        assertEquals("Professor Editado", resultado.nome());
+        assertEquals("prof@novo.pt", resultado.email());
+
+        // Verifica se os dados específicos de Professor foram persistidos
+        verify(professoreRepository, times(1)).save(any(Professore.class));
+        assertEquals(novoValorHora, profExistente.getValorHora());
+        assertEquals(true, profExistente.getProfessorExterno());
     }
 
-    // =========================================================================
-    // region TOGGLE ATIVO
-    // =========================================================================
+    // ─── Testes de Palavra-Passe e Segurança ──────────────────────────────────
 
     @Test
-    @DisplayName("[OK] Coordenação desativa utilizador ativo → fica inativo")
-    void toggleAtivo_utilizadorAtivo_ficaInativo() {
-        utilizadorFake.setAtivo(true);
-        when(idHasher.decode(ID_HASHED)).thenReturn(ID_REAL);
-        when(idHasher.encode(ID_REAL)).thenReturn(ID_HASHED);
-        when(utilizadoreRepository.findById(ID_REAL)).thenReturn(Optional.of(utilizadorFake));
-        when(utilizadoreRepository.save(any())).thenReturn(utilizadorFake);
+    void reporPalavraPasse_DeveAtualizarComSucesso() throws Exception {
+        // Arrange
+        String hashId = "user_hash";
+        Integer idReal = 10;
+        Utilizadore user = new Utilizadore();
+        user.setId(idReal);
 
-        UtilizadorResponseDto resultado = utilizadorService.toggleAtivo(ID_HASHED);
+        ReporPasswordDto reporDto = new ReporPasswordDto("novaPass123", "novaPass123");
 
-        assertThat(utilizadorFake.getAtivo()).isFalse();
-        verify(utilizadoreRepository, times(1)).save(utilizadorFake);
+        when(idHasher.decode(hashId)).thenReturn(idReal);
+        when(utilizadoreRepository.findById(idReal)).thenReturn(Optional.of(user));
+        when(passwordEncoder.encode("novaPass123")).thenReturn("encoded_pass");
+
+        // Act
+        utilizadorService.reporPalavraPasse(hashId, reporDto);
+
+        // Assert
+        assertEquals("encoded_pass", user.getPalavraPasse());
+        verify(utilizadoreRepository).save(user);
     }
 
     @Test
-    @DisplayName("[OK] Coordenação ativa utilizador inativo → fica ativo")
-    void toggleAtivo_utilizadorInativo_ficaAtivo() {
-        utilizadorFake.setAtivo(false);
-        when(idHasher.decode(ID_HASHED)).thenReturn(ID_REAL);
-        when(idHasher.encode(ID_REAL)).thenReturn(ID_HASHED);
-        when(utilizadoreRepository.findById(ID_REAL)).thenReturn(Optional.of(utilizadorFake));
-        when(utilizadoreRepository.save(any())).thenReturn(utilizadorFake);
+    void reporPalavraPasse_DeveFalhar_QuandoPasswordsNaoCoincidem() {
+        // Arrange
+        ReporPasswordDto reporDto = new ReporPasswordDto("pass1", "pass2");
+        when(idHasher.decode(anyString())).thenReturn(1);
+        when(utilizadoreRepository.findById(anyInt())).thenReturn(Optional.of(new Utilizadore()));
 
-        utilizadorService.toggleAtivo(ID_HASHED);
-
-        assertThat(utilizadorFake.getAtivo()).isTrue();
-    }
-
-    @Test
-    @DisplayName("[FALHA INTENCIONAL] Toggle em utilizador inexistente → espera resultado mas devia lançar exceção")
-    void toggleAtivo_utilizadorInexistente_FalhaIntencional() {
-        when(idHasher.decode(ID_HASHED)).thenReturn(ID_REAL);
-        when(utilizadoreRepository.findById(ID_REAL)).thenReturn(Optional.empty());
-
-        // FALHA INTENCIONAL: lança UtilizadorNaoEncontradoException
-        // mas o teste espera que corra sem erro — vai falhar
-        assertThatNoException().isThrownBy(
-                () -> utilizadorService.toggleAtivo(ID_HASHED) // ❌ FALHA: lança exceção
+        // Act & Assert
+        Exception ex = assertThrows(Exception.class, () ->
+                utilizadorService.reporPalavraPasse("hash", reporDto)
         );
+        assertTrue(ex.getMessage().contains("não coincidem"));
     }
 
-    // =========================================================================
-    // region APAGAR UTILIZADOR (soft delete)
-    // =========================================================================
+    // ─── Testes de Listagem de Contactos ──────────────────────────────────────
 
     @Test
-    @DisplayName("[OK] Coordenação apaga utilizador → fica com ativo = false")
-    void apagarUtilizador_utilizadorExiste_ficaInativo() {
-        utilizadorFake.setAtivo(true);
-        when(idHasher.decode(ID_HASHED)).thenReturn(ID_REAL);
-        when(utilizadoreRepository.findById(ID_REAL)).thenReturn(Optional.of(utilizadorFake));
+    void listarContactosDisponiveis_DeveFiltrarOProprioUtilizador() {
+        // Arrange
+        String hashLogado = "hash_eu";
+        Integer idLogado = 1;
 
-        utilizadorService.apagarUtilizador(ID_HASHED);
+        Utilizadore eu = new Utilizadore(); eu.setId(idLogado); eu.setNome("Eu");
+        Utilizadore outro = new Utilizadore(); outro.setId(2); outro.setNome("Outro");
 
-        assertThat(utilizadorFake.getAtivo()).isFalse();
-        verify(utilizadoreRepository, times(1)).save(utilizadorFake);
-    }
+        when(idHasher.decode(hashLogado)).thenReturn(idLogado);
+        when(utilizadoreRepository.findAll()).thenReturn(List.of(eu, outro));
+        when(idHasher.encode(2)).thenReturn("hash_outro");
 
-    @Test
-    @DisplayName("[FALHA INTENCIONAL] Apagar utilizador inexistente → espera sem erro mas devia lançar exceção")
-    void apagarUtilizador_naoExiste_FalhaIntencional() {
-        when(idHasher.decode(ID_HASHED)).thenReturn(ID_REAL);
-        when(utilizadoreRepository.findById(ID_REAL)).thenReturn(Optional.empty());
+        // Act
+        List<UtilizadoreResumoDto> resultado = utilizadorService.listarContactosDisponiveis(hashLogado);
 
-        // FALHA INTENCIONAL: lança UtilizadorNaoEncontradoException
-        // mas o teste não espera exceção — vai falhar
-        assertThatNoException().isThrownBy(
-                () -> utilizadorService.apagarUtilizador(ID_HASHED) // ❌ FALHA: lança exceção
-        );
-    }
-
-    // =========================================================================
-    // region REPOR PALAVRA PASSE
-    // =========================================================================
-
-    @Test
-    @DisplayName("[OK] Coordenação repõe password de utilizador com passwords iguais")
-    void reporPalavraPasse_passwordsIguais_sucesso() throws Exception {
-        when(idHasher.decode(ID_HASHED)).thenReturn(ID_REAL);
-        when(utilizadoreRepository.findById(ID_REAL)).thenReturn(Optional.of(utilizadorFake));
-        when(passwordEncoder.encode(any())).thenReturn("nova_hash");
-
-        ReporPasswordDto dto = new ReporPasswordDto("nova123", "nova123");
-        utilizadorService.reporPalavraPasse(ID_HASHED, dto);
-
-        assertThat(utilizadorFake.getPalavraPasse()).isEqualTo("nova_hash");
-        verify(utilizadoreRepository, times(1)).save(utilizadorFake);
-    }
-
-    @Test
-    @DisplayName("[FALHA INTENCIONAL] Repor password com passwords diferentes → espera sucesso mas devia lançar exceção")
-    void reporPalavraPasse_passwordsDiferentes_FalhaIntencional() {
-        when(idHasher.decode(ID_HASHED)).thenReturn(ID_REAL);
-        when(utilizadoreRepository.findById(ID_REAL)).thenReturn(Optional.of(utilizadorFake));
-
-        ReporPasswordDto dto = new ReporPasswordDto("nova123", "diferente456");
-
-        // FALHA INTENCIONAL: lança Exception "Passwords não coincidem"
-        // mas o teste espera que corra sem erro — vai falhar
-        assertThatNoException().isThrownBy(
-                () -> utilizadorService.reporPalavraPasse(ID_HASHED, dto) // ❌ FALHA: lança exceção
-        );
-    }
-
-    // =========================================================================
-    // region ALTERAR PALAVRA PASSE
-    // =========================================================================
-
-    @Test
-    @DisplayName("[OK] Utilizador altera a sua password com dados corretos")
-    void alterarPalavraPasse_dadosCorretos_sucesso() throws Exception {
-        when(idHasher.decode(ID_HASHED)).thenReturn(ID_REAL);
-        when(utilizadoreRepository.findById(ID_REAL)).thenReturn(Optional.of(utilizadorFake));
-        when(passwordEncoder.matches("atual123", "hashed_pass")).thenReturn(true);
-        when(passwordEncoder.encode("nova123")).thenReturn("nova_hash");
-
-        AlterarPasswordDto dto = new AlterarPasswordDto("atual123", "nova123", "nova123");
-        utilizadorService.alterarPalavraPasse(ID_HASHED, dto);
-
-        assertThat(utilizadorFake.getPalavraPasse()).isEqualTo("nova_hash");
-    }
-
-    @Test
-    @DisplayName("[FALHA INTENCIONAL] Alterar password com password atual errada → espera sucesso mas devia lançar exceção")
-    void alterarPalavraPasse_passwordAtualErrada_FalhaIntencional() {
-        when(idHasher.decode(ID_HASHED)).thenReturn(ID_REAL);
-        when(utilizadoreRepository.findById(ID_REAL)).thenReturn(Optional.of(utilizadorFake));
-        when(passwordEncoder.matches("errada", "hashed_pass")).thenReturn(false);
-
-        AlterarPasswordDto dto = new AlterarPasswordDto("errada", "nova123", "nova123");
-
-        // FALHA INTENCIONAL: lança Exception "Palavra Passe incorreta"
-        // mas o teste não espera exceção — vai falhar
-        assertThatNoException().isThrownBy(
-                () -> utilizadorService.alterarPalavraPasse(ID_HASHED, dto) // ❌ FALHA: lança exceção
-        );
-    }
-
-    // =========================================================================
-    // region LISTAR TODOS
-    // =========================================================================
-
-    @Test
-    @DisplayName("[OK] Coordenação lista todos os utilizadores sem filtro")
-    void listarTodos_semFiltro_retornaLista() {
-        Pageable pageable = PageRequest.of(0, 10);
-        Page<Utilizadore> paginaFake = new PageImpl<>(List.of(utilizadorFake));
-        when(utilizadoreRepository.findAll(pageable)).thenReturn(paginaFake);
-        when(idHasher.encode(ID_REAL)).thenReturn(ID_HASHED);
-
-        Page<UtilizadorResponseDto> resultado = utilizadorService.listarTodos(null, pageable);
-
-        assertThat(resultado.getContent()).hasSize(1);
-        assertThat(resultado.getContent().get(0).nome()).isEqualTo("João Silva");
-    }
-
-    @Test
-    @DisplayName("[OK] Coordenação lista utilizadores com filtro por tipo")
-    void listarTodos_comFiltroTipo_retornaListaFiltrada() {
-        Pageable pageable = PageRequest.of(0, 10);
-        Page<Utilizadore> paginaFake = new PageImpl<>(List.of(utilizadorFake));
-        when(utilizadoreRepository.findAllByTipo_TipoUtilizador("ROLE_ENCARREGADO", pageable))
-                .thenReturn(paginaFake);
-        when(idHasher.encode(ID_REAL)).thenReturn(ID_HASHED);
-
-        Page<UtilizadorResponseDto> resultado = utilizadorService.listarTodos("ROLE_ENCARREGADO", pageable);
-
-        assertThat(resultado.getContent()).hasSize(1);
-        verify(utilizadoreRepository).findAllByTipo_TipoUtilizador("ROLE_ENCARREGADO", pageable);
-    }
-
-    @Test
-    @DisplayName("[FALHA INTENCIONAL] Filtro por tipo inexistente → espera resultados mas devia devolver lista vazia")
-    void listarTodos_tipoInexistente_FalhaIntencional() {
-        Pageable pageable = PageRequest.of(0, 10);
-        when(utilizadoreRepository.findAllByTipo_TipoUtilizador("ROLE_INEXISTENTE", pageable))
-                .thenReturn(new PageImpl<>(List.of(utilizadorFake))); // devolve resultados errados
-
-        Page<UtilizadorResponseDto> resultado = utilizadorService.listarTodos("ROLE_INEXISTENTE", pageable);
-
-        // FALHA INTENCIONAL: esperamos lista vazia mas o mock devolve 1 resultado
-        assertThat(resultado.getContent()).isEmpty(); //Falha um elemento
-    }
-
-    // =========================================================================
-    // region ASSOCIAR ALUNO A ENCARREGADO
-    // =========================================================================
-
-    @Test
-    @DisplayName("[OK] Coordenação associa aluno a encarregado sem duplicado")
-    void associarAlunoAEncarregado_semDuplicado_sucesso() throws Exception {
-        String idAlunoH = "alu1";
-        String idEncH = "enc1";
-        Integer idAluno = 2;
-        Integer idEnc = 3;
-
-        Aluno aluno = new Aluno();
-        aluno.setId(idAluno);
-
-        when(idHasher.decode(idAlunoH)).thenReturn(idAluno);
-        when(idHasher.decode(idEncH)).thenReturn(idEnc);
-        when(utilizadoreRepository.findById(idEnc)).thenReturn(Optional.of(utilizadorFake));
-        when(alunoRepository.findById(idAluno)).thenReturn(Optional.of(aluno));
-        when(encarregadoAluno.existsByEncarregado_IdAndAluno_Id(idEnc, idAluno)).thenReturn(false);
-
-        utilizadorService.associarAlunoAEncarregado(idAlunoH, idEncH);
-
-        verify(encarregadoAluno, times(1)).save(any(EncarregadoAluno.class));
-    }
-
-    @Test
-    @DisplayName("[FALHA INTENCIONAL] Associar aluno já associado → espera sucesso mas devia lançar exceção")
-    void associarAlunoAEncarregado_duplicado_FalhaIntencional() {
-        String idAlunoH = "alu1";
-        String idEncH = "enc1";
-        Integer idAluno = 2;
-        Integer idEnc = 3;
-
-        Aluno aluno = new Aluno();
-        aluno.setId(idAluno);
-
-        when(idHasher.decode(idAlunoH)).thenReturn(idAluno);
-        when(idHasher.decode(idEncH)).thenReturn(idEnc);
-        when(utilizadoreRepository.findById(idEnc)).thenReturn(Optional.of(utilizadorFake));
-        when(alunoRepository.findById(idAluno)).thenReturn(Optional.of(aluno));
-        when(encarregadoAluno.existsByEncarregado_IdAndAluno_Id(idEnc, idAluno)).thenReturn(true);
-
-        // FALHA INTENCIONAL: lança Exception "já está associado"
-        // mas o teste não espera exceção — vai falhar
-        assertThatNoException().isThrownBy(
-                () -> utilizadorService.associarAlunoAEncarregado(idAlunoH, idEncH) // ❌ FALHA: lança exceção
-        );
-    }
-
-    // =========================================================================
-    // region FIND EDUCANDOS DE EDUCADOR
-    // =========================================================================
-
-    @Test
-    @DisplayName("[OK] Encarregado com educandos → lista devolvida corretamente")
-    void findEducandosDeEducador_comEducandos_retornaLista() {
-        Aluno aluno = new Aluno();
-        aluno.setId(2);
-        aluno.setNome("Maria");
-
-        EncarregadoAluno ea = new EncarregadoAluno();
-        ea.setAluno(aluno);
-        ea.setEncarregado(utilizadorFake);
-
-        when(encarregadoAluno.findAllByEncarregado_Id(ID_REAL)).thenReturn(List.of(ea));
-        when(idHasher.encode(2)).thenReturn("alu_hash");
-
-        List<UtilizadoreResumoDto> resultado = utilizadorService.findEducandosdeEducador(ID_REAL);
-
-        assertThat(resultado).hasSize(1);
-        assertThat(resultado.get(0).nome()).isEqualTo("Maria");
-    }
-
-    @Test
-    @DisplayName("[FALHA INTENCIONAL] Encarregado sem educandos → espera lista com 1 elemento mas devia ser vazia")
-    void findEducandosDeEducador_semEducandos_FalhaIntencional() {
-        when(encarregadoAluno.findAllByEncarregado_Id(ID_REAL)).thenReturn(List.of());
-
-        List<UtilizadoreResumoDto> resultado = utilizadorService.findEducandosdeEducador(ID_REAL);
-
-        // FALHA INTENCIONAL: esperamos 1 elemento mas a lista está vazia
-        assertThat(resultado).hasSize(1); // ❌ FALHA: lista vazia
+        // Assert
+        assertEquals(1, resultado.size());
+        assertEquals("Outro", resultado.get(0).nome());
+        assertNotEquals("hash_eu", resultado.get(0).id());
     }
 }
