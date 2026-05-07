@@ -1,7 +1,6 @@
-package ipcaProjeto50.Grupo62026.SiteEntArtes.controller;
+package ipcaProjeto50.Grupo62026.SiteEntArtes.controller.Horarios;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.Utils;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.controller.Horarios.HorarioController;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.service.*;
 import org.junit.jupiter.api.DisplayName;
@@ -59,7 +58,7 @@ public class HorarioControllerTest {
     // =========================================================================
 
     @Test
-    @DisplayName("[OK] Professor insere as suas disponibilidades")
+    @DisplayName("Professor insere as suas disponibilidades")
     void professorInsereDisponibilidade() {
         mockUserId("prof1");
 
@@ -75,7 +74,7 @@ public class HorarioControllerTest {
     }
 
     @Test
-    @DisplayName("[OK] Professor consulta os seus coachings pendentes")
+    @DisplayName("Professor consulta os seus coachings pendentes")
     void professorConsultaCoachingsPendentes() {
         mockUserId("prof1");
         when(aulaCoachingService.findPendentesByProfessorId(eq("prof1"), any(Pageable.class)))
@@ -87,7 +86,7 @@ public class HorarioControllerTest {
     }
 
     @Test
-    @DisplayName("[OK] Professor confirma uma aula de coaching (Sim no BPMN)")
+    @DisplayName("Professor confirma uma aula de coaching (Sim no BPMN)")
     void professorConfirmaCoaching() {
         try (MockedStatic<Utils> utils = mockStatic(Utils.class)) {
             utils.when(Utils::getAuthenticatedUserId).thenReturn("prof1");
@@ -99,7 +98,7 @@ public class HorarioControllerTest {
     }
 
     @Test
-    @DisplayName("[OK] Professor rejeita uma aula de coaching (Não no BPMN)")
+    @DisplayName("Professor rejeita uma aula de coaching (Não no BPMN)")
     void professorRejeitaCoaching() {
         mockUserId("prof1");
 
@@ -109,7 +108,7 @@ public class HorarioControllerTest {
     }
 
     @Test
-    @DisplayName("[OK] Professor remove uma disponibilidade")
+    @DisplayName("Professor remove uma disponibilidade")
     void professorRemoveDisponibilidade() {
         ResponseEntity<?> response = horarioController.eliminar("disp1");
 
@@ -117,7 +116,7 @@ public class HorarioControllerTest {
     }
 
     @Test
-    @DisplayName("[CORRIGIDO] Professor tenta confirmar coaching inexistente → espera 404")
+    @DisplayName("Professor tenta confirmar coaching inexistente → espera 404")
     void professorConfirmaCoachingInexistente_FalhaIntencional() throws Exception {
         try (MockedStatic<Utils> utils = mockStatic(Utils.class)) {
             utils.when(Utils::getAuthenticatedUserId).thenReturn("prof1");
@@ -136,7 +135,7 @@ public class HorarioControllerTest {
     // =========================================================================
 
     @Test
-    @DisplayName("[OK] Encarregado marca aula de coaching ao seu educando")
+    @DisplayName("Encarregado marca aula de coaching ao seu educando")
     void encarregadoMarcaCoaching() throws Exception {
         mockUserId("pai1");
         doNothing().when(utilizadorService).verificaPermissaoEducando("aluno123", "pai1");
@@ -154,7 +153,7 @@ public class HorarioControllerTest {
     }
 
     @Test
-    @DisplayName("[OK] Encarregado sem permissão sobre o educando recebe 400")
+    @DisplayName("Encarregado sem permissão sobre o educando recebe 400")
     void encarregadoSemPermissaoSobreEducando() throws Exception {
         mockUserId("pai1");
         doThrow(new RuntimeException("Sem permissão"))
@@ -173,7 +172,7 @@ public class HorarioControllerTest {
     }
 
     @Test
-    @DisplayName("[ERRO] Encarregado tenta marcar coaching fora do horário de disponibilidade do professor")
+    @DisplayName("Encarregado tenta marcar coaching fora do horário de disponibilidade do professor")
     void erroHorarioForaDaDisponibilidade() throws Exception {
         mockUserId("pai1");
         doNothing().when(utilizadorService).verificaPermissaoEducando("aluno123", "pai1");
@@ -193,7 +192,7 @@ public class HorarioControllerTest {
     }
 
     @Test
-    @DisplayName("[ERRO] Encarregado tenta marcar aula em dia bloqueado pela Coordenação")
+    @DisplayName("Encarregado tenta marcar aula em dia bloqueado pela Coordenação")
     void erroCoordenacaoBloqueiaData() throws Exception {
         mockUserId("pai1");
         doNothing().when(utilizadorService).verificaPermissaoEducando("aluno123", "pai1");
@@ -213,7 +212,7 @@ public class HorarioControllerTest {
     }
 
     @Test
-    @DisplayName("[CORRIGIDO] Encarregado marca coaching sem body → espera 400")
+    @DisplayName("Encarregado marca coaching sem body → espera 400")
     void encarregadoMarcaCoachingSemBody_FalhaIntencional() throws Exception {
         mockUserId("pai1");
         doNothing().when(utilizadorService).verificaPermissaoEducando("aluno123", "pai1");
@@ -231,7 +230,7 @@ public class HorarioControllerTest {
     // =========================================================================
 
     @Test
-    @DisplayName("[OK] Coordenação lista todos os horários")
+    @DisplayName("Coordenação lista todos os horários")
     void coordenacaoListaHorarios() {
         when(aulaFixaService.findAll(any(Pageable.class))).thenReturn(new PagedModel<>(new PageImpl<>(List.of())));
         ResponseEntity<?> response = horarioController.listarHorarios(Pageable.unpaged());
@@ -240,7 +239,7 @@ public class HorarioControllerTest {
     }
 
     @Test
-    @DisplayName("[OK] Coordenação cria horário de turma")
+    @DisplayName("Coordenação cria horário de turma")
     void coordenacaoCriaHorario() {
         mockUserId("coord1");
 
@@ -258,7 +257,7 @@ public class HorarioControllerTest {
     }
 
     @Test
-    @DisplayName("[ERRO] Coordenação cria horário sem idturma → 400")
+    @DisplayName("Coordenação cria horário sem idturma → 400")
     void coordenacaoCriaHorarioSemTurma() {
         mockUserId("coord1");
 
@@ -276,7 +275,7 @@ public class HorarioControllerTest {
     }
 
     @Test
-    @DisplayName("[ERRO] Coordenação cria horário com hora de fim anterior à de início → 400")
+    @DisplayName("Coordenação cria horário com hora de fim anterior à de início → 400")
     void coordenacaoCriaHorarioHorasInvalidas() {
         mockUserId("coord1");
 
@@ -294,7 +293,7 @@ public class HorarioControllerTest {
     }
 
     @Test
-    @DisplayName("[OK] Coordenação lista todos os coachings")
+    @DisplayName("Coordenação lista todos os coachings")
     void coordenacaoListaTodosCoachings() {
         when(aulaCoachingService.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
 
@@ -304,7 +303,7 @@ public class HorarioControllerTest {
     }
 
     @Test
-    @DisplayName("[OK] Coordenação elimina um coaching")
+    @DisplayName("Coordenação elimina um coaching")
     void coordenacaoEliminaCoaching() throws Exception {
         doNothing().when(aulaCoachingService).eliminar("aula1");
 
@@ -314,7 +313,7 @@ public class HorarioControllerTest {
     }
 
     @Test
-    @DisplayName("[OK] Coordenação cria coaching diretamente para um aluno")
+    @DisplayName("Coordenação cria coaching diretamente para um aluno")
     void coordenacaoCriaCoachingParaAluno() {
         var dto = new AulaCoachingRequestDto(
                 "prof1", "estudio1",
@@ -329,7 +328,7 @@ public class HorarioControllerTest {
     }
 
     @Test
-    @DisplayName("[CORRIGIDO] Coordenação elimina horário inexistente → espera 500")
+    @DisplayName("Coordenação elimina horário inexistente → espera 500")
     void coordenacaoEliminaHorarioInexistente_FalhaIntencional() throws Exception {
         doThrow(new RuntimeException("Horário não encontrado"))
                 .when(aulaService).EliminarAulasComHorario("naoExiste");
