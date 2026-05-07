@@ -2,12 +2,19 @@ package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ModalidadeDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.PagamentoDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.TurmaDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Turma;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.UtilizadoreResumoDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.TipoPagamentoRepository;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.TurmaAlunoRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.TurmaRepository;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.UtilizadoreRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -16,6 +23,11 @@ public class TurmaService {
     private final TurmaRepository turmaRepository;
     private final IdHasher idHasher;
     private final ModalidadeService modalidadeService;
+    private final UtilizadoreRepository utilizadoreRepository;
+    private final TipoPagamentoRepository tipoPagamentoRepository;
+    private final TurmaAlunoRepository turmaAlunoRepository;
+    private final PagamentoService pagamentoService;
+
     TurmaDto findById(Integer id) throws Exception {
         return converterTurmaParaDto(turmaRepository.findById(id).orElseThrow(() -> new Exception("Turma não Encontrada!")));}
     public TurmaDto findById(String id) throws Exception {
@@ -68,4 +80,42 @@ public class TurmaService {
                 modalidadeService.converterParaDto(turma.getModalidade())
         );
     }
-}
+    @Scheduled(cron = "0 0 0 1 * *") // Executa no dia 1 de cada mês
+    public void gerarPagamentosMensaisTurmas() {
+        // 1. Ir buscar todos os alunos que estão inscritos em turmas
+        // Nota: Precisas de um método no teu UtilizadorRepository para isto
+        List<TurmaAluno> alunosEmTurmas = turmaAlunoRepository.findAll();
+
+        // 2. Definir o tipo de pagamento ID 1 (ex: "Mensalidade Turma")
+        TipoPagamento tipoMensalidade = tipoPagamentoRepository.findById(1)
+                .orElse(null);
+
+        for (TurmaAluno turmaaluno : alunosEmTurmas) {
+            try {
+                String alunoIdHashed = idHasher.encode(turmaaluno.getAluno().getId());
+                String tipoPagamentoHashed = idHasher.encode(1);
+                UtilizadoreResumoDto resumo = new UtilizadoreResumoDto(
+                        alunoIdHashed,
+                        turmaaluno.getAluno().getNome()
+                );
+
+                // 3. Instanciar o Record (Imutável - valores passados no construtor)
+                PagamentoDto novaMensalidade = new PagamentoDto(
+                        null,                                        // id (gerado pela DB)
+                        turmaaluno.getTurma().getMensalidade(),        // valor (BigDecimal)
+                        false,                                       // pago
+                        "Mensalidade de " + LocalDate.now().getMonth(), // descricao
+                        tipoPagamentoHashed,                         // idTipoPagamento (String)
+                        "Mensalidade Turma",                         // tipoPagamentoNome
+                        null,                                        // aula (sem aula específica)
+                        LocalDate.now(),                             // dataPagamento
+                        null,                                        // dataConfirmado
+                        resumo                                       // utilizadoreResumoDto
+                );
+                pagamentoService.criar(novaMensalidade);
+            } catch (Exception e) {
+                // Log de erro para não interromper o loop dos outros alunos
+                System.err.println("Erro ao gerar pagamento para aluno " + turmaaluno.getId() + ": " + e.getMessage());
+            }
+        }
+    }}

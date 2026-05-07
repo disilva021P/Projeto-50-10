@@ -29,39 +29,45 @@ public class    SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
                 .cors(Customizer.withDefaults())
-                .csrf(csrf -> csrf.disable()) // desativar CSRF para API REST
+                .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login").permitAll()
-                        .requestMatchers("/api/**").permitAll()
-                        .requestMatchers("/api/faltas").permitAll()
-                        .requestMatchers("/api/pagamentos/**").permitAll()
-                        .requestMatchers("/api/utilizadores/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/utilizadores/geraTokenEmail",  // novo
+                                "/api/utilizadores/esqueceuPassword" // novo
+                        ).permitAll()
+
+                        .requestMatchers(HttpMethod.GET, "/api/marketplace/imagem/**").permitAll()
+
                         .requestMatchers("/api/coordenacao/**").hasAuthority("COORDENACAO")
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .anyRequest().authenticated() // resto protegido
+
+                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .httpBasic(basic -> basic.disable())
                 .formLogin(form -> form.disable());
 
         return http.build();
     }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-
+        // Recomendo usar origins específicos em produção, mas para teste:
         configuration.setAllowedOriginPatterns(List.of("*"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
-        // ATENÇÃO AQUI: Adicionámos os headers do HTMX
+        // ADICIONADO: "PATCH"
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+
         configuration.setAllowedHeaders(List.of(
                 "Authorization",
                 "Content-Type",
                 "X-Requested-With",
+                "Accept",
+                "Origin",
                 "hx-current-url",
                 "hx-request",
                 "hx-target",
@@ -69,15 +75,19 @@ public class    SecurityConfig {
         ));
 
         configuration.setAllowCredentials(true);
+        // IMPORTANTE: Expor o header Authorization se o teu front-end precisar de o ler
+        configuration.setExposedHeaders(List.of("Authorization"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();

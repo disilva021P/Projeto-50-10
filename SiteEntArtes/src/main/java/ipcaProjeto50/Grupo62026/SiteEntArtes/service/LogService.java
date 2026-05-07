@@ -35,13 +35,13 @@ public class LogService {
         return auditoriaRepository.findAll(pageable).map(this::convertToDto);
     }
     // --- INSERIR ---
-    public void registrarAcao(String idUserHashed, String acao) {
+    public void registrarAcao(String idUserHashed, String acao) throws Exception {
         AuditoriaLog log = new AuditoriaLog();
 
         // Decodificar o ID do utilizador e procurar a entidade
         Integer userId = idHasher.decode(idUserHashed);
         Utilizadore user = utilizadoreRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
+                .orElseThrow(() -> new Exception("Utilizador não encontrado"));
 
         log.setIdUtilizador(user);
         log.setAcao(acao);

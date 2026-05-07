@@ -1,5 +1,7 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.dto;
 
+import java.time.Instant;
+
 /**
  * Record para transferência de dados de falta.
  * @param aulaId ID da aula
@@ -10,5 +12,6 @@ public record FaltaDto(
         String aulaId,
         String utilizadorId,
         Boolean justificado,
-        String motivo
+        String motivo,
+        String estado
 ) {}

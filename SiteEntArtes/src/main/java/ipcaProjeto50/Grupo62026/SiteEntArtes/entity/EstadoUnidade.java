@@ -5,12 +5,14 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
 @Entity
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Table(name = "estado_unidade")
 public class EstadoUnidade {
     @Id
@@ -20,6 +22,4 @@ public class EstadoUnidade {
 
     @Column(name = "estado", nullable = false, length = 50)
     private String estado;
-
-
 }

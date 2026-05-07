@@ -16,6 +16,7 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "turma_alunos")
 public class TurmaAluno {
+
     @EmbeddedId
     private TurmaAlunoId id;
 
@@ -24,9 +25,12 @@ public class TurmaAluno {
     @JoinColumn(name = "aluno_id", nullable = false)
     private Aluno aluno;
 
+    @MapsId("turmaId")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "turma_id", nullable = false)
+    private Turma turma;
+
     @ColumnDefault("(curdate())")
     @Column(name = "inscrito_em", nullable = false)
     private LocalDate inscritoEm;
-
-
 }

@@ -1,7 +1,9 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.controller.Pagamentos;
 
+import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.Utils;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.service.PagamentoService;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.service.UtilizadorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedModel;
@@ -19,132 +21,317 @@ import java.util.List;
 public class PagamentosController {
 
     private final PagamentoService pagamentoService;
+    private final UtilizadorService utilizadorService;
 
-    // GET /api/pagamentos
-    // Apenas COORDENACAO pode ver todos os pagamentos
+    // ── COORDENACAO ───────────────────────────────────────────────────────────
+
     @PreAuthorize("hasAuthority('COORDENACAO')")
     @GetMapping
     public ResponseEntity<List<PagamentoDto>> listarTodos() {
-        return ResponseEntity.ok(pagamentoService.listarTodos());
+        try {
+            return ResponseEntity.ok(pagamentoService.listarTodos());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
-    // GET /api/pagamentos/{id}
-    // Todos os roles autenticados podem buscar por ID
+    @PreAuthorize("hasAuthority('COORDENACAO')")
     @GetMapping("/{id}")
     public ResponseEntity<PagamentoDto> buscarPorId(@PathVariable String id) {
-        return pagamentoService.buscarPorId(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        try {
+            return pagamentoService.buscarPorId(id)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
-    // POST /api/pagamentos
-    // Apenas COORDENACAO pode criar pagamentos
     @PreAuthorize("hasAuthority('COORDENACAO')")
     @PostMapping
     public ResponseEntity<PagamentoDto> criar(@RequestBody PagamentoDto dto) {
-        PagamentoDto criado = pagamentoService.criar(dto);
-        return ResponseEntity.status(201).body(criado);
+        try {
+            return ResponseEntity.status(201).body(pagamentoService.criar(dto));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
-    // PUT /api/pagamentos/{id}
-    // Apenas COORDENACAO pode editar pagamentos
     @PreAuthorize("hasAuthority('COORDENACAO')")
     @PutMapping("/{id}")
-    public ResponseEntity<PagamentoDto> atualizar(
-            @PathVariable String id,
-            @RequestBody PagamentoDto dto) {
-        PagamentoDto atualizado = pagamentoService.atualizar(id, dto);
-        return ResponseEntity.ok(atualizado);
+    public ResponseEntity<PagamentoDto> atualizar(@PathVariable String id, @RequestBody PagamentoDto dto) {
+        try {
+            return ResponseEntity.ok(pagamentoService.atualizar(id, dto));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
-    // PATCH /api/pagamentos/{id}/confirmar
-    // COORDENACAO confirma pagamentos
     @PreAuthorize("hasAuthority('COORDENACAO')")
     @PatchMapping("/{id}/confirmar")
     public ResponseEntity<PagamentoDto> confirmar(@PathVariable String id) {
-        PagamentoDto confirmado = pagamentoService.confirmar(id);
-        return ResponseEntity.ok(confirmado);
+        try {
+            return ResponseEntity.ok(pagamentoService.confirmar(id));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
-    // DELETE /api/pagamentos/{id}
-    // Apenas COORDENACAO pode eliminar
     @PreAuthorize("hasAuthority('COORDENACAO')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable String id) {
-        pagamentoService.eliminar(id);
-        return ResponseEntity.noContent().build();
+        try {
+            pagamentoService.eliminar(id);
+            return ResponseEntity.noContent().build();
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
-    // GET /api/pagamentos/utilizador/{id}?offset=0
-    // ALUNO e ENCARREGADO veem os próprios pagamentos; COORDENACAO pode ver qualquer um
-    @PreAuthorize("hasAnyRole('COORDENACAO','ALUNO','ENCARREGADO')")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
     @GetMapping("/utilizador/{id}")
     public ResponseEntity<List<PagamentoDto>> listarPorUtilizador(
             @PathVariable String id,
             @RequestParam(defaultValue = "0") Integer offset) {
-        return ResponseEntity.ok(pagamentoService.listarPorUtilizador(id, offset));
+        try {
+            return ResponseEntity.ok(pagamentoService.listarPorUtilizador(id, offset));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
-    // GET /api/pagamentos/utilizador/{id}/paginado
-    @PreAuthorize("hasAnyRole('COORDENACAO','ALUNO','ENCARREGADO')")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
     @GetMapping("/utilizador/{id}/paginado")
     public ResponseEntity<PagedModel<PagamentoDto>> listarPorUtilizadorPaginado(
             @PathVariable String id,
             Pageable pageable) {
-        return ResponseEntity.ok(pagamentoService.findAllPorUtilizador(id, pageable));
+        try {
+            return ResponseEntity.ok(pagamentoService.findAllPorUtilizador(id, pageable));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
-    // GET /api/pagamentos/utilizador/{id}/estatisticas?offset=0
-    // ALUNO e ENCARREGADO veem as próprias estatísticas; COORDENACAO pode ver qualquer uma
-    @PreAuthorize("hasAnyRole('COORDENACAO','ALUNO','ENCARREGADO')")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
     @GetMapping("/utilizador/{id}/estatisticas")
     public ResponseEntity<AlunoEstatisiticaDto> estatisticasAluno(
             @PathVariable String id,
             @RequestParam(defaultValue = "0") Integer offset) {
-        return ResponseEntity.ok(pagamentoService.obterEstatisticasAluno(id, offset));
+        try {
+            return ResponseEntity.ok(pagamentoService.obterEstatisticasAluno(id, offset));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
-    // GET /api/pagamentos/estatisticas/coordenacao
-    // Apenas COORDENACAO
     @PreAuthorize("hasAuthority('COORDENACAO')")
     @GetMapping("/estatisticas/coordenacao")
     public ResponseEntity<PagamentosEstatisiticaCoordenacao> estatisticasCoordenacao() {
-        return ResponseEntity.ok(pagamentoService.EstatisticasCoordenacao());
+        try {
+            return ResponseEntity.ok(pagamentoService.EstatisticasCoordenacao());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
-    // GET /api/pagamentos/estatisticas/despesas
-    // Apenas COORDENACAO
     @PreAuthorize("hasAuthority('COORDENACAO')")
     @GetMapping("/estatisticas/despesas")
     public ResponseEntity<DespesasEstatisticaDto> estatisticasDespesas() {
-        return ResponseEntity.ok(pagamentoService.DespesasEstatistica());
+        try {
+            return ResponseEntity.ok(pagamentoService.DespesasEstatistica());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
-    // GET /api/pagamentos/professor/{id}/estatisticas?offset=0
-    // PROFESSOR vê as próprias estatísticas; COORDENACAO pode ver qualquer uma
-    @PreAuthorize("hasAnyRole('COORDENACAO','PROFESSOR')")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
     @GetMapping("/professor/{id}/estatisticas")
-    public ResponseEntity<ProfessorEstatisticaDto> estatisticasProfessor(
+    public ResponseEntity<ProfessorEstatisticaDto> estatisticasProfessorCoordenacao(
             @PathVariable String id,
             @RequestParam(defaultValue = "0") Integer offset) {
-        return ResponseEntity.ok(pagamentoService.EstatisticaProfessor(id, offset));
+        try {
+            return ResponseEntity.ok(pagamentoService.EstatisticaProfessor(id, offset));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
-    // GET /api/pagamentos/relatorio?mes=4&ano=2025
-    // Apenas COORDENACAO exporta relatórios
     @PreAuthorize("hasAuthority('COORDENACAO')")
     @GetMapping("/relatorio")
     public ResponseEntity<byte[]> exportarRelatorioMensal(
             @RequestParam int mes,
             @RequestParam int ano) {
-        String csv = pagamentoService.exportarRelatorioMensalTexto(mes, ano);
+        try {
+            String csv = pagamentoService.exportarRelatorioMensalTexto(mes, ano);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType("text/csv; charset=UTF-8"));
+            headers.setContentDispositionFormData("attachment", "relatorio_" + ano + "_" + mes + ".csv");
+            return ResponseEntity.ok().headers(headers)
+                    .body(csv.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType("text/csv; charset=UTF-8"));
-        headers.setContentDispositionFormData("attachment", "relatorio_" + ano + "_" + mes + ".csv");
+    // ── ALUNO ─────────────────────────────────────────────────────────────────
 
-        return ResponseEntity.ok()
-                .headers(headers)
-                .body(csv.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    @PreAuthorize("hasAuthority('ALUNO')")
+    @GetMapping("/meus")
+    public ResponseEntity<List<PagamentoDto>> listarMeusAluno(
+            @RequestParam(defaultValue = "0") Integer offset) {
+        try {
+            String id = Utils.getAuthenticatedUserId();
+            return ResponseEntity.ok(pagamentoService.listarPorUtilizador(id, offset));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PreAuthorize("hasAuthority('ALUNO')")
+    @GetMapping("/meus/paginado")
+    public ResponseEntity<PagedModel<PagamentoDto>> listarMeusPaginadoAluno(Pageable pageable) {
+        try {
+            String id = Utils.getAuthenticatedUserId();
+            return ResponseEntity.ok(pagamentoService.findAllPorUtilizador(id, pageable));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PreAuthorize("hasAuthority('ALUNO')")
+    @GetMapping("/meus/estatisticas")
+    public ResponseEntity<AlunoEstatisiticaDto> estatisticasMeuAluno(
+            @RequestParam(defaultValue = "0") Integer offset) {
+        try {
+            String id = Utils.getAuthenticatedUserId();
+            return ResponseEntity.ok(pagamentoService.obterEstatisticasAluno(id, offset));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    // ── PROFESSOR ─────────────────────────────────────────────────────────────
+    @PreAuthorize("hasAuthority('PROFESSOR')")
+    @GetMapping("/meus/professor")
+    public ResponseEntity<List<PagamentoDto>> listarMeusProfessor(
+            @RequestParam(defaultValue = "0") Integer offset) {
+        try {
+            String id = Utils.getAuthenticatedUserId();
+            return ResponseEntity.ok(pagamentoService.listarPorUtilizador(id, offset));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PreAuthorize("hasAuthority('PROFESSOR')")
+    @GetMapping("/meus/professor/paginado")
+    public ResponseEntity<PagedModel<PagamentoDto>> listarMeusProfessorPaginado(Pageable pageable) {
+        try {
+            String id = Utils.getAuthenticatedUserId();
+            return ResponseEntity.ok(pagamentoService.findAllPorUtilizador(id, pageable));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    @PreAuthorize("hasAuthority('PROFESSOR')")
+    @GetMapping("/meus/professor/estatisticas")
+    public ResponseEntity<ProfessorEstatisticaDto> estatisticasMeuProfessor(
+            @RequestParam(defaultValue = "0") Integer offset) {
+        try {
+            String id = Utils.getAuthenticatedUserId();
+            return ResponseEntity.ok(pagamentoService.EstatisticaProfessor(id, offset));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    // ── ENCARREGADO ───────────────────────────────────────────────────────────
+
+    @PreAuthorize("hasAuthority('ENCARREGADO')")
+    @GetMapping("/educando/{idEducando}")
+    public ResponseEntity<List<PagamentoDto>> listarPorEducando(
+            @PathVariable String idEducando,
+            @RequestParam(defaultValue = "0") Integer offset) {
+        try {
+            String idEncarregado = Utils.getAuthenticatedUserId();
+            boolean isEducando = utilizadorService.findEducandosdeEducador(idEncarregado)
+                    .stream().anyMatch(e -> e.id().equals(idEducando));
+            if (!isEducando) return ResponseEntity.status(403).build();
+            return ResponseEntity.ok(pagamentoService.listarPorUtilizador(idEducando, offset));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PreAuthorize("hasAuthority('ENCARREGADO')")
+    @GetMapping("/educando/{idEducando}/paginado")
+    public ResponseEntity<PagedModel<PagamentoDto>> listarPorEducandoPaginado(
+            @PathVariable String idEducando,
+            Pageable pageable) {
+        try {
+            String idEncarregado = Utils.getAuthenticatedUserId();
+            boolean isEducando = utilizadorService.findEducandosdeEducador(idEncarregado)
+                    .stream().anyMatch(e -> e.id().equals(idEducando));
+            if (!isEducando) return ResponseEntity.status(403).build();
+            return ResponseEntity.ok(pagamentoService.findAllPorUtilizador(idEducando, pageable));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PreAuthorize("hasAuthority('ENCARREGADO')")
+    @GetMapping("/educando/{idEducando}/estatisticas")
+    public ResponseEntity<AlunoEstatisiticaDto> estatisticasEducando(
+            @PathVariable String idEducando,
+            @RequestParam(defaultValue = "0") Integer offset) {
+        try {
+            String idEncarregado = Utils.getAuthenticatedUserId();
+            boolean isEducando = utilizadorService.findEducandosdeEducador(idEncarregado)
+                    .stream().anyMatch(e -> e.id().equals(idEducando));
+            if (!isEducando) return ResponseEntity.status(403).build();
+            return ResponseEntity.ok(pagamentoService.obterEstatisticasAluno(idEducando, offset));
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }

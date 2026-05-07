@@ -1,5 +1,6 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
@@ -10,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedModel;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.PrintWriter;
 import java.math.BigDecimal;
@@ -30,6 +32,7 @@ public class PagamentoService {
     private final UtilizadoreRepository utilizadoreRepository;
     private final TipoUtilizadorRepository tipoUtilizadorRepository;
     private final TipoPagamentoRepository tipoPagamentoRepository;
+    private final AulaRepository aulaRepository;
 
     // Listar todos os pagamentos ,
     public List<PagamentoDto> listarTodos() {
@@ -42,8 +45,15 @@ public class PagamentoService {
     }
 
     // Criar pagamento
-    public PagamentoDto criar(PagamentoDto dto) {
+    @Transactional
+    public PagamentoDto criar(PagamentoDto dto) throws Exception {
 
+        if(dto.dataPagamento()!=null && dto.dataPagamento().isBefore(LocalDate.now())){
+            throw new Exception("Só pode marcar pagamentos futuros");
+        }
+        if (dto.valorPagamento().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new Exception("Valor não pode ser 0 ou menor que 0");
+        }
         //  Criamos uma Entity vazia
         Pagamento entidade = new Pagamento();
 
@@ -54,16 +64,19 @@ public class PagamentoService {
         Integer idReal2= idHasher.decode(idHashed2);
 
         Utilizadore donoDoPagamento = utilizadoreRepository.findById(idReal)
-                .orElseThrow(() -> new RuntimeException("Utilizador nao encontrado"));
+                .orElseThrow(() -> new Exception("Utilizador nao encontrado"));
         TipoPagamento tipoPagamento= tipoPagamentoRepository.findById(idReal2)
-                .orElseThrow(() -> new RuntimeException("Tipo nao encontrado"));
+                .orElseThrow(() -> new Exception("Tipo nao encontrado"));
+        Aula aula=null;
+
+        if(dto.id()!=null)aula = aulaRepository.findById(idHasher.decode( dto.id())).orElseThrow(()->new Exception("Aula não encontrada"));
         //  Passamos os dados do DTO (que veio do JS) para a Entity
         entidade.setValorPagamento(dto.valorPagamento());
         entidade.setDescricao(dto.descricao());
         entidade.setPago(false); // Por defeito, ninguém começa com a conta paga
-        entidade.setDataPagamento(LocalDate.now());
+        entidade.setDataPagamento(dto.dataPagamento() != null ? dto.dataPagamento() : LocalDate.now());
         entidade.setIdTipoPagamento(tipoPagamento);
-        entidade.setAula(dto.aula());
+        entidade.setAula(aula);
 
         entidade.setIdutilizador(donoDoPagamento);
         //  Mandamos o Repository gravar a Entity na BD
@@ -74,26 +87,27 @@ public class PagamentoService {
     }
 
     // Atualizar pagamento
-    public PagamentoDto atualizar(String idHashed, PagamentoDto dto) {
+    @Transactional
+    public PagamentoDto atualizar(String idHashed, PagamentoDto dto) throws Exception {
 
         Integer idReal = idHasher.decode(idHashed);
 
         Pagamento pagamento = pagamentoRepository.findById(idReal)
-                .orElseThrow(() -> new RuntimeException("Pagamento não encontrado"));
+                .orElseThrow(() -> new Exception("Pagamento não encontrado"));
 
         TipoPagamento tipoPagamento= tipoPagamentoRepository.findById(idHasher.decode(dto.idTipoPagamento()))
-                .orElseThrow(() -> new RuntimeException("Tipo nao encontrado"));
+                .orElseThrow(() -> new Exception("Tipo nao encontrado"));
 
         pagamento.setValorPagamento(dto.valorPagamento());
         pagamento.setDescricao(dto.descricao());
-        pagamento.setDataPagamento(dto.dataPagamento());
+        pagamento.setDataPagamento(dto.dataPagamento() != null ? dto.dataPagamento() : LocalDate.now());
         pagamento.setIdTipoPagamento(tipoPagamento);
 
         // 4. Se precisares de mudar o dono do pagamento (Utilizador)
         if (dto.utilizadoreResumoDto() != null) {
             Integer novoUserId = idHasher.decode(dto.utilizadoreResumoDto().id());
             Utilizadore novoDono = utilizadoreRepository.findById(novoUserId)
-                    .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
+                    .orElseThrow(() -> new Exception("Utilizador não encontrado"));
             pagamento.setIdutilizador(novoDono);
         }
         Pagamento gravado = pagamentoRepository.save(pagamento);
@@ -101,14 +115,15 @@ public class PagamentoService {
     }
 
     // Confirmar pagamento
-    public PagamentoDto confirmar(String idHashed) {
+    @Transactional
+    public PagamentoDto confirmar(String idHashed) throws Exception {
 
         //  Usamos o hasher para saber qual é o ID real (Integer)
         Integer idReal = idHasher.decode(idHashed);
 
         //  Vamos buscar à base de dados
         Pagamento pagamento = pagamentoRepository.findById(idReal)
-                .orElseThrow(() -> new RuntimeException("Pagamento não encontrado"));
+                .orElseThrow(() -> new Exception("Pagamento não encontrado"));
 
         //  Fazemos a alteração (o "tempero" do cozinheiro)
         pagamento.setPago(true);
@@ -149,6 +164,41 @@ public class PagamentoService {
             resumo = new UtilizadoreResumoDto(idHasher.encode(pagamento.getIdutilizador().getId()),
                     pagamento.getIdutilizador().getNome());
         }
+        Aula aula=pagamento.getAula();
+        if(aula!=null){
+            // 1. Criar os DTOs de suporte (se necessário)
+// Se o pagamento não precisar dos detalhes do estúdio ou estado, podes passar null
+            EstudioDto estudioDto = (aula.getEstudio() != null) ?
+                    new EstudioDto(idHasher.encode(aula.getEstudio().getId()), aula.getEstudio().getNome(),aula.getEstudio().getCapacidade()) : null;
+
+            EstadoAulaDto estadoDto = (aula.getEstado() != null) ?
+                    new EstadoAulaDto(idHasher.encode(aula.getEstado().getId()), aula.getEstado().getEstado()) : null;
+
+// 2. Instanciar o AulaDto usando o construtor que forneceste
+            AulaDto aulaDtoManual = new AulaDto(
+                    idHasher.encode(aula.getId()), // id
+                    estudioDto,                    // estudio
+                    aula.getDuracaoMinutos(),      // duracaoMinutos
+                    aula.getDataAula(),            // dataAula
+                    aula.getHoraInicio(),          // horaInicio
+                    aula.getHoraFim(),             // horaFim
+                    idHasher.encode( aula.getCriadoPor().getId()),           // criadoPo (ajusta para o nome correto do campo na Entity)
+                    null,                          // idHorario (HorarioTurmaDto - opcional aqui)
+                    estadoDto                      // estado
+            );
+            return new PagamentoDto(
+                    idHasher.encode(pagamento.getId()), // ID seguro para o JS
+                    pagamento.getValorPagamento(),
+                    pagamento.getPago(),
+                    pagamento.getDescricao(),
+                    idHasher.encode(pagamento.getIdTipoPagamento().getId()), // Objeto completo
+                    nomeTipo,                       // Apenas o nome (String)
+                    aulaDtoManual,
+                    pagamento.getDataPagamento(),
+                    pagamento.getDataConfirmado(),
+                    resumo // associa o utilizador ao pagamento
+            );
+        }
 
         return new PagamentoDto(
                 idHasher.encode(pagamento.getId()), // ID seguro para o JS
@@ -157,7 +207,7 @@ public class PagamentoService {
                 pagamento.getDescricao(),
                 idHasher.encode(pagamento.getIdTipoPagamento().getId()), // Objeto completo
                 nomeTipo,                       // Apenas o nome (String)
-                pagamento.getAula(),
+               null,
                 pagamento.getDataPagamento(),
                 pagamento.getDataConfirmado(),
                 resumo // associa o utilizador ao pagamento
@@ -200,6 +250,8 @@ public class PagamentoService {
                 dataAlvo.getYear()
         );
     }
+
+
 
     public String escreverPagamentosCsv( List<PagamentoDto> pagamentos) {
         StringBuilder sb = new StringBuilder();
@@ -268,5 +320,4 @@ public class PagamentoService {
         return new PagedModel<>(page);
     }
 }
-
 

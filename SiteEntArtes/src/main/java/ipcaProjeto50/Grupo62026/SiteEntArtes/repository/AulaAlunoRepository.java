@@ -13,6 +13,6 @@ public interface AulaAlunoRepository extends JpaRepository<AulaAluno, AulaAlunoI
     List<AulaAluno> findByAula_Id(Integer realId);
 
     List<AulaAluno> findByAluno_Id(Integer realId);
-
+    List<AulaAluno> findAllByAula_Id(Integer id);
     void deleteAllByAula_Id(Integer idReal);
 }

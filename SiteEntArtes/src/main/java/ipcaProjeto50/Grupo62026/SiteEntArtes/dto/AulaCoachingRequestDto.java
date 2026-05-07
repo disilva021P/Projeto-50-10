@@ -1,5 +1,7 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.dto;
 
+import jakarta.validation.constraints.Null;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 

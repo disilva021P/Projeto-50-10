@@ -37,12 +37,11 @@ public class AulaAlunoService {
                 .orElseThrow(() -> new Exception("Aluno não encontrado"));
 
         // 3. Instanciar a entidade de associação
-        // O construtor personalizado já cria o AulaAlunoId internamente
+        // O construtor personalizado já cria   o AulaAlunoId internamente
         AulaAluno aulaAluno = new AulaAluno(aula, aluno);
 
         // 4. Salvar e retornar como DTO
-        AulaAluno salvo = aulaAlunoRepository.save(aulaAluno);
-        return salvo;
+        return aulaAlunoRepository.save(aulaAluno);
     }
 
     // READ (Todos)
@@ -71,7 +70,13 @@ public class AulaAlunoService {
                 .toList();
     }
 
-    // DELETE
+    public List<AulaAlunoDto> findAllByAulaId(String hashId) {
+        Integer realId = idHasher.decode(hashId);
+        return aulaAlunoRepository.findAllByAula_Id(realId)
+                .stream()
+                .map(this::convertToDto)
+                .toList();
+    }    // DELETE
     @Transactional
     public void deleteById(String hashIdAluno, String hashIdAula) {
         AulaAlunoId id = new AulaAlunoId(
@@ -79,6 +84,10 @@ public class AulaAlunoService {
                 idHasher.decode(hashIdAluno)
         );
         aulaAlunoRepository.deleteById(id);
+    }
+    @Transactional
+    public void deleteAllByAulaId(String hashIdAula) {
+        aulaAlunoRepository.deleteAllByAula_Id(idHasher.decode(hashIdAula));
     }
 
     // MAPPING

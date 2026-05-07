@@ -27,7 +27,7 @@ public class JwtService {
         // Extraímos as roles do objeto UserDetails e pomos numa "gaveta" própria
         String role = user.getAuthorities().iterator().next().getAuthority();
 
-        claims.put("role", role); // <--- AQUI ESTÁ A TUA CONFIRMAÇÃO EXTRA
+        claims.put("role", role);
 
         return Jwts.builder()
                 .setClaims(claims) // Adiciona as gavetas extra
