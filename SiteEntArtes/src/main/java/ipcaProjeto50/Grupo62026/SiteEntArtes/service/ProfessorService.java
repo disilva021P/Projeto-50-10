@@ -49,7 +49,7 @@ public class ProfessorService {
         Integer idReal = idHasher.decode(modalidadeId);
 
         // 1. Obtemos a página de ProfessorModalidade do repositório
-        Page<ProfessorModalidade> pmPage = professorModalidadeRepository.findByModalidade_Id(idReal, pageable);
+        Page<ProfessorModalidade> pmPage = professorModalidadeRepository.findByModalidadeIdCustom(idReal, pageable);
 
         // 2. Usamos o .map() do próprio Page para transformar o conteúdo
         // Isso mantém o total de elementos, páginas, etc., mas troca o conteúdo para DTO do Professor

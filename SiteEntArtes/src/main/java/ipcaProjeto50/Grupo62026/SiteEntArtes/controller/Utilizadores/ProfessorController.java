@@ -37,7 +37,7 @@ public class ProfessorController {
     }
     @GetMapping("/{modalidadeId}")
     public ResponseEntity<Page<ProfessoreDto>> getProfessores(
-            @RequestParam() String modalidadeId,
+            @PathVariable String modalidadeId,
             @PageableDefault(page = 0, size = 10) Pageable pageable // @ParameterObject ajuda na documentação Swagger/OpenAPI
     ) {
         if (modalidadeId != null && !modalidadeId.isEmpty()) {

@@ -6,9 +6,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Range;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface ProfessorModalidadeRepository extends JpaRepository<ProfessorModalidade, ProfessorModalidadeId> {
-    Page<ProfessorModalidade> findByModalidade_Id(Integer idReal, Pageable pageable);
-
+    @Query("SELECT pm FROM ProfessorModalidade pm WHERE pm.modalidade.id = :modalidadeId")
+    Page<ProfessorModalidade> findByModalidadeIdCustom(
+            @Param("modalidadeId") Integer modalidadeId,
+            Pageable pageable
+    );
     boolean existsByModalidadeIdAndProfessorId(Integer modalidadeId, Integer professorId);
 }
