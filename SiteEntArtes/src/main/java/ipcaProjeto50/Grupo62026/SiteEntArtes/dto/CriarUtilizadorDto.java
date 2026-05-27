@@ -2,6 +2,7 @@ package ipcaProjeto50.Grupo62026.SiteEntArtes.dto;
 
 import java.time.LocalDate;
 import jakarta.validation.constraints.Email;
+import java.math.BigDecimal;
 
 public record CriarUtilizadorDto(
         String nome,
@@ -10,6 +11,8 @@ public record CriarUtilizadorDto(
         String telefone,
         String id_tipoUtilizador,
         LocalDate dataNascimento,
-        String palavraPasseTemporaria
+        BigDecimal valorHora,
+        Boolean professorExterno
+
 
 ) {}

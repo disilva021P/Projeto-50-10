@@ -205,10 +205,15 @@ public class MarketplaceController {
     @PutMapping("/artigos/{id}/estado/{novoEstadoId}")
     public ResponseEntity<Void> alterarEstado(
             @PathVariable String id,
-            @PathVariable Integer novoEstadoId
+            @PathVariable Integer novoEstadoId,
+            Authentication authentication // <-- ADICIONADO: Captura o utilizador logado através do Token JWT
     ) {
         try {
-            marketplaceService.alterarEstadoArtigo(id, novoEstadoId);
+            // Extrai o identificador (email ou username) de quem está a carregar no botão
+            String coordenadorIdentificador = authentication.getName();
+
+            // Passamos o identificador para o service
+            marketplaceService.alterarEstadoArtigo(id, novoEstadoId, coordenadorIdentificador);
             return ResponseEntity.ok().build();
 
         } catch (NoSuchElementException e) {

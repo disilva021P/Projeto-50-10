@@ -66,57 +66,78 @@ public class UtilizadorService {
         return toResponseDTO(utilizador);
     }
 
-    @Transactional
     // ─── Criar utilizador (só coordenação) ───────────────────────────────────
+    @Transactional
     public UtilizadorResponseDto criarUtilizador(CriarUtilizadorDto dto) throws Exception {
 
-        // Normalizar tipo
+        // Normalizar tipo e decifrar a Hash que veio do Frontend
         String tipoid = dto.id_tipoUtilizador();
         Integer idTipoDecoded = idHasher.decode(tipoid);
-        // Buscar tipo na base de dados (ex: ROLE_COORDENACAO)
+
+        // Buscar tipo na base de dados (ex: ROLE_ALUNO)
         TipoUtilizador tipo = tipoUtilizadorRepository
-                .findById(idHasher.decode(tipoid))
+                .findById(idTipoDecoded)
                 .orElseThrow(() -> new Exception("Tipo de utilizador não encontrado"));
-         // Criar entidade Utilizador
+
+        // Criar entidade Utilizador consoante o Tipo
         Utilizadore utilizador;
-        if (idTipoDecoded == 3) { // Assumindo que 3 é Aluno
+
+        if (idTipoDecoded != null && idTipoDecoded == 3) { // Aluno
             utilizador = new Aluno();
-            // O campo 'notas' é específico de Aluno, podes inicializá-lo aqui se necessário
             ((Aluno) utilizador).setNotas("");
-        }else if(idTipoDecoded == 2){
-            utilizador = new Professore();
-        }
-        else {
+
+        } else if (idTipoDecoded != null && idTipoDecoded == 2) { // Professor
+            Professore prof = new Professore();
+
+            // Preenche os dados específicos do professor vindos do teu DTO atualizado
+            prof.setValorHora(dto.valorHora());
+            prof.setProfessorExterno(dto.professorExterno());
+            prof.setNotas("");
+
+            // CRUCIAL: Passa o professor para a variável comum 'utilizador'
+            utilizador = prof;
+
+        } else { // Outro tipo genérico
             utilizador = new Utilizadore();
         }
+
+        // Preencher dados comuns
         utilizador.setNome(dto.nome());
         utilizador.setEmail(dto.email());
         utilizador.setNif(dto.nif());
         utilizador.setTelefone(dto.telefone());
         utilizador.setTipo(tipo);
-        if(tipo.getId()==3 && utilizador.isMenorIdade()){
-            utilizador.setAtivo(false);
-        }
-        else{
-            utilizador.setAtivo(true);
 
+        // Regra de validação de idade
+        if (tipo.getId() == 3 && utilizador.isMenorIdade()) {
+            utilizador.setAtivo(false);
+        } else {
+            utilizador.setAtivo(true);
         }
+
         utilizador.setDataNascimento(dto.dataNascimento());
         utilizador.setCriadoEm(LocalDateTime.now());
         utilizador.setEditadoEm(LocalDateTime.now());
+
+        // Gerador original da Palavra-Passe Temporária (12 caracteres)
         StringBuilder sb = new StringBuilder(12);
         for (int i = 0; i < 12; i++) {
             int index = GeneradorRandomico.nextInt(LETRAS.length());
             sb.append(LETRAS.charAt(index));
         }
         utilizador.setPalavraPasse(passwordEncoder.encode(sb));
+
+        // Salvar na BD mantendo a instância sincronizada no Hibernate
+        Utilizadore utilizadorSalvo;
         if (utilizador instanceof Aluno) {
-            alunoRepository.save((Aluno) utilizador);
+            utilizadorSalvo = alunoRepository.save((Aluno) utilizador);
         } else if (utilizador instanceof Professore) {
-            professoreRepository.save((Professore) utilizador);
+            utilizadorSalvo = professoreRepository.save((Professore) utilizador);
         } else {
-            utilizadoreRepository.save(utilizador);
+            utilizadorSalvo = utilizadoreRepository.save(utilizador);
         }
+
+        // Template HTML Original de Boas-Vindas
         String mensagem = "<div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>"
                 + "<h1 style='color: #2c3e50; border-bottom: 2px solid #e74c3c; padding-bottom: 10px;'>Bem-vindo à Escola EntArtes!</h1>"
                 + "<p>Caro/a utilizador(a),</p>"
@@ -137,12 +158,17 @@ public class UtilizadorService {
                 + "<p>Cumprimentos,<br><strong>Equipa de Gestão EntArtes</strong></p>"
                 + "</div>";
 
-        // Envio do e-mail com o assunto de Boas-vindas
-        emailService.enviaEmail(utilizador.getEmail(), "Bem-vindo à Escola EntArtes - Dados de Acesso", mensagem);
-        // Converter e devolver DTO
-        return toResponseDTO(utilizador);
-    }
+        // Envio do e-mail de forma isolada para evitar que falhas no servidor de mail deitem a transação abaixo
+        try {
+            emailService.enviaEmail(utilizadorSalvo.getEmail(), "Bem-vindo à Escola EntArtes - Dados de Acesso", mensagem);
+        } catch (Exception mailEx) {
+            // Log discreto no terminal caso o servidor de e-mail local falhe
+            System.err.println("Aviso: Não foi possível enviar o e-mail de boas-vindas: " + mailEx.getMessage());
+        }
 
+        // Converter e devolver o DTO oficial
+        return toResponseDTO(utilizadorSalvo);
+    }
 
     @Transactional
     public UtilizadorResponseDto editarUtilizador(String idHashed, EditarUtilizadorDto dto) {
@@ -344,24 +370,24 @@ public class UtilizadorService {
         //ACEITA ATÉ 15 MIN
         TokenRecuperacao tokenSalvo = tokenRecuperacaoRepository.save(new TokenRecuperacao(null, utilizador, hash,LocalDateTime.now().plusMinutes(15)));
 
-            if (tokenSalvo.getId() != null) {
-                // O token foi persistido com sucesso!
-                // AGORA: Envie o 'tokenOriginal' por e-mail (nunca envie o hash)
-                String mensagem = "<p>Caro/a utilizador(a),</p>"
-                        + "<p>Recebemos um pedido de recuperação de acesso.</p>"
-                        + "<p>O seu token de recuperação é:</p>"
-                        + "<h2 style='background:#f4f4f4; padding:10px; display:inline-block; border-radius:5px;'>"
-                        + token +
-                        "</h2>"
-                        + "<p>Este código é válido por 15 minutos</p>"
-                        + "<p>Se não solicitou esta operação, ignore este email.</p>"
-                        + "<p>Cumprimentos,<br>Equipa de Suporte</p>";
+        if (tokenSalvo.getId() != null) {
+            // O token foi persistido com sucesso!
+            // AGORA: Envie o 'tokenOriginal' por e-mail (nunca envie o hash)
+            String mensagem = "<p>Caro/a utilizador(a),</p>"
+                    + "<p>Recebemos um pedido de recuperação de acesso.</p>"
+                    + "<p>O seu token de recuperação é:</p>"
+                    + "<h2 style='background:#f4f4f4; padding:10px; display:inline-block; border-radius:5px;'>"
+                    + token +
+                    "</h2>"
+                    + "<p>Este código é válido por 15 minutos</p>"
+                    + "<p>Se não solicitou esta operação, ignore este email.</p>"
+                    + "<p>Cumprimentos,<br>Equipa de Suporte</p>";
 
-                emailService.enviaEmail(utilizador.getEmail(), "Token de Recuperação", mensagem);
-                System.out.println("Token gerado e salvo com sucesso.");
-            } else {
-                throw new Exception("Erro ao gerar token de recuperação.");
-            }
+            emailService.enviaEmail(utilizador.getEmail(), "Token de Recuperação", mensagem);
+            System.out.println("Token gerado e salvo com sucesso.");
+        } else {
+            throw new Exception("Erro ao gerar token de recuperação.");
+        }
         return token;
     }
     public void atualizaPassSemLogin(AlterarPasswordSemLoginDto dto) throws Exception {

@@ -58,12 +58,15 @@ public class MarketplaceService {
     }
 
     @Transactional
-    public void alterarEstadoArtigo(String idHash, Integer novoEstadoId) throws Exception {
+    public void alterarEstadoArtigo(String idHash, Integer novoEstadoId, String coordenadorIdentificador) throws Exception {
         Integer idReal = idHasher.decode(idHash);
         Artigo artigo = artigoRepository.findById(idReal)
                 .orElseThrow(() -> new RuntimeException("Artigo não encontrado"));
 
         String mensagemNotif = "";
+
+        // Guardamos o ID do doador original antes de qualquer modificação, para garantir a notificação no fim
+        Integer idDoadorOriginal = artigo.getDonoUtilizador().getId();
 
         // CENÁRIO 1: Recusado ou Removido (Estado 5)
         if (novoEstadoId == 5) {
@@ -74,23 +77,34 @@ public class MarketplaceService {
         }
 
         // CENÁRIO 2: Aceite para o Marketplace Público (Estado 2)
-        // O utilizador doou e a escola quer que outros alunos possam ficar com ele
         else if (novoEstadoId == 2) {
+            // REGRA NOVA: Procurar a conta da coordenação que está a aprovar a doação
+            Utilizadore coordenador;
+            if (coordenadorIdentificador.contains("@")) {
+                coordenador = utilizadoreRepository.findByEmail(coordenadorIdentificador)
+                        .orElseThrow(() -> new RuntimeException("Coordenador não encontrado: " + coordenadorIdentificador));
+            } else {
+                coordenador = utilizadoreRepository.findById(idHasher.decode(coordenadorIdentificador))
+                        .orElseThrow(() -> new RuntimeException("Coordenador não encontrado."));
+            }
+
             artigo.setAprovado(true);  // Agora passa no filtro 'aprovado = true'
-            artigo.setArquivado(false); // Garante que está visível
+            artigo.setArquivado(false); // Garante que está visível na montra pública
+
+            // TROCA DE PROPRIEDADE: O dono do artigo passa a ser oficialmente a Coordenação
+            artigo.setDonoUtilizador(coordenador);
+
             artigoRepository.save(artigo);
             mensagemNotif = "O seu artigo '" + artigo.getNome() + "' foi aprovado!";
         }
 
         // CENÁRIO 3: Aceite para Inventário Interno da Escola (Estado 9)
-        // A escola decide ficar com o item para o seu próprio stock
         else if (novoEstadoId == 9) {
-            // 1. Atualizamos o artigo original
             artigo.setAprovado(true);
-            artigo.setArquivado(true); // Arquivamos no Marketplace (já não está para "doação pública")
+            artigo.setArquivado(true); // Arquivamos no Marketplace (sai da doação pública)
             artigoRepository.save(artigo);
 
-            // 2. Criamos a unidade real na tabela de inventário independente
+            // Criamos a unidade real na tabela de inventário independente
             InventarioUnidade novaUnidade = new InventarioUnidade();
             novaUnidade.setNome(artigo.getNome());
             novaUnidade.setDescricao(artigo.getDescricao());
@@ -104,9 +118,10 @@ public class MarketplaceService {
             mensagemNotif = "O seu artigo '" + artigo.getNome() + "' foi aceite e doado ao inventário da escola.";
         }
 
+        // Envia a notificação usando o ID do doador original salvo no início
         if (!mensagemNotif.isEmpty()) {
             notificacoesService.criarNotificacao(
-                    artigo.getDonoUtilizador().getId(),
+                    idDoadorOriginal,
                     null, // Remetente sistema (null porque é uma mensagem automática)
                     "Estado do Artigo Atualizado",
                     mensagemNotif,
@@ -114,7 +129,6 @@ public class MarketplaceService {
                     artigo.getId().toString()
             );
         }
-
     }
 
     @Transactional
