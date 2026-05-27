@@ -105,4 +105,32 @@ public interface AulaRepository extends JpaRepository<Aula, Integer> {
     @Modifying
     @Transactional
     @Query("DELETE FROM Aula a WHERE a.idHorario.id = :idHorario AND a.dataAula >= :hoje")
-    void deleteFutureByHorarioId(@Param("idHorario") Integer idHorario, @Param("hoje") LocalDate hoje);}
+    void deleteFutureByHorarioId(@Param("idHorario") Integer idHorario, @Param("hoje") LocalDate hoje);
+
+    @Query("SELECT em.estudio.id " +
+            "FROM EstudioModalidade em " +
+            "LEFT JOIN Aula a ON a.estudio.id = em.estudio.id AND a.dataAula = :data " +
+            "WHERE em.modalidade.id = :modalidadeId " +
+            "GROUP BY em.estudio.id " +
+            "ORDER BY COUNT(a.id) ASC")
+    List<Integer> findEstudiosPorModalidadeOrdenadosPorAulasDoDia(
+            @Param("modalidadeId") Integer modalidadeId,
+            @Param("data") LocalDate data
+    );
+    @Query("SELECT DISTINCT a FROM Aula a " +
+            // Caminho 1: Aulas por Turma (Regulares)
+            "LEFT JOIN a.idHorario h " +
+            "LEFT JOIN h.idturma t " +
+            "LEFT JOIN TurmaAluno ta ON ta.turma.id = t.id " +
+            // Caminho 2: Aulas com marcação direta (Coaching / Privadas)
+            "LEFT JOIN AulaAluno al ON al.aula.id = a.id " +
+            // Filtros
+            "WHERE (ta.aluno.id = :alunoId OR al.aluno.id = :alunoId) " +
+            "AND a.dataAula BETWEEN :inicio AND :fim " +
+            "ORDER BY a.dataAula ASC, a.horaInicio ASC")
+    List<Aula> buscarHorarioCompletoDoAluno(
+            @Param("alunoId") Integer alunoId,
+            @Param("inicio") LocalDate inicio,
+            @Param("fim") LocalDate fim
+    );
+}

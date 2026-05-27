@@ -156,7 +156,93 @@ public class AulaService {
                 .map(this::converterParaDto)
                 .toList();
     }
+    public List<AulaTituloDto> buscarHorarioCompletoDoAluno(String userId, int offset) throws Exception {
+        encontraUtilizador(userId); // valida existência
+        Integer alunoIdDecodificado = idHasher.decode(userId);
 
+        LocalDate inicioSemana = calcularInicioSemana(offset);
+        LocalDate fimSemana = inicioSemana.plusDays(6);
+
+        // 1. Vai buscar as Aulas Regulares da Semana
+        List<Aula> aulasRegulares = aulaRepository.buscarHorarioDoAluno(alunoIdDecodificado, inicioSemana, fimSemana);
+
+        // 2. Vai buscar as Aulas de Coaching do Aluno
+        List<AulaCoaching> aulasCoaching = aulaCoachingRepository.buscarAulaCoachingPorAlunoSemPedententes(alunoIdDecodificado);
+
+        // Filtrar as aulas de coaching para trazer apenas as que estão dentro da semana atual do offset
+        List<AulaCoaching> coachingNaSemana = aulasCoaching.stream()
+                .filter(ac -> ac.getDataAula() != null &&
+                        !ac.getDataAula().isBefore(inicioSemana) &&
+                        !ac.getDataAula().isAfter(fimSemana))
+                .toList();
+
+        // 3. Juntar as duas listas e transformar tudo em AulaTituloDto
+        List<AulaTituloDto> horarioCompleto = new java.util.ArrayList<>();
+
+        // Transforma as aulas regulares
+        aulasRegulares.forEach(aula -> horarioCompleto.add(converterParaAulaTituloDto(aula)));
+
+        // Transforma as aulas de coaching
+        coachingNaSemana.forEach(coaching -> horarioCompleto.add(converterParaAulaTituloDto(coaching)));
+
+        // 4. Ordenar o horário por Data e Hora de Início para o Frontend receber tudo direitinho
+        return horarioCompleto.stream()
+                .sorted((a, b) -> {
+                    int compData = a.dataAula().compareTo(b.dataAula());
+                    if (compData != 0) return compData;
+                    return a.horaInicio().compareTo(b.horaInicio());
+                })
+                .toList();
+    }
+    private AulaTituloDto converterParaAulaTituloDto(Aula aula) {
+        String tituloFinal = "Aula";
+
+        // Cenário A: Se for uma instância de AulaCoaching, concatena "Coaching " + Modalidade
+        if (aula instanceof AulaCoaching coaching) {
+            if (coaching.getModalidade() != null && coaching.getModalidade().getNome() != null) {
+                // 🔥 Aqui: Junta "Coaching " ao nome (Ex: "Coaching Ballet Clássico", "Coaching Pilates")
+                tituloFinal = "Coaching " + coaching.getModalidade().getNome();
+            } else {
+                tituloFinal = "Coaching"; // Fallback caso a modalidade não tenha nome
+            }
+        }
+        // Cenário B: Se for uma aula de Turma Regular, mantém apenas o nome da modalidade/turma
+        else if (aula.getIdHorario() != null && aula.getIdHorario().getIdturma() != null) {
+            var turma = aula.getIdHorario().getIdturma();
+            if (turma.getModalidade() != null && turma.getModalidade().getNome() != null) {
+                tituloFinal = turma.getModalidade().getNome(); // Ex: "Ballet Clássico"
+            } else if (turma.getNome() != null) {
+                tituloFinal = turma.getNome();
+            }
+        }
+
+        // Mapeamento dos sub-objetos para construir o DTO final
+        EstudioDto estudioDto = aula.getEstudio() != null
+                ? new EstudioDto(idHasher.encode(aula.getEstudio().getId()), aula.getEstudio().getNome(),aula.getEstudio().getCapacidade())
+                : null;
+
+        EstadoAulaDto estadoDto = aula.getEstado() != null
+                ? new EstadoAulaDto(idHasher.encode(aula.getEstado().getId()), aula.getEstado().getEstado())
+                : null;
+
+        HorarioTurmaDto horarioDto = null;
+        if (aula.getIdHorario() != null) {
+            // Constrói o teu HorarioTurmaDto se precisares dele no frontend
+        }
+
+        return new AulaTituloDto(
+                idHasher.encode(aula.getId()),
+                estudioDto,
+                aula.getDuracaoMinutos(),
+                aula.getDataAula(),
+                aula.getHoraInicio(),
+                aula.getHoraFim(),
+                idHasher.encode( aula.getCriadoPor().getId()),
+                horarioDto,
+                estadoDto,
+                tituloFinal // Passa o título formatado ("Coaching Ballet Clássico" ou "Ballet Clássico")
+        );
+    }
     /**
      * Devolve uma aula específica de um aluno, verificando se este faz parte dela.
      *
@@ -620,11 +706,11 @@ public class AulaService {
                     aluno.getId(),
                     "Inscição em aula de coaching",
                     "Nova inscrição para aula de coaching de"+ aulaAluno.getAula().getDataAula() +" das "+
-                        aulaAluno.getAula().getHoraInicio() + " às " + aulaAluno.getAula().getHoraFim()
+                            aulaAluno.getAula().getHoraInicio() + " às " + aulaAluno.getAula().getHoraFim()
                     ,
                     "PEDIDO COACHING",
                     idHasher.encode( aulaAluno.getAula().getId())
-        );
+            );
         }
 
         aulaAlunoRepository.save(aulaAluno);
@@ -661,5 +747,3 @@ public class AulaService {
     }
 
 }
-
-

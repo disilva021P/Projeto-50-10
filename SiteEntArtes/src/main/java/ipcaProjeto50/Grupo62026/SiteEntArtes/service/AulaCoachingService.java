@@ -162,52 +162,89 @@ public class AulaCoachingService {
      */
     @Transactional
     public AulaCoachingDto salvarMarcarCoaching(AulaCoachingRequestDto dto, String idAluno) throws Exception {
-        System.out.println("DEBUG ID Aluno: " + idAluno);
-        System.out.println("DEBUG DTO: " + dto);
+
+        // 1. Validações básicas temporais e de negócio
         if(dto.dataAula().isBefore(LocalDate.now()) || (dto.dataAula().equals(LocalDate.now()) && dto.horaInicio().isBefore(LocalTime.now()))){
             throw new Exception("Data de início inferior à Data atual");
         }
-        if(dto.maxAlunos()>8){
+        if(dto.maxAlunos() > 8){
             throw new Exception("Nº de alunos max é 8");
         }
-        if (!professorModalidadeRepository.existsByModalidadeIdAndProfessorId(idHasher.decode(dto.modalidadeId()), idHasher.decode( dto.professorId()) )) {
+
+        // Assumindo que o DTO já traz IDs numéricos (Integer)
+        if (!professorModalidadeRepository.existsByModalidadeIdAndProfessorId(idHasher.decode( dto.modalidadeId()), idHasher.decode( dto.professorId()))) {
             throw new Exception("Professor não leciona esta modalidade");
-        }
-        if (!estudioModalidadeRepository.existsByEstudio_IdAndModalidade_Id(
-                idHasher.decode(dto.estudioId()), idHasher.decode(dto.modalidadeId()))) {
-            throw new Exception("Este estúdio não é compatível com esta modalidade");
         }
         if (!disponibilidadeService.verificaMarcacaoValida(
                 dto.professorId(), dto.dataAula(), dto.horaInicio(), dto.horaFim())) {
             throw new Exception("Professor não está disponível nesse horário");
         }
-        if (aulaRepository.existeConflitoNoEstudio(idHasher.decode( dto.estudioId()),dto.dataAula(),dto.horaInicio(),dto.horaFim())) {
-            throw new Exception("Estúdio já possui aula marcada para esse horário");
+
+        // 2. SELEÇÃO DO ESTÚDIO IDEAL
+        List<Integer> estudiosCandidatos = aulaRepository.findEstudiosPorModalidadeOrdenadosPorAulasDoDia(
+                idHasher.decode( dto.modalidadeId()),
+                dto.dataAula()
+        );
+
+        if (estudiosCandidatos.isEmpty()) {
+            throw new Exception("Não existem estúdios cadastrados para esta modalidade");
         }
 
-        AulaCoaching aulaCoaching = aulaCoachingRepository.save(requestDtoParaCoaching(dto));
+        Integer idEstudioEscolhido = null;
 
-        Aluno a = alunoRepository.findById(idHasher.decode(idAluno))
+        // Procura o primeiro estúdio da lista que não tenha conflito de horário
+        for (Integer idEstudio : estudiosCandidatos) {
+            if (!aulaRepository.existeConflitoNoEstudio(idEstudio, dto.dataAula(), dto.horaInicio(), dto.horaFim())) {
+                idEstudioEscolhido = idEstudio;
+                break;
+            }
+        }
+
+        if (idEstudioEscolhido == null) {
+            throw new Exception("Todos os estúdios compatíveis já possuem aula marcada para esse horário");
+        }
+
+        // 3. Salvar a Aula passando o Integer do estúdio escolhido
+        AulaCoachingRequestDto newDto = new AulaCoachingRequestDto(
+                dto.professorId(),
+                idHasher.encode(idEstudioEscolhido), // Injeta o estúdio selecionado automaticamente
+                dto.dataAula(),
+                dto.horaInicio(),
+                dto.horaFim(),
+                dto.maxAlunos(),
+                dto.modalidadeId()
+        );
+        AulaCoaching aulaCoaching = requestDtoParaCoaching(newDto);
+        aulaCoaching = aulaCoachingRepository.save(aulaCoaching);
+        Integer idAlunoI = idHasher.decode( idAluno);
+        // 4. Vinculações (Aluno e Professor)
+        Aluno a = alunoRepository.findById(idAlunoI)
                 .orElseThrow(() -> new Exception("Aluno não encontrado"));
+
         aulaAlunoRepository.save(new AulaAluno(
-                new AulaAlunoId(aulaCoaching.getId(), idHasher.decode(idAluno)),
-                aulaCoaching,a
-                // Removido o ";" aqui
+                new AulaAlunoId(aulaCoaching.getId(), idAlunoI),
+                aulaCoaching, a
         ));
-        Professore p = professoreRepository.findById(idHasher.decode(dto.professorId()))
+
+        Professore p = professoreRepository.findById(idHasher.decode( dto.professorId()))
                 .orElseThrow(() -> new Exception("Professor não encontrado"));
+
         aulaProfessoreRepository.save(new AulaProfessore(
-                new AulaProfessoreId(aulaCoaching.getId(), idHasher.decode(dto.professorId())),
+                new AulaProfessoreId(aulaCoaching.getId(), idHasher.decode( dto.professorId())),
                 aulaCoaching, p
         ));
+
+        // Notificação
         notificacoesService.criarNotificacao(
                 p.getId(),
                 a.getId(),
                 "Novo Pedido de coaching",
-                "Novo pedido de coaching para "+ a.getNome() +". Acesse pedidos pendentes para confirmar",
+                "Novo pedido de coaching para " + a.getNome() + ". Acesse pedidos pendentes para confirmar",
                 "PEDIDO COACHING",
-                idHasher.encode(aulaCoaching.getId())
+                String.valueOf(aulaCoaching.getId()) // Se a notificação pedir String, convertes aqui
         );
+
+        // 5. Retorna o DTO convertido que já vai levar o estúdio lá dentro!
         return convertToAulaCoachingDto(aulaCoaching);
     }
 

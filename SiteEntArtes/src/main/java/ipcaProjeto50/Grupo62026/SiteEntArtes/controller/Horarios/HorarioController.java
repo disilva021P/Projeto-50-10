@@ -41,6 +41,15 @@ public class HorarioController {
     // =========================================================================
     // region ALUNO
     // =========================================================================
+    @GetMapping("/semanaCompleta")
+    @PreAuthorize("hasAuthority('ALUNO')")
+    public ResponseEntity<?> buscarHorarioCompletoDoAluno(@RequestParam(name = "offset", defaultValue = "0") int offset) {
+        try {
+            return ResponseEntity.ok(aulaService.buscarHorarioCompletoDoAluno(getUserId(), offset));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao buscar horário semanal: " + e.getMessage());
+        }
+    }
 
     @GetMapping("/semana")
     @PreAuthorize("hasAuthority('ALUNO')")
@@ -122,6 +131,15 @@ public class HorarioController {
     // region ENCARREGADO
     // =========================================================================
 
+    @GetMapping("/semanaCompleta/educando/{educandoId}")
+    @PreAuthorize("hasAuthority('ALUNO')")
+    public ResponseEntity<?> buscarHorarioCompletoDoAluno(@PathVariable String educandoId, @RequestParam(name = "offset", defaultValue = "0") int offset) {
+        try {
+            return ResponseEntity.ok(aulaService.buscarHorarioCompletoDoAluno(educandoId, offset));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao buscar horário semanal: " + e.getMessage());
+        }
+    }
     @GetMapping("/semana/educando/{educandoId}")
     @PreAuthorize("hasAuthority('ENCARREGADO')")
     public ResponseEntity<?> horarioSemanaEducando(
@@ -142,7 +160,7 @@ public class HorarioController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size) {
         try {
-                utilizadorService.verificaPermissaoEducando(educandoId, getUserId());
+            utilizadorService.verificaPermissaoEducando(educandoId, getUserId());
             return ResponseEntity.ok(aulaCoachingService.findAllbyAlunoIdPage(educandoId, PageRequest.of(page, size)));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -165,6 +183,7 @@ public class HorarioController {
                     .body("Erro ao buscar coachings disponíveis: " + e.getMessage());
         }
     }
+
 
     @PostMapping("/marcarcoaching/educando/{educandoId}")
     @PreAuthorize("hasAuthority('ENCARREGADO')")
