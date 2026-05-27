@@ -105,4 +105,15 @@ public interface AulaRepository extends JpaRepository<Aula, Integer> {
     @Modifying
     @Transactional
     @Query("DELETE FROM Aula a WHERE a.idHorario.id = :idHorario AND a.dataAula >= :hoje")
-    void deleteFutureByHorarioId(@Param("idHorario") Integer idHorario, @Param("hoje") LocalDate hoje);}
+    void deleteFutureByHorarioId(@Param("idHorario") Integer idHorario, @Param("hoje") LocalDate hoje);
+
+    @Query("SELECT em.estudio.id " +
+            "FROM EstudioModalidade em " +
+            "LEFT JOIN Aula a ON a.estudio.id = em.estudio.id AND a.dataAula = :data " +
+            "WHERE em.modalidade.id = :modalidadeId " +
+            "GROUP BY em.estudio.id " +
+            "ORDER BY COUNT(a.id) ASC")
+    List<Integer> findEstudiosPorModalidadeOrdenadosPorAulasDoDia(
+            @Param("modalidadeId") Integer modalidadeId,
+            @Param("data") LocalDate data
+    );}
