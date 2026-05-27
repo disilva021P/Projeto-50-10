@@ -21,6 +21,13 @@ public interface AulaCoachingRepository extends JpaRepository<AulaCoaching,Integ
     @Query("SELECT ac FROM AulaCoaching ac " +
             "JOIN Aula a ON ac.id = a.id " +
             "JOIN AulaAluno aa ON aa.aula.id = a.id " +
+            "WHERE aa.aluno.id =:alunoId "+
+            "AND ac.estado.id > 2 "
+    )
+    List<AulaCoaching> buscarAulaCoachingPorAlunoSemPedententes(@Param("alunoId") Integer alunoId);
+    @Query("SELECT ac FROM AulaCoaching ac " +
+            "JOIN Aula a ON ac.id = a.id " +
+            "JOIN AulaAluno aa ON aa.aula.id = a.id " +
             "WHERE aa.aluno.id =:alunoId")
     Page<AulaCoaching> buscarAulaCoachingPorAluno(@Param("alunoId") Integer alunoId, Pageable pageable);
     @Query("SELECT a FROM AulaCoaching a " +

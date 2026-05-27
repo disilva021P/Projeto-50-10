@@ -41,6 +41,15 @@ public class HorarioController {
     // =========================================================================
     // region ALUNO
     // =========================================================================
+    @GetMapping("/semanaCompleta")
+    @PreAuthorize("hasAuthority('ALUNO')")
+    public ResponseEntity<?> buscarHorarioCompletoDoAluno(@RequestParam(name = "offset", defaultValue = "0") int offset) {
+        try {
+            return ResponseEntity.ok(aulaService.buscarHorarioCompletoDoAluno(getUserId(), offset));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao buscar horário semanal: " + e.getMessage());
+        }
+    }
 
     @GetMapping("/semana")
     @PreAuthorize("hasAuthority('ALUNO')")
@@ -122,6 +131,15 @@ public class HorarioController {
     // region ENCARREGADO
     // =========================================================================
 
+    @GetMapping("/semanaCompleta/educando/{educandoId}")
+    @PreAuthorize("hasAuthority('ALUNO')")
+    public ResponseEntity<?> buscarHorarioCompletoDoAluno(@PathVariable String educandoId, @RequestParam(name = "offset", defaultValue = "0") int offset) {
+        try {
+            return ResponseEntity.ok(aulaService.buscarHorarioCompletoDoAluno(educandoId, offset));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao buscar horário semanal: " + e.getMessage());
+        }
+    }
     @GetMapping("/semana/educando/{educandoId}")
     @PreAuthorize("hasAuthority('ENCARREGADO')")
     public ResponseEntity<?> horarioSemanaEducando(
@@ -165,6 +183,7 @@ public class HorarioController {
                     .body("Erro ao buscar coachings disponíveis: " + e.getMessage());
         }
     }
+
 
     @PostMapping("/marcarcoaching/educando/{educandoId}")
     @PreAuthorize("hasAuthority('ENCARREGADO')")

@@ -29,18 +29,18 @@ public interface AulaRepository extends JpaRepository<Aula, Integer> {
             @Param("id") Integer id
     );
 
-    @Query("SELECT DISTINCT a FROM Aula a " +
-            "JOIN a.idHorario h " + // Assume que idHorario é o nome do atributo na entidade Aula
-            "JOIN h.idturma t " +   // Assume que idturma é o objeto Turma no HorarioTurma
-            "JOIN TurmaAluno ta ON ta.turma.id = t.id " + // Liga a inscrição à turma
-            "WHERE ta.aluno.id = :alunoId " + // Filtra pelo aluno logado
-            "AND a.dataAula BETWEEN :inicio AND :fim " +
-            "ORDER BY a.dataAula ASC, a.horaInicio ASC")
-    List<Aula> buscarHorarioDoAluno(
-            @Param("alunoId") Integer alunoId,
-            @Param("inicio") LocalDate inicio,
-            @Param("fim") LocalDate fim
-    );
+        @Query("SELECT DISTINCT a FROM Aula a " +
+                "JOIN a.idHorario h " + // Assume que idHorario é o nome do atributo na entidade Aula
+                "JOIN h.idturma t " +   // Assume que idturma é o objeto Turma no HorarioTurma
+                "JOIN TurmaAluno ta ON ta.turma.id = t.id " + // Liga a inscrição à turma
+                "WHERE ta.aluno.id = :alunoId " + // Filtra pelo aluno logado
+                "AND a.dataAula BETWEEN :inicio AND :fim " +
+                "ORDER BY a.dataAula ASC, a.horaInicio ASC")
+        List<Aula> buscarHorarioDoAluno(
+                @Param("alunoId") Integer alunoId,
+                @Param("inicio") LocalDate inicio,
+                @Param("fim") LocalDate fim
+        );
     @Query("SELECT a FROM Aula a JOIN AulaAluno al WHERE al.aula.id = :aulaId AND al.aluno.id = :alunoId")
     Optional<Aula> findAulaByIdAndAlunoId(@Param("aulaId") Integer aulaId, @Param("alunoId") Integer alunoId);
 
@@ -116,4 +116,21 @@ public interface AulaRepository extends JpaRepository<Aula, Integer> {
     List<Integer> findEstudiosPorModalidadeOrdenadosPorAulasDoDia(
             @Param("modalidadeId") Integer modalidadeId,
             @Param("data") LocalDate data
-    );}
+    );
+    @Query("SELECT DISTINCT a FROM Aula a " +
+            // Caminho 1: Aulas por Turma (Regulares)
+            "LEFT JOIN a.idHorario h " +
+            "LEFT JOIN h.idturma t " +
+            "LEFT JOIN TurmaAluno ta ON ta.turma.id = t.id " +
+            // Caminho 2: Aulas com marcação direta (Coaching / Privadas)
+            "LEFT JOIN AulaAluno al ON al.aula.id = a.id " +
+            // Filtros
+            "WHERE (ta.aluno.id = :alunoId OR al.aluno.id = :alunoId) " +
+            "AND a.dataAula BETWEEN :inicio AND :fim " +
+            "ORDER BY a.dataAula ASC, a.horaInicio ASC")
+    List<Aula> buscarHorarioCompletoDoAluno(
+            @Param("alunoId") Integer alunoId,
+            @Param("inicio") LocalDate inicio,
+            @Param("fim") LocalDate fim
+    );
+}
