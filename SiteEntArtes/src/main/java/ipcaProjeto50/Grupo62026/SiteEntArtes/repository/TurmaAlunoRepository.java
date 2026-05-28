@@ -14,4 +14,5 @@ public interface TurmaAlunoRepository extends JpaRepository<TurmaAluno, TurmaAlu
     List<TurmaAluno> findAllByTurma_Id(Integer id);
     @Query("SELECT ta FROM TurmaAluno ta WHERE ta.id.alunoId = :alunoId")
     List<TurmaAluno> findByAlunoId(@Param("alunoId") Integer alunoId);
+    void deleteByAlunoId(Integer alunoId);
 }

@@ -306,4 +306,9 @@ public class UtilizadorController {
     public ResponseEntity<List<UtilizadoreResumoDto>> pesquisar(@RequestParam String nome) {
         return ResponseEntity.ok(utilizadorService.pesquisarPorNome(nome));
     }
+    @GetMapping("/alunos-menores")
+    public ResponseEntity<List<UtilizadoreResumoDto>> listarAlunosMenores(@RequestParam(required = false) String pesquisa) {
+        List<UtilizadoreResumoDto> alunos = utilizadorService.listarAlunosMenoresParaAssociacao(pesquisa);
+        return ResponseEntity.ok(alunos);
+    }
 }

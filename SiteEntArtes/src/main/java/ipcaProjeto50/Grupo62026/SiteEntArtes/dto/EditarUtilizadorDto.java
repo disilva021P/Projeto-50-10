@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 public record EditarUtilizadorDto(
 
@@ -27,6 +28,10 @@ public record EditarUtilizadorDto(
         LocalDate dataNascimento,
         BigDecimal valorHora,
         Boolean professorExterno,
-        String notasProfessor
+        String notasProfessor,
+
+        List<String> idTurmasIniciais,
+        List<String> modalidadesIds,
+        List<String> idEducandosIniciais
 ) {
 }

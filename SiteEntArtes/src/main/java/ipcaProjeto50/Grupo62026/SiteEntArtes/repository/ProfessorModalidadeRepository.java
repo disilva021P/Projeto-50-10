@@ -19,4 +19,5 @@ public interface ProfessorModalidadeRepository extends JpaRepository<ProfessorMo
     );
     boolean existsByModalidadeIdAndProfessorId(Integer modalidadeId, Integer professorId);
     List<ProfessorModalidade> findById_ProfessorId(Integer professorId);
+    void deleteByProfessorId(Integer professorId);
 }

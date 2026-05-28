@@ -1,5 +1,6 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.dto;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -15,6 +16,8 @@ public record UtilizadorResponseDto(
         Boolean ativo,
         LocalDate dataNascimento,
         LocalDateTime criadoEm,
+        Double valorHora,
+        Boolean professorExterno,
         List<TurmaDto> turmas,
         List<ModalidadeDto> modalidades
 ) {}
