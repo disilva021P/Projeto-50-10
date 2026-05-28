@@ -52,6 +52,7 @@ public class UtilizadorService {
     private final TurmaRepository turmaRepository;
     private final ProfessorModalidadeRepository professorModalidadeRepository;
     private final ModalidadeRepository modalidadeRepository;
+    private final EncarregadoAlunoRepository encarregadoAlunoRepository;
 
 
     // ─── Listar todos, com filtro opcional por tipo ───────────────────────────
@@ -100,10 +101,9 @@ public class UtilizadorService {
             prof.setProfessorExterno(dto.professorExterno());
             prof.setNotas("");
 
-            // CRUCIAL: Passa o professor para a variável comum 'utilizador'
             utilizador = prof;
 
-        } else { // Outro tipo genérico (ex: Encarregado de Educação)
+        } else {
             utilizador = new Utilizadore();
         }
 
@@ -125,7 +125,7 @@ public class UtilizadorService {
         utilizador.setCriadoEm(LocalDateTime.now());
         utilizador.setEditadoEm(LocalDateTime.now());
 
-        // Gerador original da Palavra-Passe Temporária (12 caracteres)
+        // Gerador da Palavra-Passe Temporária (12 caracteres)
         StringBuilder sb = new StringBuilder(12);
         for (int i = 0; i < 12; i++) {
             int index = GeneradorRandomico.nextInt(LETRAS.length());
@@ -143,19 +143,16 @@ public class UtilizadorService {
                 for (String turmaHash : dto.idTurmasIniciais()) {
                     if (turmaHash != null && !turmaHash.trim().isEmpty()) {
                         try {
-                            // 1. Decifrar o ID de cada turma individualmente
                             Integer idTurmaDecoded = idHasher.decode(turmaHash);
-
-                            // 2. Procurar a turma correspondente na base de dados
                             Turma turma = turmaRepository.findById(idTurmaDecoded)
                                     .orElseThrow(() -> new Exception("Turma não encontrada"));
 
-                            // 3. Criar a chave composta (ID Aluno + ID Turma)
+                            //Criar a chave composta (ID Aluno + ID Turma)
                             TurmaAlunoId identificadorIntermedio = new TurmaAlunoId();
                             identificadorIntermedio.setAlunoId(utilizadorSalvo.getId());
                             identificadorIntermedio.setTurmaId(turma.getId());
 
-                            // 4. Criar a entidade intermédia e associar os objetos
+                            //Criar a entidade intermédia e associar os objetos
                             TurmaAluno inscricao = new TurmaAluno();
                             inscricao.setId(identificadorIntermedio);
                             inscricao.setAluno((Aluno) utilizadorSalvo);
@@ -163,7 +160,7 @@ public class UtilizadorService {
 
                             inscricao.setInscritoEm(java.time.LocalDate.now());
 
-                            // 5. Guardar na tabela turma_alunos
+                            // Guardar na tabela turma_alunos
                             turmaAlunoRepository.save(inscricao);
                         } catch (Exception e) {
                             System.err.println("Erro ao inscrever aluno na turma hash [" + turmaHash + "]: " + e.getMessage());
@@ -173,7 +170,7 @@ public class UtilizadorService {
             }
 
         } else if (utilizador instanceof Professore) {
-            // 1. Gravar o professor na BD para gerar o ID original dele
+            //Gravar o professor na BD para gerar o ID original dele
             utilizadorSalvo = professoreRepository.save((Professore) utilizador);
             Professore profSalvo = (Professore) utilizadorSalvo;
 
@@ -182,34 +179,31 @@ public class UtilizadorService {
                 for (String modalidadeHash : dto.modalidadesIds()) {
                     if (modalidadeHash != null && !modalidadeHash.trim().isEmpty()) {
                         try {
-                            // 1. Decifrar o ID da modalidade que veio do Frontend (Garante que é Integer)
                             Integer idModalidadeDecoded = idHasher.decode(modalidadeHash);
-
-                            // 2. Procurar a modalidade na base de dados
                             Modalidade modalidade = modalidadeRepository.findById(idModalidadeDecoded)
                                     .orElseThrow(() -> new Exception("Modalidade não encontrada com o ID: " + idModalidadeDecoded));
 
-                            // 3. Criar a chave composta
+                            //Criar a chave composta
                             ProfessorModalidadeId identificadorIntermedio = new ProfessorModalidadeId();
                             identificadorIntermedio.setProfessorId(profSalvo.getId());
                             identificadorIntermedio.setModalidadeId(modalidade.getId());
 
-                            // 4. Criar a entidade intermédia e associar os objetos
+                            //Criar a entidade intermédia e associar os objetos
                             ProfessorModalidade vinculo = new ProfessorModalidade();
                             vinculo.setId(identificadorIntermedio);
                             vinculo.setProfessor(profSalvo);
                             vinculo.setModalidade(modalidade);
 
-                            // 5. Guardar definitivamente na tabela professor_modalidade
+                            //Guardar definitivamente na tabela professor_modalidade
                             professorModalidadeRepository.save(vinculo);
 
                         } catch (Exception e) {
-                            System.err.println("🚨 ERRO REAL ao associar professor à modalidade hash [" + modalidadeHash + "]:");
+                            System.err.println("ERRO REAL ao associar professor à modalidade hash [" + modalidadeHash + "]:");
                             e.printStackTrace();
                         }
                     }
                 }
-                // 6. CRUCIAL: Força o Spring a descarregar tudo para a BD ANTES de converter para o ResponseDto
+                // Força o Spring a descarregar tudo para a BD ANTES de converter para o ResponseDto
                 professorModalidadeRepository.flush();
             }
 
@@ -222,19 +216,22 @@ public class UtilizadorService {
                 for (String alunoHash : dto.idEducandosIniciais()) {
                     if (alunoHash != null && !alunoHash.trim().isEmpty()) {
                         try {
-                            // 1. Decifrar a Hash do ID do Aluno
                             Integer idAlunoDecoded = idHasher.decode(alunoHash);
-
-                            // 2. Buscar a entidade do Aluno
                             Aluno aluno = alunoRepository.findById(idAlunoDecoded)
                                     .orElseThrow(() -> new Exception("Aluno não encontrado"));
 
-                            // 3. Construir a entidade intermédia EncarregadoAluno
+                            // Instanciar e preencher a Chave Composta Id primeiro
+                            ipcaProjeto50.Grupo62026.SiteEntArtes.entity.EncarregadoAlunoId chaveComposta = new ipcaProjeto50.Grupo62026.SiteEntArtes.entity.EncarregadoAlunoId();
+                            chaveComposta.setEncarregadoId(utilizadorSalvo.getId());
+                            chaveComposta.setAlunoId(aluno.getId());
+
+                            //Construir a entidade intermédia EncarregadoAluno vinculando a ID Composta
                             EncarregadoAluno associacao = new EncarregadoAluno();
+                            associacao.setId(chaveComposta); // 🟢 Define a chave composta na entidade
                             associacao.setEncarregado(utilizadorSalvo);
                             associacao.setAluno(aluno);
 
-                            // 4. Guardar na tabela intermédia encarregado_aluno
+                            //Guardar na tabela intermédia encarregado_aluno
                             encarregadoAluno.save(associacao);
 
                         } catch (Exception e) {
@@ -287,7 +284,7 @@ public class UtilizadorService {
         Utilizadore utilizador = utilizadoreRepository.findById(idUtilizador)
                 .orElseThrow(() -> new EntityNotFoundException("Utilizador não encontrado"));
 
-        // 1. Atualizar dados comuns (Utilizadore)
+        //Atualizar dados comuns (Utilizadore)
         utilizador.setNome(dto.nome());
         utilizador.setEmail(dto.email());
         utilizador.setNif(dto.nif());
@@ -297,7 +294,7 @@ public class UtilizadorService {
 
         Integer tipoId = utilizador.getTipo().getId();
 
-        // 2. Fluxo específico para PROFESSOR (Tipo ID = 2)
+        //Fluxo específico para PROFESSOR
         if (tipoId == 2) {
             Professore prof = professoreRepository.findById(idUtilizador)
                     .orElseThrow(() -> new Exception("Registo de professor não encontrado"));
@@ -374,10 +371,10 @@ public class UtilizadorService {
                 turmaAlunoRepository.flush();
             }
         }
-        // 4. [NOVO] Fluxo específico para ENCARREGADO / Outros Tipos
+        //Fluxo específico para ENCARREGADO / Outros Tipos
         else {
             // ─── SINCRONIZAR EDUCANDOS DO ENCARREGADO ───
-            encarregadoAluno.deleteByEncarregado_Id(idUtilizador);
+            encarregadoAlunoRepository.deleteByEncarregado_Id(idUtilizador); // Garante que o nome do repo está igual ao teu (ex: encarregadoAlunoRepository)
 
             if (dto.idEducandosIniciais() != null && !dto.idEducandosIniciais().isEmpty()) {
                 for (String alunoHash : dto.idEducandosIniciais()) {
@@ -387,23 +384,28 @@ public class UtilizadorService {
                             Aluno aluno = alunoRepository.findById(idAlunoDecoded)
                                     .orElseThrow(() -> new Exception("Aluno não encontrado"));
 
+                            //Criar e definir a chave composta primeiro!
+                            ipcaProjeto50.Grupo62026.SiteEntArtes.entity.EncarregadoAlunoId idIntermedio = new ipcaProjeto50.Grupo62026.SiteEntArtes.entity.EncarregadoAlunoId();
+                            idIntermedio.setEncarregadoId(idUtilizador);
+                            idIntermedio.setAlunoId(aluno.getId());
+
                             EncarregadoAluno associacao = new EncarregadoAluno();
+                            associacao.setId(idIntermedio); // 🟢 Definir o ID composto na entidade
                             associacao.setEncarregado(utilizador);
                             associacao.setAluno(aluno);
 
-                            encarregadoAluno.save(associacao);
+                            encarregadoAlunoRepository.save(associacao);
                         } catch (Exception e) {
                             System.err.println("Erro ao associar educando na edição hash [" + alunoHash + "]: " + e.getMessage());
                         }
                     }
                 }
-                encarregadoAluno.flush(); // Garante que a BD atualiza antes do refresh do EntityManager
+                encarregadoAlunoRepository.flush();
             }
         }
-
         Utilizadore salvo = utilizadoreRepository.save(utilizador);
 
-        // ══ RETORNO DO DTO ATUALIZADO EM CACHE ══
+        //RETORNO DO DTO ATUALIZADO
         if (tipoId == 2) {
             Professore profAtualizado = professoreRepository.findById(idUtilizador).get();
             entityManager.refresh(profAtualizado);
@@ -418,7 +420,7 @@ public class UtilizadorService {
         entityManager.refresh(salvo);
         return toResponseDTO(salvo);
     }
-    @Transactional // CRÍTICO: Garante que tudo corre numa única transação
+    @Transactional
     public void alterarPalavraPasse(String id, AlterarPasswordDto dto) throws Exception {
 
         Utilizadore utilizador = utilizadoreRepository.findById(idHasher.decode(id))
@@ -483,25 +485,29 @@ public class UtilizadorService {
     }
 
     // ─── 2. REMOÇÃO FÍSICA (Apagar para sempre com limpeza de FK) ─────────────
-    @Transactional // Obrigatório para o deleteByProfessorId funcionar bem
+    @Transactional // Obrigatório para o deleteByProfessorId e outras remoções funcionarem bem
     public void eliminaUtilizador(String id) throws Exception {
         Integer idDecoded = idHasher.decode(id);
 
         Utilizadore utilizador = utilizadoreRepository.findById(idDecoded)
                 .orElseThrow(() -> new Exception("Utilizador não encontrado"));
 
-        // Se for um Professor, limpa primeiro os vínculos com as modalidades
+        //Se for um Professor, limpa primeiro os vínculos com as modalidades
         if (utilizador instanceof Professore) {
             professorModalidadeRepository.deleteByProfessorId(idDecoded);
-        } else if (utilizador instanceof Aluno) {
-            // Se no futuro o Aluno tiver tabelas intermédias, limpas aqui
-            // de igual forma (ex: turmaAlunoRepository.deleteByAlunoId(idDecoded);)
+        }
+        // 2. Se for um Aluno, limpa as inscrições em turmas e o vínculo com o encarregado
+        else if (utilizador instanceof Aluno) {
+            // Limpa as turmas onde o aluno está inscrito
+            turmaAlunoRepository.deleteByAlunoId(idDecoded);
+            encarregadoAluno.deleteAllByAluno_Id(idDecoded);
         }
 
-        // Agora que a tabela intermédia está limpa, o SQL deixa apagar o utilizador!
+        else if (utilizador.getTipo() != null && (utilizador.getTipo().getId() == 4 || "ROLE_ENCARREGADO".equals(utilizador.getTipo().getTipoUtilizador()))) {
+            encarregadoAluno.deleteAllByEncarregado_Id(idDecoded);
+        }
         utilizadoreRepository.delete(utilizador);
     }
-
     // ─── Ver próprio perfil ───────────────────────────────────────────────────
     public UtilizadorResponseDto verMeuPerfil(String id) {
         Utilizadore utilizador = utilizadoreRepository.findById(idHasher.decode( id))
@@ -509,19 +515,19 @@ public class UtilizadorService {
         return toResponseDTO(utilizador);
     }
 
-    // ─── Mapper: Entity → DTO ─────────────────────────────────────────────────
-    // ─── Mapper: Entity → DTO ─────────────────────────────────────────────────
+
+
     // ─── Mapper: Entity → DTO ─────────────────────────────────────────────────
     private UtilizadorResponseDto toResponseDTO(Utilizadore u) {
-        // 1. Criamos as listas vazias prontas a receber dados
         List<TurmaDto> listaTurmasDto = new java.util.ArrayList<>();
         List<ModalidadeDto> listaModalidadesDto = new java.util.ArrayList<>();
+        List<UtilizadoreResumoDto> listaEducandosDto = new java.util.ArrayList<>();
 
-        // [NOVO] Criar variáveis para o valorHora e regime, a começar vazias (null / false)
         Double valorHora = null;
         Boolean professorExterno = false;
+        String encarregadoNome = null;
 
-        // 2. Se for Aluno (Tipo ID = 3), carrega as turmas
+        // Se for Aluno (Tipo ID = 3), carrega as turmas E O ENCARREGADO
         if (u.getTipo() != null && u.getTipo().getId() == 3) {
             List<TurmaAluno> inscricoes = turmaAlunoRepository.findByAlunoId(u.getId());
 
@@ -547,6 +553,17 @@ public class UtilizadorService {
                         })
                         .toList();
             }
+
+
+            // Como o aluno só pode ter 1 encarregado, filtramos pelo ID do Aluno e tiramos o primeiro que aparecer
+            java.util.Optional<EncarregadoAluno> associacao = encarregadoAluno.findAll()
+                    .stream()
+                    .filter(ea -> ea.getAluno() != null && ea.getAluno().getId().equals(u.getId()))
+                    .findFirst();
+
+            if (associacao.isPresent() && associacao.get().getEncarregado() != null) {
+                encarregadoNome = associacao.get().getEncarregado().getNome();
+            }
         }
         // 3. Se for Professor (Tipo ID = 2), carrega as modalidades e os campos de professor
         else if (u.getTipo() != null && u.getTipo().getId() == 2) {
@@ -559,13 +576,11 @@ public class UtilizadorService {
             }
 
             if (prof != null) {
-                // 👇 LINHA CORRIGIDA AQUI 👇
                 valorHora = prof.getValorHora() != null ? prof.getValorHora().doubleValue() : null;
                 professorExterno = prof.getProfessorExterno();
             }
 
             List<ProfessorModalidade> vinculos = professorModalidadeRepository.findById_ProfessorId(u.getId());
-            // ... resto do código igual ...
             if (vinculos != null) {
                 listaModalidadesDto = vinculos.stream()
                         .map(vinculo -> {
@@ -578,24 +593,31 @@ public class UtilizadorService {
                         .toList();
             }
         }
+        // 4. Se for Encarregado, carrega os educandos associados aproveitando o findEducandosdeEducador
+        else if (u.getTipo() != null && (u.getTipo().getId() == 4 || "ROLE_ENCARREGADO".equals(u.getTipo().getTipoUtilizador()))) {
+            listaEducandosDto = findEducandosdeEducador(u.getId());
+        }
 
-        // 4. Devolvemos o DTO perfeitamente preenchido com as variáveis corretas
+        // 5. Devolvemos o DTO perfeitamente preenchido com os 15 parâmetros exatos exigidos pelo Record atualizado
         return new UtilizadorResponseDto(
                 idHasher.encode(u.getId()),
                 u.getNome(),
                 u.getEmail(),
                 u.getNif(),
                 u.getTelefone(),
-                u.getTipo().getTipoUtilizador(),
+                u.getTipo() != null ? u.getTipo().getTipoUtilizador() : null,
                 u.getAtivo(),
                 u.getDataNascimento(),
                 u.getCriadoEm(),
-                valorHora,          // 👈 Passa a variável local corrigida
-                professorExterno,    // 👈 Passa a variável local corrigida
+                valorHora,
+                professorExterno,
                 listaTurmasDto,
-                listaModalidadesDto
+                listaModalidadesDto,
+                listaEducandosDto,
+                encarregadoNome
         );
     }
+
     @Transactional
     public void associarAlunoAEncarregado(String idAlunoHashed, String idEncarregadoHashed) throws Exception {
 
@@ -614,9 +636,16 @@ public class UtilizadorService {
             throw new Exception("Este aluno já está associado a este encarregado.");
         }
 
+        // Mapear a chave composta para evitar o erro do Hibernate Setter
+        ipcaProjeto50.Grupo62026.SiteEntArtes.entity.EncarregadoAlunoId chaveComposta = new ipcaProjeto50.Grupo62026.SiteEntArtes.entity.EncarregadoAlunoId();
+        chaveComposta.setEncarregadoId(idEncarregado);
+        chaveComposta.setAlunoId(idAluno);
+
         EncarregadoAluno associacao = new EncarregadoAluno();
+        associacao.setId(chaveComposta); // 🟢 Define a chave ID na entidade
         associacao.setEncarregado(encarregado);
         associacao.setAluno(aluno);
+
         encarregadoAluno.save(associacao);
     }
 
@@ -633,6 +662,7 @@ public class UtilizadorService {
 
         encarregadoAluno.delete(associacao);
     }
+
     public List<UtilizadoreResumoDto> findEducandosdeEducador(Integer idEducador) {
         return encarregadoAluno.findAllByEncarregado_Id(idEducador)
                 .stream()
@@ -650,6 +680,7 @@ public class UtilizadorService {
     private void removeTokensExpirados(){
         tokenRecuperacaoRepository.deleteAllByExpiraEmBefore(LocalDateTime.now());
     }
+
     public String geraToken(String email) throws Exception {
         removeTokensExpirados();
         Utilizadore utilizador = utilizadoreRepository.findByEmail(email)
@@ -684,33 +715,30 @@ public class UtilizadorService {
         return token;
     }
     public void atualizaPassSemLogin(AlterarPasswordSemLoginDto dto) throws Exception {
-        // 1. Procurar o token no banco pelo ID do utilizador (ou apenas pelo hash se preferir)
-        // Aqui assumo que o DTO traz o token digitado e a nova senha
+        //Procurar o token no banco pelo ID do utilizador (ou apenas pelo hash se preferir)
         TokenRecuperacao recuperacao = tokenRecuperacaoRepository.findFirstByIdUtilizador_EmailOrderByExpiraEmDesc(dto.email()).orElseThrow(() -> new Exception("Token inválido ou inexistente"));
 
-        // 2. Verificar se expirou
+        //Verificar se expirou
         if (recuperacao.getExpiraEm().isBefore(LocalDateTime.now())) {
             tokenRecuperacaoRepository.delete(recuperacao);
             throw new Exception("O token expirou!");
         }
 
         // 3. O BCrypt NÃO permite buscar por "token" direto se for hash.
-        // Você deve buscar o registro e usar o checkpw:
-
         if (!BCrypt.checkpw(dto.token(), recuperacao.getToken())) {
             throw new Exception("Token incorreto!");
         }
 
-        // 4. Se chegou aqui, é válido! Atualizar a senha do utilizador
+        //Se chegou aqui, é válido! Atualizar a senha do utilizador
         Utilizadore user = recuperacao.getIdUtilizador();
         user.setPalavraPasse(passwordEncoder.encode(dto.novaPassword()));
         utilizadoreRepository.save(user);
 
-        // 5. Apagar o token para não ser usado de novo
+        //Apagar o token para não ser usado de novo
         tokenRecuperacaoRepository.delete(recuperacao);
     }
     public List<UtilizadoreResumoDto> listarContactosDisponiveis(String idLogadoHashed) {
-        // Descodificamos o ID para saber quem é o utilizador atual
+        //Descodificamos o ID para saber quem é o utilizador atual
         Integer idRealLogado = idHasher.decode(idLogadoHashed);
 
         return utilizadoreRepository.findAll().stream()
@@ -746,7 +774,6 @@ public class UtilizadorService {
     }
     public List<UtilizadoreResumoDto> listarAlunosMenoresParaAssociacao(String termoPesquisa) {
         // Busca os alunos ativos. No teu repositório podes filtrar por nome e validar a idade
-        // Aqui fazemos um filtro simples por nome se o termo for enviado
         List<Aluno> alunos;
         if (termoPesquisa != null && !termoPesquisa.isBlank()) {
             alunos = alunoRepository.findByNomeContainingIgnoreCaseAndAtivoTrue(termoPesquisa);
@@ -754,7 +781,7 @@ public class UtilizadorService {
             alunos = alunoRepository.findAllByAtivoTrue();
         }
 
-        // Filtramos na API (ou na query) apenas os que são menores de idade
+        // Filtra na API (ou na query) apenas os que são menores de idade
         return alunos.stream()
                 .filter(Aluno::isMenorIdade) // Usa o método isMenorIdade() que já tens na entidade!
                 .map(aluno -> new UtilizadoreResumoDto(

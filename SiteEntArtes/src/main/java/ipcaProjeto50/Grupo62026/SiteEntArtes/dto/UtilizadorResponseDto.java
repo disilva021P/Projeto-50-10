@@ -19,5 +19,7 @@ public record UtilizadorResponseDto(
         Double valorHora,
         Boolean professorExterno,
         List<TurmaDto> turmas,
-        List<ModalidadeDto> modalidades
+        List<ModalidadeDto> modalidades,
+        List<UtilizadoreResumoDto> educandos,
+        String encarregadoNome
 ) {}

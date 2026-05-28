@@ -22,4 +22,6 @@ public interface EncarregadoAlunoRepository extends JpaRepository<EncarregadoAlu
     List<EncarregadoAluno> findAllByAluno_Id(Integer decode);
 
     void deleteByEncarregado_Id(Integer encarregadoId);
+    void deleteAllByEncarregado_Id(Integer encarregadoId);
+    void deleteAllByAluno_Id(Integer alunoId);
 }
