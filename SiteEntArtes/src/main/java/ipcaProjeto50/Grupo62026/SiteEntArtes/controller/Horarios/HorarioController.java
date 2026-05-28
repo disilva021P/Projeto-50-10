@@ -160,7 +160,7 @@ public class HorarioController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size) {
         try {
-                utilizadorService.verificaPermissaoEducando(educandoId, getUserId());
+            utilizadorService.verificaPermissaoEducando(educandoId, getUserId());
             return ResponseEntity.ok(aulaCoachingService.findAllbyAlunoIdPage(educandoId, PageRequest.of(page, size)));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

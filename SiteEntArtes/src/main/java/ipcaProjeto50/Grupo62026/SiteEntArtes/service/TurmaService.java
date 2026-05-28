@@ -1,10 +1,7 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ModalidadeDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.PagamentoDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.TurmaDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.UtilizadoreResumoDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.TipoPagamentoRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.TurmaAlunoRepository;
@@ -100,19 +97,14 @@ public class TurmaService {
                 );
 
                 // 3. Instanciar o Record (Imutável - valores passados no construtor)
-                PagamentoDto novaMensalidade = new PagamentoDto(
-                        null,                                        // id (gerado pela DB)
-                        turmaaluno.getTurma().getMensalidade(),        // valor (BigDecimal)
-                        false,                                       // pago
-                        "Mensalidade de " + LocalDate.now().getMonth(), // descricao
-                        tipoPagamentoHashed,                         // idTipoPagamento (String)
-                        "Mensalidade Turma",                         // tipoPagamentoNome
-                        null,                                        // aula (sem aula específica)
-                        LocalDate.now(),                             // dataPagamento
-                        null,                                        // dataConfirmado
-                        resumo                                       // utilizadoreResumoDto
-                );
-                pagamentoService.criar(novaMensalidade);
+                pagamentoService.criar(new CriarPagamentoDto(
+                        turmaaluno.getTurma().getMensalidade(),
+                        "Mensalidade de " + LocalDate.now().getMonth(),
+                        alunoIdHashed,          // a hash do utilizador que já tens no contexto
+                        tipoPagamentoHashed,    // a hash do tipo que já tens
+                        null,                   // sem aula
+                        LocalDate.now()
+                ));
             } catch (Exception e) {
                 // Log de erro para não interromper o loop dos outros alunos
                 System.err.println("Erro ao gerar pagamento para aluno " + turmaaluno.getId() + ": " + e.getMessage());

@@ -1,6 +1,7 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.CriarPagamentoDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.PagamentoDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.TurmaAlunoDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.UtilizadoreResumoDto;
@@ -58,11 +59,25 @@ public class AlunoTurmaService {
         turmaAluno.setTurma(turma);
 
         TurmaAlunoDto turmaAlunoDto = convertToDto(turmaAlunoRepository.save(turmaAluno));
-        if(turmaAlunoDto.idAluno()!=null){
+        if (turmaAlunoDto.idAluno() != null) {
 
-            pagamentoService.criar(new PagamentoDto(null,INSCRICAO,false,"Pagamento de Inscrição na escola",idHasher.encode(3),"Inscrição",null, LocalDate.now(),null,new UtilizadoreResumoDto(idAlunoHashed,aluno.getNome())));
-            pagamentoService.criar(new PagamentoDto(null,SEGURO,false,"Pagamento de Seguro na escola",idHasher.encode(4),"Seguro",null, LocalDate.now(),null,new UtilizadoreResumoDto(idAlunoHashed,aluno.getNome())));
+            pagamentoService.criar(new CriarPagamentoDto(
+                    INSCRICAO,
+                    "Pagamento de Inscrição na escola",
+                    idAlunoHashed,
+                    idHasher.encode(3),  // hash do tipo "Inscrição"
+                    null,
+                    LocalDate.now()
+            ));
 
+            pagamentoService.criar(new CriarPagamentoDto(
+                    SEGURO,
+                    "Pagamento de Seguro na escola",
+                    idAlunoHashed,
+                    idHasher.encode(4),  // hash do tipo "Seguro"
+                    null,
+                    LocalDate.now()
+            ));
         }
         return turmaAlunoDto;
     }

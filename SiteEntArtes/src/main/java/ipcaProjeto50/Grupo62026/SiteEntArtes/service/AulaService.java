@@ -706,11 +706,11 @@ public class AulaService {
                     aluno.getId(),
                     "Inscição em aula de coaching",
                     "Nova inscrição para aula de coaching de"+ aulaAluno.getAula().getDataAula() +" das "+
-                        aulaAluno.getAula().getHoraInicio() + " às " + aulaAluno.getAula().getHoraFim()
+                            aulaAluno.getAula().getHoraInicio() + " às " + aulaAluno.getAula().getHoraFim()
                     ,
                     "PEDIDO COACHING",
                     idHasher.encode( aulaAluno.getAula().getId())
-        );
+            );
         }
 
         aulaAlunoRepository.save(aulaAluno);
@@ -747,5 +747,3 @@ public class AulaService {
     }
 
 }
-
-

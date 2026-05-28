@@ -49,7 +49,7 @@ public class PagamentosController {
 
     @PreAuthorize("hasAuthority('COORDENACAO')")
     @PostMapping
-    public ResponseEntity<PagamentoDto> criar(@RequestBody PagamentoDto dto) {
+    public ResponseEntity<PagamentoDto> criar(@RequestBody CriarPagamentoDto dto) {
         try {
             return ResponseEntity.status(201).body(pagamentoService.criar(dto));
         } catch (IllegalArgumentException e) {
@@ -334,4 +334,5 @@ public class PagamentosController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
 }

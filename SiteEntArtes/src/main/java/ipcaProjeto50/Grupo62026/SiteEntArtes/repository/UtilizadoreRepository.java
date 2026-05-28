@@ -4,6 +4,8 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Utilizadore;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 
 import java.util.List;
@@ -23,4 +25,6 @@ public interface UtilizadoreRepository extends JpaRepository<Utilizadore, Intege
 
     List<Utilizadore> findByTipo_TipoUtilizador(String coordenacao);
     List<Utilizadore> findAllByTipo_Id(Integer tipo_id);
+    @Query("SELECT u FROM Utilizadore u WHERE LOWER(u.nome) LIKE LOWER(CONCAT('%', :nome, '%'))")
+    List<Utilizadore> findByNomeContainingIgnoreCase(@Param("nome") String nome);
 }
