@@ -7,6 +7,7 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.AulaCoachingRequestDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.AulaDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.*;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -247,7 +248,6 @@ public class AulaCoachingService {
         // 5. Retorna o DTO convertido que já vai levar o estúdio lá dentro!
         return convertToAulaCoachingDto(aulaCoaching);
     }
-
     /**
      * Inscreve um aluno numa aula de coaching existente.
      * Verifica se a aula está confirmada/agendada e se ainda tem vagas.

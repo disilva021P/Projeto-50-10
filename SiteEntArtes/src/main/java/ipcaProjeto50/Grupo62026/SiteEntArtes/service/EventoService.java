@@ -43,6 +43,8 @@ public class EventoService {
                 evento.getLocal(),
                 participantes,
                 String.valueOf(evento.getMaxParticipantes()),
+                evento.getPreco(),
+                evento.getEstadoAula().getId(),
                 new UtilizadoreResumoDto(idHasher.encode(evento.getCriadoPor().getId()), evento.getCriadoPor().getNome())
         );
     }
