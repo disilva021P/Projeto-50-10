@@ -1,10 +1,7 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ModalidadeDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.PagamentoDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.TurmaDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.UtilizadoreResumoDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.TipoPagamentoRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.TurmaAlunoRepository;
@@ -80,42 +77,36 @@ public class TurmaService {
                 modalidadeService.converterParaDto(turma.getModalidade())
         );
     }
+
     @Scheduled(cron = "0 0 0 1 * *") // Executa no dia 1 de cada mês
     public void gerarPagamentosMensaisTurmas() {
         // 1. Ir buscar todos os alunos que estão inscritos em turmas
-        // Nota: Precisas de um método no teu UtilizadorRepository para isto
         List<TurmaAluno> alunosEmTurmas = turmaAlunoRepository.findAll();
 
-        // 2. Definir o tipo de pagamento ID 1 (ex: "Mensalidade Turma")
-        TipoPagamento tipoMensalidade = tipoPagamentoRepository.findById(1)
-                .orElse(null);
+        // 2. Definir a hash do tipo de pagamento ID 1
+        String tipoPagamentoHashed = idHasher.encode(1);
 
         for (TurmaAluno turmaaluno : alunosEmTurmas) {
             try {
                 String alunoIdHashed = idHasher.encode(turmaaluno.getAluno().getId());
-                String tipoPagamentoHashed = idHasher.encode(1);
-                UtilizadoreResumoDto resumo = new UtilizadoreResumoDto(
-                        alunoIdHashed,
-                        turmaaluno.getAluno().getNome()
+
+                // 3. Instanciar o CriarPagamentoDto com os argumentos corretos do seu Record
+                CriarPagamentoDto novoPagamentoDto = new CriarPagamentoDto(
+                        turmaaluno.getTurma().getMensalidade(),
+                        "Mensalidade de " + LocalDate.now().getMonth(),
+                        alunoIdHashed,          // idUtilizador
+                        tipoPagamentoHashed,    // idTipoPagamento
+                        null,                   // idAula (mensalidade não tem aula fixa)
+                        LocalDate.now()         // dataPagamento
                 );
 
-                // 3. Instanciar o Record (Imutável - valores passados no construtor)
-                PagamentoDto novaMensalidade = new PagamentoDto(
-                        null,                                        // id (gerado pela DB)
-                        turmaaluno.getTurma().getMensalidade(),        // valor (BigDecimal)
-                        false,                                       // pago
-                        "Mensalidade de " + LocalDate.now().getMonth(), // descricao
-                        tipoPagamentoHashed,                         // idTipoPagamento (String)
-                        "Mensalidade Turma",                         // tipoPagamentoNome
-                        null,                                        // aula (sem aula específica)
-                        LocalDate.now(),                             // dataPagamento
-                        null,                                        // dataConfirmado
-                        resumo                                       // utilizadoreResumoDto
-                );
-                pagamentoService.criar(novaMensalidade);
+                // 4. Chamar o método criar que agora aceita CriarPagamentoDto
+                pagamentoService.criar(novoPagamentoDto);
+
             } catch (Exception e) {
                 // Log de erro para não interromper o loop dos outros alunos
                 System.err.println("Erro ao gerar pagamento para aluno " + turmaaluno.getId() + ": " + e.getMessage());
             }
         }
-    }}
+    }
+}

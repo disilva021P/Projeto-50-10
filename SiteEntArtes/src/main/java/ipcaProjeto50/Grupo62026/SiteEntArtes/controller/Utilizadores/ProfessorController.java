@@ -29,6 +29,19 @@ public class ProfessorController {
     ) {
         return ResponseEntity.ok(professorService.findAllPageable(pageable));
     }
+    @GetMapping("/nomebyAula/{idAula}")
+    public ResponseEntity<List<String>> getProfessorByAula(@PathVariable String idAula) {
+        // 1. Log para garantir que o ID está a chegar
+        System.out.println("A procurar professores para a aula ID: " + idAula);
+
+        // 2. Chamar o service (Certifica-te que o método correspondente no Service e Repository TAMBÉM não exige Pageable)
+        List<String> professores = professorService.findAllbyAula(idAula);
+
+        // 3. Log do resultado
+        System.out.println("Professores encontrados: " + professores);
+
+        return ResponseEntity.ok(professores);
+    }
     @GetMapping("/selecionar")
     public ResponseEntity<List<UtilizadoreResumoDto>> getProfessoresSelecionar(
             @PageableDefault(page = 0, size = 10) Pageable pageable // @ParameterObject ajuda na documentação Swagger/OpenAPI

@@ -46,32 +46,35 @@ public class PagamentoService {
 
     // Criar pagamento
     @Transactional
-    public PagamentoDto criar(PagamentoDto dto) throws Exception {
+    public PagamentoDto criar(CriarPagamentoDto dto) throws Exception { // <--- Alterado aqui
 
-        if(dto.dataPagamento()!=null && dto.dataPagamento().isBefore(LocalDate.now())){
+        if(dto.dataPagamento() != null && dto.dataPagamento().isBefore(LocalDate.now())){
             throw new Exception("Só pode marcar pagamentos futuros");
         }
         if (dto.valorPagamento().compareTo(BigDecimal.ZERO) <= 0) {
             throw new Exception("Valor não pode ser 0 ou menor que 0");
         }
-        //  Criamos uma Entity vazia
+
+        // Criamos uma Entity vazia
         Pagamento entidade = new Pagamento();
 
-        String idHashed = dto.utilizadoreResumoDto().id();
+        // No CriarPagamentoDto o ID do utilizador vem direto na raiz
+        String idHashed = dto.idUtilizador();
         Integer idReal = idHasher.decode(idHashed);
 
         String idHashed2 = dto.idTipoPagamento();
-        Integer idReal2= idHasher.decode(idHashed2);
+        Integer idReal2 = idHasher.decode(idHashed2);
 
         Utilizadore donoDoPagamento = utilizadoreRepository.findById(idReal)
                 .orElseThrow(() -> new Exception("Utilizador nao encontrado"));
-        TipoPagamento tipoPagamento= tipoPagamentoRepository.findById(idReal2)
+        TipoPagamento tipoPagamento = tipoPagamentoRepository.findById(idReal2)
                 .orElseThrow(() -> new Exception("Tipo nao encontrado"));
-        Aula aula=null;
 
-        if(dto.aula() != null && dto.aula().id() != null)
-            aula = aulaRepository.findById(idHasher.decode(dto.aula().id()))
+        Aula aula = null;
+        if (dto.idAula() != null && !dto.idAula().isBlank()) {
+            aula = aulaRepository.findById(idHasher.decode(dto.idAula()))
                     .orElseThrow(() -> new Exception("Aula não encontrada"));
+        }
 
         entidade.setValorPagamento(dto.valorPagamento());
         entidade.setDescricao(dto.descricao());
@@ -79,12 +82,12 @@ public class PagamentoService {
         entidade.setDataPagamento(dto.dataPagamento() != null ? dto.dataPagamento() : LocalDate.now());
         entidade.setIdTipoPagamento(tipoPagamento);
         entidade.setAula(aula);
-
         entidade.setIdutilizador(donoDoPagamento);
-        //  Mandamos o Repository gravar a Entity na BD
+
+        // Mandamos o Repository gravar a Entity na BD
         Pagamento gravado = pagamentoRepository.save(entidade);
 
-        //  Transformamos de volta em DTO para responder ao JS
+        // Transformamos de volta em DTO completo para responder ao Controller
         return converterParaDto(gravado);
     }
 

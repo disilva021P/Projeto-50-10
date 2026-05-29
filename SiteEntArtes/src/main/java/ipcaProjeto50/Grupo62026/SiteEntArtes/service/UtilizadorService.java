@@ -23,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -47,6 +48,11 @@ public class UtilizadorService {
     private final EmailService emailService;
     private final AlunoRepository alunoRepository;
     private final ProfessoreRepository professoreRepository;
+    private final TurmaAlunoRepository turmaAlunoRepository;
+    private final TurmaRepository turmaRepository;
+    private final ProfessorModalidadeRepository professorModalidadeRepository;
+    private final ModalidadeRepository modalidadeRepository;
+
 
     // ─── Listar todos, com filtro opcional por tipo ───────────────────────────
     public Page<UtilizadorResponseDto> listarTodos(String tipoFiltro, Pageable pageable) {
@@ -131,8 +137,87 @@ public class UtilizadorService {
         Utilizadore utilizadorSalvo;
         if (utilizador instanceof Aluno) {
             utilizadorSalvo = alunoRepository.save((Aluno) utilizador);
+
+
+            if (dto.idTurmasIniciais() != null && !dto.idTurmasIniciais().isEmpty()) {
+                // Iterar por todas as hashes de turmas enviadas pelo Frontend
+                for (String turmaHash : dto.idTurmasIniciais()) {
+                    if (turmaHash != null && !turmaHash.trim().isEmpty()) {
+                        try {
+                            // 1. Decifrar o ID de cada turma individualmente
+                            Integer idTurmaDecoded = idHasher.decode(turmaHash);
+
+                            // 2. Procurar a turma correspondente na base de dados
+                            Turma turma = turmaRepository.findById(idTurmaDecoded)
+                                    .orElseThrow(() -> new Exception("Turma não encontrada"));
+
+                            // 3. Criar a chave composta (ID Aluno + ID Turma)
+                            TurmaAlunoId identificadorIntermedio = new TurmaAlunoId();
+                            identificadorIntermedio.setAlunoId(utilizadorSalvo.getId());
+                            identificadorIntermedio.setTurmaId(turma.getId());
+
+                            // 4. Criar a entidade intermédia e associar os objetos
+                            TurmaAluno inscricao = new TurmaAluno();
+                            inscricao.setId(identificadorIntermedio);
+                            inscricao.setAluno((Aluno) utilizadorSalvo);
+                            inscricao.setTurma(turma);
+
+                            inscricao.setInscritoEm(java.time.LocalDate.now());
+
+
+                            // 5. Guardar na tabela turma_alunos
+                            turmaAlunoRepository.save(inscricao);
+                        } catch (Exception e) {
+                            System.err.println("Erro ao inscrever aluno na turma hash [" + turmaHash + "]: " + e.getMessage());
+                        }
+                    }
+                }
+            }
+            // ───────────────────────────────────────────────────────────────────────────────────
+
         } else if (utilizador instanceof Professore) {
+            // 1. Gravar o professor na BD para gerar o ID original dele
             utilizadorSalvo = professoreRepository.save((Professore) utilizador);
+            Professore profSalvo = (Professore) utilizadorSalvo;
+
+            // ─── BLOCO DE GRAVAÇÃO DAS MODALIDADES DO PROFESSOR ──────────────────────
+            if (dto.modalidadesIds() != null && !dto.modalidadesIds().isEmpty()) {
+                for (String modalidadeHash : dto.modalidadesIds()) {
+                    if (modalidadeHash != null && !modalidadeHash.trim().isEmpty()) {
+                        try {
+                            // 1. Decifrar o ID da modalidade que veio do Frontend (Garante que é Integer)
+                            Integer idModalidadeDecoded = idHasher.decode(modalidadeHash);
+
+                            // 2. Procurar a modalidade na base de dados
+                            // NOTA: Se o teu ModalidadeRepository usar Long, faz a conversão: Long.valueOf(idModalidadeDecoded)
+                            Modalidade modalidade = modalidadeRepository.findById(idModalidadeDecoded)
+                                    .orElseThrow(() -> new Exception("Modalidade não encontrada com o ID: " + idModalidadeDecoded));
+
+                            // 3. Criar a chave composta (Garantir correspondência de tipos Integer)
+                            ProfessorModalidadeId identificadorIntermedio = new ProfessorModalidadeId();
+                            identificadorIntermedio.setProfessorId(profSalvo.getId()); // Verifica se o getId() do utilizador é Integer
+                            identificadorIntermedio.setModalidadeId(modalidade.getId());
+
+                            // 4. Criar a entidade intermédia e associar os objetos
+                            ProfessorModalidade vinculo = new ProfessorModalidade();
+                            vinculo.setId(identificadorIntermedio);
+                            vinculo.setProfessor(profSalvo);
+                            vinculo.setModalidade(modalidade);
+
+                            // 5. Guardar definitivamente na tabela professor_modalidade
+                            professorModalidadeRepository.save(vinculo);
+
+                        } catch (Exception e) {
+                            // ISTO VAI MOSTRAR NO TEU CMD O ERRO REAL CASO ALGO FALHE internamente
+                            System.err.println("🚨 ERRO REAL ao associar professor à modalidade hash [" + modalidadeHash + "]:");
+                            e.printStackTrace();
+                        }
+                    }
+                }
+                // 6. CRUCIAL: Força o Spring a descarregar tudo para a BD ANTES de converter para o ResponseDto
+                professorModalidadeRepository.flush();
+            }
+            // ─────────────────────────────────────────────────────────────────────────
         } else {
             utilizadorSalvo = utilizadoreRepository.save(utilizador);
         }
@@ -169,7 +254,6 @@ public class UtilizadorService {
         // Converter e devolver o DTO oficial
         return toResponseDTO(utilizadorSalvo);
     }
-
     @Transactional
     public UtilizadorResponseDto editarUtilizador(String idHashed, EditarUtilizadorDto dto) {
         Integer idUtilizador = idHasher.decode(idHashed);
@@ -282,7 +366,60 @@ public class UtilizadorService {
     }
 
     // ─── Mapper: Entity → DTO ─────────────────────────────────────────────────
+    // ─── Mapper: Entity → DTO ─────────────────────────────────────────────────
+    // ─── Mapper: Entity → DTO ─────────────────────────────────────────────────
     private UtilizadorResponseDto toResponseDTO(Utilizadore u) {
+        // 1. Criamos as listas vazias prontas a receber dados
+        List<TurmaDto> listaTurmasDto = new java.util.ArrayList<>();
+        List<ModalidadeDto> listaModalidadesDto = new java.util.ArrayList<>();
+
+        // 2. Se for Aluno (Tipo ID = 3), carrega as turmas
+        if (u.getTipo() != null && u.getTipo().getId() == 3) {
+            List<TurmaAluno> inscricoes = turmaAlunoRepository.findByAlunoId(u.getId());
+
+            if (inscricoes != null) {
+                listaTurmasDto = inscricoes.stream()
+                        .map(inscricao -> {
+                            Turma t = inscricao.getTurma();
+
+                            ModalidadeDto modalidadeDto = null;
+                            if (t.getModalidade() != null) {
+                                modalidadeDto = new ModalidadeDto(
+                                        idHasher.encode(t.getModalidade().getId()),
+                                        t.getModalidade().getNome()
+                                );
+                            }
+
+                            return new TurmaDto(
+                                    idHasher.encode(t.getId()),
+                                    t.getNome(),
+                                    t.getMensalidade(),
+                                    modalidadeDto
+                            );
+                        })
+                        .toList();
+            }
+        }
+        // 3. [NOVO]: Se for Professor (Tipo ID = 2), carrega as modalidades da tabela intermédia
+        else if (u.getTipo() != null && u.getTipo().getId() == 2) {
+            List<ProfessorModalidade> vinculos = professorModalidadeRepository.findById_ProfessorId(u.getId());
+
+            if (vinculos != null) {
+                listaModalidadesDto = vinculos.stream()
+                        .map(vinculo -> {
+                            Modalidade m = vinculo.getModalidade();
+
+                            // Constrói o ModalidadeDto com o ID codificado em Hash e o nome
+                            return new ModalidadeDto(
+                                    idHasher.encode(m.getId()),
+                                    m.getNome()
+                            );
+                        })
+                        .toList();
+            }
+        }
+
+        // 4. Devolvemos o DTO perfeitamente preenchido incluindo o novo campo de modalidades
         return new UtilizadorResponseDto(
                 idHasher.encode(u.getId()),
                 u.getNome(),
@@ -292,16 +429,10 @@ public class UtilizadorService {
                 u.getTipo().getTipoUtilizador(),
                 u.getAtivo(),
                 u.getDataNascimento(),
-                u.getCriadoEm()
+                u.getCriadoEm(),
+                listaTurmasDto,     // Vai preenchida se for aluno, vazia se for professor
+                listaModalidadesDto // Vai preenchida se for professor, vazia se for aluno
         );
-    }
-
-    private TipoUtilizadorDto FindTipoById(String id) throws Exception {
-        TipoUtilizador tipo = tipoUtilizadorRepository
-                .findById(idHasher.decode(id))
-                .orElseThrow(() -> new Exception("Tipo de utilizador não encontrado"));
-        return new TipoUtilizadorDto(id, tipo.getTipoUtilizador());
-
     }
     @Transactional
     public void associarAlunoAEncarregado(String idAlunoHashed, String idEncarregadoHashed) throws Exception {
@@ -443,5 +574,12 @@ public class UtilizadorService {
 
     public Optional<Utilizadore> findByEmail(@NotBlank(message = "O email não pode estar vazio") @Email(message = "Formato de email inválido") String email) {
         return utilizadoreRepository.findByEmail(email);
+    }
+    public List<UtilizadoreResumoDto> pesquisarPorNome(String nome) {
+        if (nome == null || nome.trim().length() < 3) return List.of();
+        return utilizadoreRepository.findByNomeContainingIgnoreCase(nome.trim())
+                .stream()
+                .map(u -> new UtilizadoreResumoDto(idHasher.encode(u.getId()), u.getNome()))
+                .toList();
     }
 }

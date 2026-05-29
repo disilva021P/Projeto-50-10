@@ -43,6 +43,18 @@ public class UtilizadorController {
             return ResponseEntity.internalServerError().body(e.getMessage());
         }
     }
+    @GetMapping("/tipos-hashes")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
+    public ResponseEntity<java.util.Map<String, String>> obterHashesDosTipos() {
+        java.util.Map<String, String> hashes = new java.util.HashMap<>();
+
+        // Usar sempre a Classe com "I" maiúsculo porque os métodos são estáticos
+        hashes.put("ALUNO", idHasher.encode(3));
+        hashes.put("PROFESSOR", idHasher.encode(2));
+        hashes.put("ENCARREGADO", idHasher.encode(4));
+
+        return ResponseEntity.ok(hashes);
+    }
 
     // 2. Alterar a Senha
     @PostMapping("/esqueceuPassword")
@@ -66,6 +78,7 @@ public class UtilizadorController {
         try {
             return ResponseEntity.ok(utilizadorService.listarTodos(tipo, pageable));
         } catch (Exception e) {
+            e.printStackTrace(); // 👈 ADICIONA ESTA LINHA TEMPORARIAMENTE
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -150,19 +163,6 @@ public class UtilizadorController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
-    }
-
-    @GetMapping("/tipos-hashes")
-    @PreAuthorize("hasAuthority('COORDENACAO')")
-    public ResponseEntity<java.util.Map<String, String>> obterHashesDosTipos() {
-        java.util.Map<String, String> hashes = new java.util.HashMap<>();
-
-        // Usar sempre a Classe com "I" maiúsculo porque os métodos são estáticos
-        hashes.put("ALUNO", idHasher.encode(3));
-        hashes.put("PROFESSOR", idHasher.encode(2));
-        hashes.put("ENCARREGADO", idHasher.encode(4));
-
-        return ResponseEntity.ok(hashes);
     }
 
     // ─── PATCH /api/utilizadores/minha-password ───────────────────────────────
@@ -300,5 +300,10 @@ public class UtilizadorController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Erro ao remover associação: " + e.getMessage());
         }
+    }
+    @GetMapping("/pesquisar")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
+    public ResponseEntity<List<UtilizadoreResumoDto>> pesquisar(@RequestParam String nome) {
+        return ResponseEntity.ok(utilizadorService.pesquisarPorNome(nome));
     }
 }

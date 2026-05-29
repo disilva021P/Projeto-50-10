@@ -5,9 +5,13 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.TurmaAluno;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.TurmaAlunoId;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.service.AlunoTurmaService;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
 public interface TurmaAlunoRepository extends JpaRepository<TurmaAluno, TurmaAlunoId> {
     List<TurmaAluno> findAllByTurma_Id(Integer id);
+    @Query("SELECT ta FROM TurmaAluno ta WHERE ta.id.alunoId = :alunoId")
+    List<TurmaAluno> findByAlunoId(@Param("alunoId") Integer alunoId);
 }
