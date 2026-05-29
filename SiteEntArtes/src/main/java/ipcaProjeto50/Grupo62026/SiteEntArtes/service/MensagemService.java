@@ -12,8 +12,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+
 @RequiredArgsConstructor
 @Service
 public class MensagemService {
@@ -32,10 +34,10 @@ public class MensagemService {
         Integer id = idHasher.decode(idUser);
         List<MensagenPreviewDto> previews = new ArrayList<>();
 
-        if (!utilizadoreRepository.existsById(id))
+        if (!utilizadoreRepository.existsById(id)) {
             throw new EntityNotFoundException("Utilizador não encontrado com o ID fornecido.");
+        }
 
-        // ── 1. Conversas individuais ──
         List<Mensagen> mensagensPrivadas = mensagenRepository
                 .findAllByRemetenteIdOrDestinatarioIdOrderByEnviadaEmDesc(id, id);
 
@@ -51,52 +53,42 @@ public class MensagemService {
                 .map(m -> converterParaPreviewDto(m, id))
                 .forEach(previews::add);
 
-        // ── 2. Grupos (Corrigido para incluir grupos sem mensagens) ──
-
-        // Injetar o GrupoRepository no teu Service para usar aqui:
-        // Como alternativa, se o teu mensagensGrupoRepository conseguir buscar grupos:
         List<ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Grupo> meusGrupos =
                 grupoRepository.findByMembros_Id(id);
 
         for (ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Grupo g : meusGrupos) {
-            // Tenta encontrar a última mensagem deste grupo específico
             Optional<MensagensGrupo> ultimaMsg = mensagensGrupoRepository
                     .findFirstByGrupoIdOrderByEnviadaEmDesc(g.getId());
 
-            if (ultimaMsg.isPresent()) {
-                // Se tem mensagem, mostra a mensagem
-                previews.add(new MensagenPreviewDto(
-                        "GRUPO_" + idHasher.encode(g.getId()),
-                        g.getNome(),
-                        ultimaMsg.get().getConteudo(),
-                        ultimaMsg.get().getEnviadaEm(),
-                        true
-                ));
-            } else {
-                // SE NÃO TEM MENSAGEM: Mostra o grupo com texto de boas-vindas
-                // Usamos a data de criação do grupo ou a data atual para não dar erro no DTO
-                previews.add(new MensagenPreviewDto(
-                        "GRUPO_" + idHasher.encode(g.getId()),
-                        g.getNome(),
-                        "Novo grupo criado!",
-                        LocalDateTime.now(), // Ou g.getCriadoEm() se tiveres esse campo
-                        true
-                ));
-            }
+            previews.add(new MensagenPreviewDto(
+                    "GRUPO_" + idHasher.encode(g.getId()),
+                    g.getNome(),
+                    ultimaMsg.map(MensagensGrupo::getConteudo).orElse("Novo grupo criado!"),
+                    ultimaMsg.map(MensagensGrupo::getEnviadaEm).orElse(g.getCriadoEm()),
+                    true,
+                    idHasher.encode(g.getCriador().getId())
+            ));
         }
 
-        // ── 3. Ordenação Final ──
         return previews.stream()
                 .sorted(Comparator.comparing(MensagenPreviewDto::horas).reversed())
                 .toList();
     }
 
-
     public MensagenDto criar(String idUser, MensagemCriarDto mensagenDto) throws Exception {
         Utilizadore remetente = utilizadoreRepository.findById(idHasher.decode(idUser))
                 .orElseThrow(() -> new EntityNotFoundException("Remetente com o id fornecido não encontrado"));
+
         Utilizadore destinatario = utilizadoreRepository.findById(idHasher.decode(mensagenDto.destinatario()))
                 .orElseThrow(() -> new EntityNotFoundException("Destinatario com o id devolvido, não encontrado"));
+
+        if (ehAlunoMenor(remetente)) {
+            throw new IllegalArgumentException("Alunos menores de idade não podem enviar mensagens diretas.");
+        }
+
+        if (ehAlunoMenor(destinatario)) {
+            throw new IllegalArgumentException("Não é permitido enviar mensagens diretas para alunos menores de idade.");
+        }
 
         Mensagen novaMensagem = mensagenRepository.save(new Mensagen(
                 null,
@@ -106,7 +98,6 @@ public class MensagemService {
                 LocalDateTime.now()
         ));
 
-        // --- DISPARAR NOTIFICAÇÃO ---
         notificacoesService.criarNotificacao(
                 destinatario.getId(),
                 remetente.getId(),
@@ -119,19 +110,19 @@ public class MensagemService {
         return this.converterParaDto(novaMensagem);
     }
 
-
-    public void eliminar(String id){
+    public void eliminar(String id) {
         mensagenRepository.deleteById(idHasher.decode(id));
     }
 
-
-    public List<MensagenDto> mensagensConversa(String idUser, String idConversa ) throws Exception {
+    public List<MensagenDto> mensagensConversa(String idUser, String idConversa) throws Exception {
         Utilizadore utilizadore = utilizadoreRepository.findById(idHasher.decode(idUser))
                 .orElseThrow(() -> new Exception("Utilizador com o email não encontrado"));
 
-        return mensagenRepository.findChatHistory(utilizadore.getId(),idHasher.decode(idConversa)).stream().map(this::converterParaDto).toList();
+        return mensagenRepository.findChatHistory(utilizadore.getId(), idHasher.decode(idConversa))
+                .stream()
+                .map(this::converterParaDto)
+                .toList();
     }
-
 
     public MensagenPreviewDto converterParaPreviewDto(Mensagen mensagen, Integer currentUserId) {
         if (mensagen == null) return null;
@@ -145,13 +136,14 @@ public class MensagemService {
                 outro.getNome(),
                 mensagen.getConteudo(),
                 mensagen.getEnviadaEm(),
-                false
+                false,
+                null
         );
     }
 
-
     public MensagenDto converterParaDto(Mensagen mensagen) {
         if (mensagen == null) return null;
+
         return new MensagenDto(
                 idHasher.encode(mensagen.getId()),
                 new UtilizadoreResumoDto(
@@ -167,25 +159,18 @@ public class MensagemService {
         );
     }
 
-
-    // --- MÉTODOS PARA GRUPOS ---
-
     public List<MensagenDto> mensagensConversaGrupo(String idUserHashed, String idGrupoHashed) throws Exception {
-        // 1. Descodificar IDs
         Integer userId = idHasher.decode(idUserHashed);
         Integer grupoId = idHasher.decode(idGrupoHashed);
 
-        // 2. Buscar o utilizador pelo ID real
-        Utilizadore utilizadore = utilizadoreRepository.findById(userId)
+        utilizadoreRepository.findById(userId)
                 .orElseThrow(() -> new Exception("Utilizador não encontrado"));
 
-        // 3. Buscar mensagens do grupo
         return mensagensGrupoRepository.findByGrupoIdOrderByEnviadaEmAsc(grupoId)
                 .stream()
                 .map(this::converterGrupoParaDto)
                 .toList();
     }
-
 
     public MensagenDto criarMensagemGrupo(String idUserHashed, MensagemGrupoCriarDto dto) {
         Integer userId = idHasher.decode(idUserHashed);
@@ -205,7 +190,6 @@ public class MensagemService {
 
         MensagensGrupo salva = mensagensGrupoRepository.save(novaMensagem);
 
-        // --- DISPARAR NOTIFICAÇÕES PARA O GRUPO ---
         grupo.getMembros().forEach(membro -> {
             if (!membro.getId().equals(userId)) {
                 try {
@@ -226,7 +210,6 @@ public class MensagemService {
         return converterGrupoParaDto(salva);
     }
 
-    // Mapper específico para Mensagens de Grupo -> MensagenDto
     public MensagenDto converterGrupoParaDto(MensagensGrupo m) {
         return new MensagenDto(
                 idHasher.encode(m.getId()),
@@ -234,9 +217,15 @@ public class MensagemService {
                         idHasher.encode(m.getRemetente().getId()),
                         m.getRemetente().getNome()
                 ),
-                null, // Destinatário é nulo pois é um grupo
+                null,
                 m.getConteudo(),
                 m.getEnviadaEm()
         );
+    }
+
+    private boolean ehAlunoMenor(Utilizadore utilizador) {
+        return utilizador.getTipo().getId() == 3
+                && utilizador.getDataNascimento() != null
+                && LocalDate.now().getYear() - utilizador.getDataNascimento().getYear() < 18;
     }
 }
