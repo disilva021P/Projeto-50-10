@@ -38,10 +38,12 @@ public class TurmaService {
         Turma novaTurma = new Turma();
         novaTurma.setNome(dto.nome());
         novaTurma.setMensalidade(dto.mensalidade());
-
+        novaTurma.setAtivo(dto.ativo());
         // Buscar a modalidade usando o Service existente
         if (dto.modalidade() != null && dto.modalidade().id() != null) {
             novaTurma.setModalidade(modalidadeService.findById(dto.modalidade().id()));
+        }else{
+            throw new Exception("Modalidade nulla");
         }
 
         return converterTurmaParaDto(turmaRepository.save(novaTurma));
@@ -53,7 +55,7 @@ public class TurmaService {
 
         turmaExistente.setNome(dto.nome());
         turmaExistente.setMensalidade(dto.mensalidade());
-
+        turmaExistente.setAtivo(dto.ativo());
         if (dto.modalidade() != null && dto.modalidade().id() != null) {
             turmaExistente.setModalidade(modalidadeService.findById(dto.modalidade().id()));
         }
@@ -74,39 +76,54 @@ public class TurmaService {
                 idHasher.encode(turma.getId()),
                 turma.getNome(),
                 turma.getMensalidade(),
-                modalidadeService.converterParaDto(turma.getModalidade())
+                modalidadeService.converterParaDto(turma.getModalidade()),
+                turma.getAtivo()
         );
     }
-
     @Scheduled(cron = "0 0 0 1 * *") // Executa no dia 1 de cada mês
     public void gerarPagamentosMensaisTurmas() {
         // 1. Ir buscar todos os alunos que estão inscritos em turmas
+        // Nota: Precisas de um método no teu UtilizadorRepository para isto
         List<TurmaAluno> alunosEmTurmas = turmaAlunoRepository.findAll();
 
-        // 2. Definir a hash do tipo de pagamento ID 1
-        String tipoPagamentoHashed = idHasher.encode(1);
+        // 2. Definir o tipo de pagamento ID 1 (ex: "Mensalidade Turma")
+        TipoPagamento tipoMensalidade = tipoPagamentoRepository.findById(1)
+                .orElse(null);
 
         for (TurmaAluno turmaaluno : alunosEmTurmas) {
             try {
                 String alunoIdHashed = idHasher.encode(turmaaluno.getAluno().getId());
-
-                // 3. Instanciar o CriarPagamentoDto com os argumentos corretos do seu Record
-                CriarPagamentoDto novoPagamentoDto = new CriarPagamentoDto(
-                        turmaaluno.getTurma().getMensalidade(),
-                        "Mensalidade de " + LocalDate.now().getMonth(),
-                        alunoIdHashed,          // idUtilizador
-                        tipoPagamentoHashed,    // idTipoPagamento
-                        null,                   // idAula (mensalidade não tem aula fixa)
-                        LocalDate.now()         // dataPagamento
+                String tipoPagamentoHashed = idHasher.encode(1);
+                UtilizadoreResumoDto resumo = new UtilizadoreResumoDto(
+                        alunoIdHashed,
+                        turmaaluno.getAluno().getNome()
                 );
 
-                // 4. Chamar o método criar que agora aceita CriarPagamentoDto
-                pagamentoService.criar(novoPagamentoDto);
-
+                // 3. Instanciar o Record (Imutável - valores passados no construtor)
+                pagamentoService.criar(new CriarPagamentoDto(
+                        turmaaluno.getTurma().getMensalidade(),
+                        "Mensalidade de " + LocalDate.now().getMonth(),
+                        alunoIdHashed,          // a hash do utilizador que já tens no contexto
+                        tipoPagamentoHashed,    // a hash do tipo que já tens
+                        null,                   // sem aula
+                        LocalDate.now()
+                ));
             } catch (Exception e) {
                 // Log de erro para não interromper o loop dos outros alunos
                 System.err.println("Erro ao gerar pagamento para aluno " + turmaaluno.getId() + ": " + e.getMessage());
             }
         }
+    }
+
+    public TurmaDto toggleAtivo(String id) throws Exception {
+        TurmaDto turma = findById(id);
+        return update(id,new TurmaDto(
+                id,
+                turma.nome(),
+                turma.mensalidade(),
+                turma.modalidade(),
+                !turma.ativo()
+        ));
+
     }
 }
