@@ -218,7 +218,7 @@ public class AulaService {
 
         // Mapeamento dos sub-objetos para construir o DTO final
         EstudioDto estudioDto = aula.getEstudio() != null
-                ? new EstudioDto(idHasher.encode(aula.getEstudio().getId()), aula.getEstudio().getNome(),aula.getEstudio().getCapacidade())
+                ? new EstudioDto(idHasher.encode(aula.getEstudio().getId()), aula.getEstudio().getNome(),aula.getEstudio().getCapacidade(), aula.getEstudio().getNotas())
                 : null;
 
         EstadoAulaDto estadoDto = aula.getEstado() != null

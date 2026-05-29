@@ -1,10 +1,7 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.AulaAlunoDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.AulaCoachingDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.AulaCoachingRequestDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.AulaDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.*;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -93,16 +90,16 @@ public class AulaCoachingService {
     public Page<AulaCoachingDto> findAllPorAlunoIDModalidadePage(String alunoId,String modalidade,int offset, Pageable pageable) throws Exception {
         Integer idDecoded = idHasher.decode(alunoId);
         if(offset<0) throw new Exception("Erro: Não pode inscrever-se em aulas passadas");
-        LocalDate inicioSemana = calcularInicioSemana(offset);
-        LocalDate fimSemana = inicioSemana.plusDays(6);
-        if(modalidade==null || modalidade.isBlank()) return aulaCoachingRepository.buscaAulasCoachingDisponiveis(inicioSemana,fimSemana,idDecoded,pageable).map(aula -> {
+        LocalDate inicioSemana = LocalDate.now();
+        LocalDate fimSemana = LocalDate.now().plusYears(1);
+        if(modalidade==null || modalidade.isBlank()) return aulaCoachingRepository.buscaAulasCoachingDisponiveis(inicioSemana,fimSemana,idDecoded,AulaService.ID_ESTADO_AGENDADA,pageable).map(aula -> {
             try {
                 return convertToAulaCoachingDto(aula);
             } catch (Exception e) {
                 throw new RuntimeException("Mapping failed", e);
             }});
         else {
-            return aulaCoachingRepository.buscaAulasCoachingDisponiveilPorModalidade(inicioSemana,fimSemana,idHasher.decode(modalidade),idDecoded,  pageable).map(aula -> {
+            return aulaCoachingRepository.buscaAulasCoachingDisponiveilPorModalidade(inicioSemana,fimSemana,idHasher.decode(modalidade),idDecoded,AulaService.ID_ESTADO_AGENDADA, pageable).map(aula -> {
                 try {
                     return convertToAulaCoachingDto(aula);
                 } catch (Exception e) {
@@ -422,11 +419,25 @@ public class AulaCoachingService {
 
     public AulaCoachingDto convertToAulaCoachingDto(AulaCoaching aulaCoaching) throws Exception {
         AulaDto aulaPrincipal = aulaService.bucarPorIdDto(aulaCoaching.getId());
+
+        AulaAluno solicitante = aulaAlunoRepository
+                .findFirstByAula_Id(aulaCoaching.getId())
+                .orElse(null);
+
+        UtilizadoreResumoDto solicitadoPorDto = null;
+        if (solicitante != null) {
+            solicitadoPorDto = new UtilizadoreResumoDto(
+                    idHasher.encode(solicitante.getAluno().getId()),
+                    solicitante.getAluno().getNome()
+            );
+        }
+
         return new AulaCoachingDto(
                 aulaPrincipal,
                 aulaCoaching.getMaxAlunos(),
                 estadoAuloService.converterParaDto(aulaCoaching.getEstado()),
-                modalidadeService.converterParaDto(aulaCoaching.getModalidade())
+                modalidadeService.converterParaDto(aulaCoaching.getModalidade()),
+                solicitadoPorDto
         );
     }
 
@@ -465,7 +476,7 @@ public class AulaCoachingService {
 
     private LocalDate calcularInicioSemana(int offset) {
         return LocalDate.now()
-                .with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
                 .plusWeeks(offset);
     }
 

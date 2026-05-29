@@ -178,7 +178,7 @@ public class PagamentoService {
             // 1. Criar os DTOs de suporte (se necessário)
 // Se o pagamento não precisar dos detalhes do estúdio ou estado, podes passar null
             EstudioDto estudioDto = (aula.getEstudio() != null) ?
-                    new EstudioDto(idHasher.encode(aula.getEstudio().getId()), aula.getEstudio().getNome(),aula.getEstudio().getCapacidade()) : null;
+                    new EstudioDto(idHasher.encode(aula.getEstudio().getId()), aula.getEstudio().getNome(),aula.getEstudio().getCapacidade(), aula.getEstudio().getNotas()) : null;
 
             EstadoAulaDto estadoDto = (aula.getEstado() != null) ?
                     new EstadoAulaDto(idHasher.encode(aula.getEstado().getId()), aula.getEstado().getEstado()) : null;

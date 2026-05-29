@@ -540,7 +540,8 @@ public class UtilizadorService {
                             if (t.getModalidade() != null) {
                                 modalidadeDto = new ModalidadeDto(
                                         idHasher.encode(t.getModalidade().getId()),
-                                        t.getModalidade().getNome()
+                                        t.getModalidade().getNome(),
+                                        t.getModalidade().getDescricao()
                                 );
                             }
 
@@ -588,7 +589,8 @@ public class UtilizadorService {
                             Modalidade m = vinculo.getModalidade();
                             return new ModalidadeDto(
                                     idHasher.encode(m.getId()),
-                                    m.getNome()
+                                    m.getNome(),
+                                    m.getDescricao()
                             );
                         })
                         .toList();

@@ -51,7 +51,7 @@ public class EstudioService {
         Estudio estudio = new Estudio();
         estudio.setNome(dto.nome());
         estudio.setCapacidade(dto.capacidade());
-        // Outros campos como morada, etc.
+        estudio.setNotas(dto.notas());
         return converterParaDto(estudioRepository.save(estudio));
     }
 
@@ -59,9 +59,9 @@ public class EstudioService {
         Integer id = idHasher.decode(hashedId);
         Estudio estudio = estudioRepository.findById(id)
                 .orElseThrow(() -> new Exception("Estúdio não encontrado!"));
-
         estudio.setNome(dto.nome());
         estudio.setCapacidade(dto.capacidade());
+        estudio.setNotas(dto.notas());
         return converterParaDto(estudioRepository.save(estudio));
     }
 
@@ -120,10 +120,17 @@ public class EstudioService {
         // 4. Apagar diretamente pela ID
         estudioModalidadeRepository.deleteById(idChave);
     }
-    EstudioDto converterParaDto(Estudio estudio){
-        if(estudio==null) return null;
-        return new EstudioDto(idHasher.encode(estudio.getId()),estudio.getNome(),estudio.getCapacidade());
+
+    EstudioDto converterParaDto(Estudio estudio) {
+        if (estudio == null) return null;
+        return new EstudioDto(
+                idHasher.encode(estudio.getId()),
+                estudio.getNome(),
+                estudio.getCapacidade(),
+                estudio.getNotas()
+        );
     }
+
     public List<EstudioDto> buscarEstudioMaisLivre(String modalidadeHashedId) throws Exception {
         Integer modalidadeId = idHasher.decode(modalidadeHashedId);
 

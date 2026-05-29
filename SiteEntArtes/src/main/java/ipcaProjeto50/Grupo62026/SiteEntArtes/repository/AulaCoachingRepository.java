@@ -50,29 +50,32 @@ public interface AulaCoachingRepository extends JpaRepository<AulaCoaching,Integ
                                                         @Param("fim") LocalDate fim, Pageable pageable);
 
     @Query("SELECT ac FROM AulaCoaching ac " +
-            "WHERE ac.estado.id = 3 " +
+            "WHERE ac.estado.id = :estadoAgendado " +          // ← parâmetro
             "AND ac.dataAula BETWEEN :inicio AND :fim " +
             "AND (SELECT COUNT(aa) FROM AulaAluno aa WHERE aa.aula.id = ac.id) < ac.maxAlunos " +
-            "AND NOT EXISTS (SELECT 1 FROM AulaAluno aa2 WHERE aa2.aula.id = ac.id AND aa2.aluno.id = :alunoId) " + // O parâmetro está aqui...
+            "AND NOT EXISTS (SELECT 1 FROM AulaAluno aa2 WHERE aa2.aula.id = ac.id AND aa2.aluno.id = :alunoId) " +
             "ORDER BY ac.dataAula ASC, ac.horaInicio ASC")
     Page<AulaCoaching> buscaAulasCoachingDisponiveis(
             @Param("inicio") LocalDate inicio,
             @Param("fim") LocalDate fim,
-            @Param("alunoId") Integer alunoId, // ... mas faltava esta linha!
+            @Param("alunoId") Integer alunoId,
+            @Param("estadoAgendado") Integer estadoAgendado,
             Pageable pageable
     );
 
     @Query("SELECT ac FROM AulaCoaching ac " +
-            "WHERE ac.estado.id = 3 AND ac.modalidade.id = :modalidadeId AND " +
-            " ac.dataAula BETWEEN :inicio AND :fim " +
+            "WHERE ac.estado.id = :estadoAgendado " +          // ← parâmetro
+            "AND ac.modalidade.id = :modalidadeId " +
+            "AND ac.dataAula BETWEEN :inicio AND :fim " +
             "AND (SELECT COUNT(aa) FROM AulaAluno aa WHERE aa.aula.id = ac.id) < ac.maxAlunos " +
-            "AND NOT EXISTS (SELECT 1 FROM AulaAluno aa2 WHERE aa2.aula.id = ac.id AND aa2.aluno.id = :alunoId) " + // E aqui também...
+            "AND NOT EXISTS (SELECT 1 FROM AulaAluno aa2 WHERE aa2.aula.id = ac.id AND aa2.aluno.id = :alunoId) " +
             "ORDER BY ac.dataAula ASC, ac.horaInicio ASC")
     Page<AulaCoaching> buscaAulasCoachingDisponiveilPorModalidade(
             @Param("inicio") LocalDate inicio,
             @Param("fim") LocalDate fim,
             @Param("modalidadeId") Integer id,
-            @Param("alunoId") Integer alunoId, // ... e falta aqui também!
+            @Param("alunoId") Integer alunoId,
+            @Param("estadoAgendado") Integer estadoAgendado,   // ← novo param
             Pageable pageable
     );
 }
