@@ -2,6 +2,7 @@ package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.AulaDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ModalidadeDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.EstudioDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.AulaRepository;
@@ -22,6 +23,7 @@ public class EstudioService {
     private final EstudioRepository estudioRepository;
     private final ModalidadeRepository modalidadeRepository;
     private final EstudioModalidadeRepository estudioModalidadeRepository;
+    private final ModalidadeService modalidadeService;
     private final IdHasher idHasher;
     private final AulaRepository aulaRepository;
 
@@ -48,6 +50,7 @@ public class EstudioService {
     public EstudioDto create(EstudioDto dto) {
         Estudio estudio = new Estudio();
         estudio.setNome(dto.nome());
+        estudio.setCapacidade(dto.capacidade());
         // Outros campos como morada, etc.
         return converterParaDto(estudioRepository.save(estudio));
     }
@@ -58,6 +61,7 @@ public class EstudioService {
                 .orElseThrow(() -> new Exception("Estúdio não encontrado!"));
 
         estudio.setNome(dto.nome());
+        estudio.setCapacidade(dto.capacidade());
         return converterParaDto(estudioRepository.save(estudio));
     }
 
@@ -150,5 +154,25 @@ public class EstudioService {
                 inicio,
                 fim
         );
+    }
+
+    public List<ModalidadeDto> findModalidadesById(String id) {
+        return estudioModalidadeRepository.findByEstudio_Id(idHasher.decode(id)).stream().map(x-> modalidadeService.converterParaDto(x.getModalidade())).toList();
+    }
+
+    public List<ModalidadeDto> findModalidadesNaoAssociadasById(String id) {
+        // 1. Obter a lista de modalidades já associadas
+        List<ModalidadeDto> associadas = findModalidadesById(id);
+
+// 2. Procurar todas as modalidades e convertê-las corretamente para DTO
+        List<ModalidadeDto> todas = modalidadeRepository.findAll().stream()
+                .map(modalidadeService::converterParaDto)
+                .toList(); // Ou .collect(Collectors.toList()) se usares Java anterior ao 16
+
+// 3. Filtrar as 'todas' para remover as que já estão nas 'associadas'
+        return todas.stream()
+                .filter(modalidade -> associadas.stream()
+                        .noneMatch(assoc -> assoc.id().equals(modalidade.id())))
+                .toList();
     }
 }

@@ -38,10 +38,12 @@ public class TurmaService {
         Turma novaTurma = new Turma();
         novaTurma.setNome(dto.nome());
         novaTurma.setMensalidade(dto.mensalidade());
-
+        novaTurma.setAtivo(dto.ativo());
         // Buscar a modalidade usando o Service existente
         if (dto.modalidade() != null && dto.modalidade().id() != null) {
             novaTurma.setModalidade(modalidadeService.findById(dto.modalidade().id()));
+        }else{
+            throw new Exception("Modalidade nulla");
         }
 
         return converterTurmaParaDto(turmaRepository.save(novaTurma));
@@ -53,7 +55,7 @@ public class TurmaService {
 
         turmaExistente.setNome(dto.nome());
         turmaExistente.setMensalidade(dto.mensalidade());
-
+        turmaExistente.setAtivo(dto.ativo());
         if (dto.modalidade() != null && dto.modalidade().id() != null) {
             turmaExistente.setModalidade(modalidadeService.findById(dto.modalidade().id()));
         }
@@ -74,7 +76,8 @@ public class TurmaService {
                 idHasher.encode(turma.getId()),
                 turma.getNome(),
                 turma.getMensalidade(),
-                modalidadeService.converterParaDto(turma.getModalidade())
+                modalidadeService.converterParaDto(turma.getModalidade()),
+                turma.getAtivo()
         );
     }
     @Scheduled(cron = "0 0 0 1 * *") // Executa no dia 1 de cada mês
@@ -110,4 +113,17 @@ public class TurmaService {
                 System.err.println("Erro ao gerar pagamento para aluno " + turmaaluno.getId() + ": " + e.getMessage());
             }
         }
-    }}
+    }
+
+    public TurmaDto toggleAtivo(String id) throws Exception {
+        TurmaDto turma = findById(id);
+        return update(id,new TurmaDto(
+                id,
+                turma.nome(),
+                turma.mensalidade(),
+                turma.modalidade(),
+                !turma.ativo()
+        ));
+
+    }
+}

@@ -1,10 +1,14 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.repository;
 
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ModalidadeDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.EstudioModalidade;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.EstudioModalidadeId;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Modalidade;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface EstudioModalidadeRepository extends JpaRepository<EstudioModalidade, EstudioModalidadeId> {
@@ -12,4 +16,5 @@ public interface EstudioModalidadeRepository extends JpaRepository<EstudioModali
     Optional<EstudioModalidade> findEstudioModalidadeByEstudio_IdAndModalidade_Id(Integer id, Integer id1);
 
     boolean existsByEstudio_IdAndModalidade_Id(Integer decode, Integer decode1);
-}
+
+    List<EstudioModalidade> findByEstudio_Id(Integer estudioId);}

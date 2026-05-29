@@ -51,6 +51,15 @@ public class TurmaController {
             return ResponseEntity.badRequest().body("Erro ao criar turma: " + e.getMessage());
         }
     }
+    @PostMapping("/toggleAtivo/{id}")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
+    public ResponseEntity<?> toggleAtivo(@PathVariable String id) {
+        try {
+            return ResponseEntity.ok(turmaService.toggleAtivo(id));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Erro ao criar turma: " + e.getMessage());
+        }
+    }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('COORDENACAO')")

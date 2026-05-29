@@ -394,7 +394,8 @@ public class UtilizadorService {
                                     idHasher.encode(t.getId()),
                                     t.getNome(),
                                     t.getMensalidade(),
-                                    modalidadeDto
+                                    modalidadeDto,
+                                    t.getAtivo()
                             );
                         })
                         .toList();

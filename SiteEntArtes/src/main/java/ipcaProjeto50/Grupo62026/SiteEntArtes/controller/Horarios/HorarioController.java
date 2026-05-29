@@ -404,7 +404,15 @@ public class HorarioController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao eliminar horário: " + e.getMessage());
         }
     }
-
+    @GetMapping("/fixas/todos")
+    @PreAuthorize("hasAuthority('COORDENACAO')")
+    public ResponseEntity<?> listarTodosCoachings(@PageableDefault(page = 0, size = 10) Pageable pageable) {
+        try {
+            return ResponseEntity.ok(aulaCoachingService.findAll(pageable));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao listar coachings: " + e.getMessage());
+        }
+    }
     @GetMapping("/coaching/todos")
     @PreAuthorize("hasAuthority('COORDENACAO')")
     public ResponseEntity<?> listarTodosCoachings(@PageableDefault(page = 0, size = 10) Pageable pageable) {
