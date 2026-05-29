@@ -15,7 +15,8 @@ public record CriarUtilizadorDto(
         BigDecimal valorHora,
         Boolean professorExterno,
         List<String> idTurmasIniciais,
-        List<String> modalidadesIds
+        List<String> modalidadesIds,
+        List<String> idEducandosIniciais
 
 
 ) {}
