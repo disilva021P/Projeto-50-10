@@ -78,11 +78,15 @@ public class PagamentoService {
 
         entidade.setValorPagamento(dto.valorPagamento());
         entidade.setDescricao(dto.descricao());
-        entidade.setPago(false); // Por defeito, ninguém começa com a conta paga
         entidade.setDataPagamento(dto.dataPagamento() != null ? dto.dataPagamento() : LocalDate.now());
         entidade.setIdTipoPagamento(tipoPagamento);
         entidade.setAula(aula);
         entidade.setIdutilizador(donoDoPagamento);
+
+        // Se for tipo "Pagamento" (a professores), fica automaticamente liquidado
+        boolean isPagamentoProfessor = tipoPagamento.getTipoPagamento().equalsIgnoreCase("Pagamento");
+        entidade.setPago(isPagamentoProfessor);
+        entidade.setDataConfirmado(isPagamentoProfessor ? LocalDate.now() : null);
 
         // Mandamos o Repository gravar a Entity na BD
         Pagamento gravado = pagamentoRepository.save(entidade);
