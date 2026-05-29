@@ -7,6 +7,7 @@ import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Modalidade;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.ProfessorModalidade;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.ProfessorModalidadeId;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Professore;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.AulaProfessoreRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.ModalidadeRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.ProfessorModalidadeRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.ProfessoreRepository;
@@ -25,6 +26,7 @@ public class ProfessorService {
     private final ProfessoreRepository professoreRepository;
     private final ProfessorModalidadeRepository professorModalidadeRepository;
     private final ModalidadeRepository modalidadeRepository;
+    private final AulaProfessoreRepository aulaProfessoreRepository;
 
     public Professore findById(Integer id) throws Exception {
         return professoreRepository.findById(id).orElseThrow(()-> new Exception("Professor não encontrado"));
@@ -95,5 +97,9 @@ public class ProfessorService {
         }
 
         professorModalidadeRepository.deleteById(id);
+    }
+
+    public List<String> findAllbyAula(String id) {
+        return aulaProfessoreRepository.findAllByAulaId(idHasher.decode(id)).stream().map(x -> x.getProfessor().getNome()).toList();
     }
 }
