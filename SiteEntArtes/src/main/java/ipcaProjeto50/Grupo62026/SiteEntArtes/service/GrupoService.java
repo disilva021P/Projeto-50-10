@@ -1,15 +1,17 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.UtilizadoreResumoDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.UtilizadorFiltroGrupoDto;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Grupo;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Utilizadore;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.GrupoRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.UtilizadoreRepository;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.UtilizadoreResumoDto;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -24,86 +26,57 @@ public class GrupoService {
     private final IdHasher idHasher;
 
     @Transactional
-    public void criarGrupoPrivado(String idCriadorHashed, String nomeGrupo, List<String> membrosHashedIds) throws Exception {
-        // 1. Buscar o criador (usando o ID que vem do sub do token)
+    public String criarGrupoPrivado(String idCriadorHashed, String nomeGrupo, List<String> membrosHashedIds) throws Exception {
         Integer idRealCriador = idHasher.decode(idCriadorHashed);
         Utilizadore criador = utilizadoreRepository.findById(idRealCriador)
                 .orElseThrow(() -> new Exception("Criador não encontrado."));
 
-        // 2. Identificar o cargo do criador
-        // IDs: 1=Coordenação, 2=Professor, 3=Aluno, 4=Encarregado
-        int cargoCriador = criador.getTipo().getId();
+        if (ehAlunoMenor(criador)) {
+            throw new Exception("Alunos menores de idade não têm permissão para criar grupos.");
+        }
 
-        // 3. Iniciar a lista de membros (Set evita duplicados automaticamente)
         Set<Utilizadore> membrosSet = new HashSet<>();
         membrosSet.add(criador);
 
-        // 4. Processar e Validar cada membro selecionado
         for (String hashedId : membrosHashedIds) {
             Integer idMembroReal = idHasher.decode(hashedId);
-
-            // Regra 1: Se o ID for igual ao do criador, ignoramos (evita auto-adição duplicada)
             if (idMembroReal.equals(idRealCriador)) continue;
 
             Utilizadore membro = utilizadoreRepository.findById(idMembroReal)
                     .orElseThrow(() -> new Exception("Membro não encontrado: " + hashedId));
 
-            int cargoMembro = membro.getTipo().getId();
-
-            // --- VALIDAÇÃO DE REGRAS DE CARGO ---
-
-            // ENCARREGADO (4) -> Só com outros Encarregados (4)
-            if (cargoCriador == 4 && cargoMembro != 4) {
-                throw new Exception("Como encarregado, só pode criar grupos com outros encarregados.");
-            }
-
-            // PROFESSOR (2) -> Com Profs (2), Alunos (3) ou Encarregados (4)
-            // Por exclusão: Professor não pode criar grupo com Coordenação (1) nesta lógica
-            if (cargoCriador == 2 && cargoMembro == 1) {
-                throw new Exception("Professores não podem adicionar membros da coordenação a estes grupos.");
-            }
-
-            // ALUNO (3) -> (Opcional) Podes definir se alunos podem criar grupos
-            if (cargoCriador == 3) {
-                throw new Exception("Alunos não têm permissão para criar grupos privados.");
-            }
-
-            // COORDENAÇÃO (1) -> Não entra em if nenhum, logo tem acesso total.
-
+            validarMembroPermitido(criador, membro);
             membrosSet.add(membro);
         }
 
-        // 5. Salvar o Grupo
         Grupo novoGrupo = new Grupo();
         novoGrupo.setNome(nomeGrupo);
         novoGrupo.setCriador(criador);
-
-        // Converter Set para List para a entidade
         novoGrupo.setMembros(new ArrayList<>(membrosSet));
 
-        grupoRepository.save(novoGrupo);
+        Grupo grupoSalvo = grupoRepository.save(novoGrupo);
+        return idHasher.encode(grupoSalvo.getId());
     }
 
-
     @Transactional
-    public void adicionarMembro(String idAdminHashed, String grupoIdHashed, String novoMembroHashed) throws Exception {
-        // 1. Validar se quem está a tentar adicionar é Coordenação (ID 1)
-        Integer adminId = idHasher.decode(idAdminHashed);
-        Utilizadore admin = utilizadoreRepository.findById(adminId)
+    public void adicionarMembro(String idUtilizadorHashed, String grupoIdHashed, String novoMembroHashed) throws Exception {
+        Integer utilizadorId = idHasher.decode(idUtilizadorHashed);
+
+        Utilizadore utilizador = utilizadoreRepository.findById(utilizadorId)
                 .orElseThrow(() -> new Exception("Utilizador não encontrado."));
 
-        if (admin.getTipo().getId() != 1) {
-            throw new Exception("Apenas a coordenação pode editar membros de grupos.");
-        }
-
-        // 2. Buscar o grupo e o novo membro
         Grupo grupo = grupoRepository.findById(idHasher.decode(grupoIdHashed))
                 .orElseThrow(() -> new Exception("Grupo não encontrado."));
+
+        if (!podeGerirGrupo(utilizador, grupo)) {
+            throw new Exception("Apenas a coordenação ou o criador do grupo pode editar membros.");
+        }
 
         Utilizadore novoMembro = utilizadoreRepository.findById(idHasher.decode(novoMembroHashed))
                 .orElseThrow(() -> new Exception("Utilizador a adicionar não encontrado."));
 
-        // 3. Adicionar se não existir
+        validarMembroPermitido(utilizador, novoMembro);
+
         if (!grupo.getMembros().contains(novoMembro)) {
             grupo.getMembros().add(novoMembro);
             grupoRepository.save(grupo);
@@ -111,37 +84,115 @@ public class GrupoService {
     }
 
     @Transactional
-    public void removerMembro(String idAdminHashed, String grupoIdHashed, String membroARemoverHashed) throws Exception {
-        Integer adminId = idHasher.decode(idAdminHashed);
-        Utilizadore admin = utilizadoreRepository.findById(adminId)
-                .orElseThrow(() -> new Exception("Utilizador não encontrado."));
+    public void removerMembro(String idUtilizadorHashed, String grupoIdHashed, String membroARemoverHashed) throws Exception {
+        Integer utilizadorId = idHasher.decode(idUtilizadorHashed);
 
-        if (admin.getTipo().getId() != 1) {
-            throw new Exception("Apenas a coordenação pode remover membros.");
-        }
+        Utilizadore utilizador = utilizadoreRepository.findById(utilizadorId)
+                .orElseThrow(() -> new Exception("Utilizador não encontrado."));
 
         Grupo grupo = grupoRepository.findById(idHasher.decode(grupoIdHashed))
                 .orElseThrow(() -> new Exception("Grupo não encontrado."));
 
-        // Evitar que o grupo fique sem o criador se necessário, ou permitir remoção total
-        grupo.getMembros().removeIf(m -> idHasher.encode(m.getId()).equals(membroARemoverHashed));
+        if (!podeGerirGrupo(utilizador, grupo)) {
+            throw new Exception("Apenas a coordenação ou o criador do grupo pode remover membros.");
+        }
 
+        Integer membroId = idHasher.decode(membroARemoverHashed);
+
+        if (grupo.getCriador() != null && grupo.getCriador().getId().equals(membroId)) {
+            throw new Exception("O criador do grupo não pode ser removido.");
+        }
+
+        grupo.getMembros().removeIf(m -> m.getId().equals(membroId));
         grupoRepository.save(grupo);
     }
 
-    public List<UtilizadoreResumoDto> listarMembrosDoGrupo(String grupoIdHashed) throws Exception {
-        // 1. Descodificar o ID e procurar o grupo
-        Integer idReal = idHasher.decode(grupoIdHashed);
-        Grupo grupo = grupoRepository.findById(idReal)
-                .orElseThrow(() -> new Exception("Grupo não encontrado."));
+    public List<UtilizadorFiltroGrupoDto> listarUtilizadoresDisponiveisParaGrupo(String idUtilizadorLogadoHashed) {
+        Integer idLogadoReal = idHasher.decode(idUtilizadorLogadoHashed);
 
-        // 2. Converter a lista de entidades Utilizadore para UtilizadoreResumoDto
-        // Usamos o Stream para mapear cada membro e codificar o ID de volta para Hash (para o frontend)
-        return grupo.getMembros().stream()
-                .map(membro -> new UtilizadoreResumoDto(
-                        idHasher.encode(membro.getId()),
-                        membro.getNome()
+        Utilizadore utilizadorLogado = utilizadoreRepository.findById(idLogadoReal).orElse(null);
+        if (utilizadorLogado == null) return new ArrayList<>();
+
+        int cargoLogado = utilizadorLogado.getTipo().getId();
+
+        return utilizadoreRepository.findAll().stream()
+                .filter(u -> {
+                    if (u.getId().equals(idLogadoReal)) return false;
+
+                    int cargoAlvo = u.getTipo().getId();
+                    boolean alvoEhMenor = ehAlunoMenor(u);
+
+                    if (cargoLogado == 1) return true;
+                    if (cargoLogado == 2) return cargoAlvo != 1;
+
+                    if (cargoLogado == 3 || cargoLogado == 4) {
+                        return cargoAlvo != 1 && cargoAlvo != 2 && !alvoEhMenor;
+                    }
+
+                    return false;
+                })
+                .map(u -> new UtilizadorFiltroGrupoDto(
+                        idHasher.encode(u.getId()),
+                        u.getNome(),
+                        u.getDataNascimento()
                 ))
                 .collect(Collectors.toList());
+    }
+
+    public List<UtilizadoreResumoDto> listarMembrosDoGrupo(String grupoIdHashed) throws Exception {
+        Integer grupoId = idHasher.decode(grupoIdHashed);
+        Grupo grupo = grupoRepository.findById(grupoId)
+                .orElseThrow(() -> new Exception("Grupo não encontrado."));
+
+        return grupo.getMembros().stream()
+                .map(m -> new UtilizadoreResumoDto(
+                        idHasher.encode(m.getId()),
+                        m.getNome()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    public boolean verificarSeSouMenor(String idUtilizadorHashed) {
+        try {
+            Integer idReal = idHasher.decode(idUtilizadorHashed);
+            Utilizadore u = utilizadoreRepository.findById(idReal).orElse(null);
+            return u != null && ehAlunoMenor(u);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean podeGerirGrupo(Utilizadore utilizador, Grupo grupo) {
+        boolean ehCoordenacao = utilizador.getTipo().getId() == 1;
+        boolean ehCriador = grupo.getCriador() != null
+                && grupo.getCriador().getId().equals(utilizador.getId());
+
+        return ehCoordenacao || ehCriador;
+    }
+
+    private void validarMembroPermitido(Utilizadore gestor, Utilizadore membro) throws Exception {
+        int cargoGestor = gestor.getTipo().getId();
+        int cargoMembro = membro.getTipo().getId();
+        boolean membroEhMenor = ehAlunoMenor(membro);
+
+        if (cargoGestor == 1) return;
+
+        if (cargoGestor == 2 && cargoMembro == 1) {
+            throw new Exception("Professores não podem adicionar membros da coordenação.");
+        }
+
+        if (cargoGestor == 3 && (cargoMembro == 1 || cargoMembro == 2 || membroEhMenor)) {
+            throw new Exception("Alunos maiores só podem criar grupos com Encarregados ou outros Alunos maiores de idade.");
+        }
+
+        if (cargoGestor == 4 && (cargoMembro == 1 || cargoMembro == 2 || membroEhMenor)) {
+            throw new Exception("Encarregados só podem criar grupos com Alunos maiores de idade ou outros Encarregados.");
+        }
+    }
+
+    private boolean ehAlunoMenor(Utilizadore utilizador) {
+        return utilizador.getTipo().getId() == 3
+                && utilizador.getDataNascimento() != null
+                && LocalDate.now().getYear() - utilizador.getDataNascimento().getYear() < 18;
     }
 }
