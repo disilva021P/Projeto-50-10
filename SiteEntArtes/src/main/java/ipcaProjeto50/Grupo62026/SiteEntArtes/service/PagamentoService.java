@@ -39,7 +39,7 @@ public class PagamentoService {
         return pagamentoRepository.findAll().stream().map(this::converterParaDto).toList();
     }
 
-    // Procurar uma pagamento por ID
+    // Procurar um pagamento por ID
     public Optional<PagamentoDto> buscarPorId(String id) {
         return pagamentoRepository.findById(idHasher.decode(id)).map(this::converterParaDto);
     }
@@ -69,8 +69,10 @@ public class PagamentoService {
                 .orElseThrow(() -> new Exception("Tipo nao encontrado"));
         Aula aula=null;
 
-        if(dto.id()!=null)aula = aulaRepository.findById(idHasher.decode( dto.id())).orElseThrow(()->new Exception("Aula não encontrada"));
-        //  Passamos os dados do DTO (que veio do JS) para a Entity
+        if(dto.aula() != null && dto.aula().id() != null)
+            aula = aulaRepository.findById(idHasher.decode(dto.aula().id()))
+                    .orElseThrow(() -> new Exception("Aula não encontrada"));
+
         entidade.setValorPagamento(dto.valorPagamento());
         entidade.setDescricao(dto.descricao());
         entidade.setPago(false); // Por defeito, ninguém começa com a conta paga
