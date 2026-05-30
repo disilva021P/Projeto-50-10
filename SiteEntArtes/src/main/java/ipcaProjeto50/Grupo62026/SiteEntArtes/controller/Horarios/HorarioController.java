@@ -249,10 +249,10 @@ public class HorarioController {
     // =========================================================================
     @GetMapping("/professor/horario")
     @PreAuthorize("hasAuthority('PROFESSOR')")
-    public List<AulaDto> getHorarioProfessor(
+    public List<AulaTituloDto> getHorarioProfessor(
             @RequestParam(name = "offset", defaultValue = "0") int offset
     ) throws Exception {
-        return aulaService.buscarAulasProfessorSemana(getUserId(), offset);
+        return aulaService.buscarHorarioCompletoDoProfessor(getUserId(), offset);
     }
 
     @GetMapping("/professor/coaching/pendentes")

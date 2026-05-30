@@ -196,29 +196,40 @@ public class AulaService {
     }
     private AulaTituloDto converterParaAulaTituloDto(Aula aula) {
         String tituloFinal = "Aula";
+        Integer maxAlunos = null;
+        UtilizadoreResumoDto solicitadoPor = null;
 
-        // Cenário A: Se for uma instância de AulaCoaching, concatena "Coaching " + Modalidade
+        // Cenário A: Se for uma instância de AulaCoaching
         if (aula instanceof AulaCoaching coaching) {
             if (coaching.getModalidade() != null && coaching.getModalidade().getNome() != null) {
-                // 🔥 Aqui: Junta "Coaching " ao nome (Ex: "Coaching Ballet Clássico", "Coaching Pilates")
                 tituloFinal = "Coaching " + coaching.getModalidade().getNome();
             } else {
-                tituloFinal = "Coaching"; // Fallback caso a modalidade não tenha nome
+                tituloFinal = "Coaching";
+            }
+
+            maxAlunos = coaching.getMaxAlunos();
+
+            // Buscar quem pediu (primeiro aluno inscrito)
+            AulaAluno aa = aulaAlunoRepository.findFirstByAula_Id(coaching.getId()).orElse(null);
+            if (aa != null) {
+                solicitadoPor = new UtilizadoreResumoDto(
+                        idHasher.encode(aa.getAluno().getId()),
+                        aa.getAluno().getNome()
+                );
             }
         }
-        // Cenário B: Se for uma aula de Turma Regular, mantém apenas o nome da modalidade/turma
+        // Cenário B: Aula regular
         else if (aula.getIdHorario() != null && aula.getIdHorario().getIdturma() != null) {
             var turma = aula.getIdHorario().getIdturma();
             if (turma.getModalidade() != null && turma.getModalidade().getNome() != null) {
-                tituloFinal = turma.getModalidade().getNome(); // Ex: "Ballet Clássico"
+                tituloFinal = turma.getModalidade().getNome();
             } else if (turma.getNome() != null) {
                 tituloFinal = turma.getNome();
             }
         }
 
-        // Mapeamento dos sub-objetos para construir o DTO final
         EstudioDto estudioDto = aula.getEstudio() != null
-                ? new EstudioDto(idHasher.encode(aula.getEstudio().getId()), aula.getEstudio().getNome(),aula.getEstudio().getCapacidade(), aula.getEstudio().getNotas())
+                ? new EstudioDto(idHasher.encode(aula.getEstudio().getId()), aula.getEstudio().getNome(), aula.getEstudio().getCapacidade(), aula.getEstudio().getNotas())
                 : null;
 
         EstadoAulaDto estadoDto = aula.getEstado() != null
@@ -227,7 +238,7 @@ public class AulaService {
 
         HorarioTurmaDto horarioDto = null;
         if (aula.getIdHorario() != null) {
-            // Constrói o teu HorarioTurmaDto se precisares dele no frontend
+            // constrói se precisares
         }
 
         return new AulaTituloDto(
@@ -237,12 +248,16 @@ public class AulaService {
                 aula.getDataAula(),
                 aula.getHoraInicio(),
                 aula.getHoraFim(),
-                idHasher.encode( aula.getCriadoPor().getId()),
+                idHasher.encode(aula.getCriadoPor().getId()),
                 horarioDto,
                 estadoDto,
-                tituloFinal // Passa o título formatado ("Coaching Ballet Clássico" ou "Ballet Clássico")
+                tituloFinal,
+                maxAlunos,
+                solicitadoPor
         );
     }
+
+
     /**
      * Devolve uma aula específica de um aluno, verificando se este faz parte dela.
      *
@@ -282,7 +297,8 @@ public class AulaService {
                 aula.getHoraFim(),
                 idHasher.encode(aula.getCriadoPor().getId()),
                 aulaFixaService.convertToDto(aula.getIdHorario()),
-                estadoAuloService.converterParaDto(aula.getEstado())
+                estadoAuloService.converterParaDto(aula.getEstado()),
+                aula.getNotas()
         );
     }
 
@@ -392,11 +408,14 @@ public class AulaService {
         }
 
         return erros;
-    }    @Transactional
+    }
+
+    @Transactional
     public void EliminarAulasComHorario(Integer idHorario) throws Exception {
         aulaFixaService.delete(idHorario);
         aulaRepository.deleteAllByIdHorario_Id(idHorario);
     }
+
     @Transactional
     public void EliminarAulasComHorario(String idHorario) throws Exception {
 
@@ -404,6 +423,7 @@ public class AulaService {
         aulaRepository.deleteAllByIdHorario_Id(idHasher.decode(idHorario));
         aulaFixaService.delete(idHasher.decode(idHorario));
     }
+
     @Transactional
     public void EliminarAulasFuturasComHorario(String idHorarioStr) throws Exception {
         Integer idHorario = idHasher.decode(idHorarioStr);
@@ -418,6 +438,7 @@ public class AulaService {
         // NOTA: Não apagamos o aulaFixaService (HorarioTurma) aqui,
         // porque ele ainda tem aulas no passado associadas a ele!
     }
+
     @Transactional(rollbackFor = Exception.class)
     public List<AulaDto> atualizaPorHorario(HorarioTurmaRequestDto dto, String id, String idProfessor,String idAtualizador) throws Exception {
 
@@ -454,7 +475,6 @@ public class AulaService {
             return GerarAulasComHorario(dtoNovoPeriodo, idProfessor);
         }
 
-        // CASO B: MUDANÇA APENAS DE HORA OU ESTÚDIO
         else {
             Integer idEstudioNovo = idHasher.decode(dto.estudioId());
 
@@ -471,7 +491,9 @@ public class AulaService {
 
             return new ArrayList<>();
         }
-    }    public Aula criarAula(AulaDto aulaDto, Integer modalidade) throws Exception {
+    }
+
+    public Aula criarAula(AulaDto aulaDto, Integer modalidade) throws Exception {
         // 1. Descodificar o ID do estúdio uma única vez para usar nas validações
         Integer idEstudioDecodificado = idHasher.decode(aulaDto.estudio().id());
 
@@ -515,7 +537,8 @@ public class AulaService {
                 horario.horaFim(),
                 horario.idcriadoPor().id(),
                 horario,
-                estadoAuloService.findbyIdDto(3)
+                estadoAuloService.findbyIdDto(3),
+                null
         );
     }
 
@@ -553,6 +576,7 @@ public class AulaService {
     public void checkAutomaticoExpiradas() throws Exception {
         verificarEAtualizarAulasExpiradas();
     }
+
     @Transactional
     public void verificarEAtualizarAulasExpiradas() throws Exception {
         LocalDateTime limite = LocalDateTime.now().minusHours(48);
@@ -597,6 +621,7 @@ public class AulaService {
 
         return converterParaDto(aulaRepository.save(aula));
     }
+
     @Transactional(rollbackFor = Exception.class)
     public void processarPagamentosAula(Aula aula) throws Exception {
         // 1. Obter intervenientes (Usando IDs reais já disponíveis na entidade 'aula')
@@ -740,10 +765,39 @@ public class AulaService {
     public long contarInscritos(String aulaId) {
         return aulaAlunoRepository.countByAulaId(idHasher.decode(aulaId));
     }
+
     public void aplicaSancoes(String alunoId, Aula aula,String marcadopor) throws Exception {
         FaltaDto faltaDto = new FaltaDto(null,idHasher.encode(aula.getId()),alunoId,false,"Cancelamento antes das 48 horas","PENDENTE");
         cancelamentoService.marcarFalta(faltaDto,marcadopor);
         return;
+    }
+
+
+    public List<AulaTituloDto> buscarHorarioCompletoDoProfessor(String professorId, int offset) throws Exception {
+        Integer profId = idHasher.decode(professorId);
+        professorService.findById(professorId);
+
+        LocalDate inicioSemana = calcularInicioSemana(offset);
+        LocalDate fimSemana = inicioSemana.plusDays(6);
+
+        List<Aula> aulasRegulares = aulaRepository.findAulasByProfessorAndSemana(profId, inicioSemana, fimSemana)
+                .stream()
+                .filter(a -> !(a instanceof AulaCoaching))  // ← excluir coaching
+                .toList();
+
+        List<AulaCoaching> aulasCoaching = aulaCoachingRepository
+                .buscarAulaCoachingConfirmadasPorProfessorESemana(profId, inicioSemana, fimSemana);
+
+        List<AulaTituloDto> horario = new ArrayList<>();
+        aulasRegulares.forEach(a -> horario.add(converterParaAulaTituloDto(a)));
+        aulasCoaching.forEach(a -> horario.add(converterParaAulaTituloDto(a)));
+
+        return horario.stream()
+                .sorted((a, b) -> {
+                    int c = a.dataAula().compareTo(b.dataAula());
+                    return c != 0 ? c : a.horaInicio().compareTo(b.horaInicio());
+                })
+                .toList();
     }
 
 }

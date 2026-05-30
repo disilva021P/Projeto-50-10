@@ -193,7 +193,8 @@ public class PagamentoService {
                     aula.getHoraFim(),             // horaFim
                     idHasher.encode( aula.getCriadoPor().getId()),           // criadoPo (ajusta para o nome correto do campo na Entity)
                     null,                          // idHorario (HorarioTurmaDto - opcional aqui)
-                    estadoDto                      // estado
+                    estadoDto,                      // estado
+                    null                            // notas
             );
             return new PagamentoDto(
                     idHasher.encode(pagamento.getId()), // ID seguro para o JS

@@ -210,7 +210,8 @@ public class AulaCoachingService {
                 dto.horaInicio(),
                 dto.horaFim(),
                 dto.maxAlunos(),
-                dto.modalidadeId()
+                dto.modalidadeId(),
+                dto.descricao()
         );
         AulaCoaching aulaCoaching = requestDtoParaCoaching(newDto);
         aulaCoaching = aulaCoachingRepository.save(aulaCoaching);
@@ -245,6 +246,7 @@ public class AulaCoachingService {
         // 5. Retorna o DTO convertido que já vai levar o estúdio lá dentro!
         return convertToAulaCoachingDto(aulaCoaching);
     }
+
     /**
      * Inscreve um aluno numa aula de coaching existente.
      * Verifica se a aula está confirmada/agendada e se ainda tem vagas.
@@ -455,6 +457,7 @@ public class AulaCoachingService {
         coaching.setDataAula(dto.dataAula());
         coaching.setHoraInicio(dto.horaInicio());
         coaching.setHoraFim(dto.horaFim());
+        coaching.setNotas(dto.descricao());
         coaching.setDuracaoMinutos((int) Duration.between(dto.horaInicio(), dto.horaFim()).toMinutes());
         coaching.setEstado(estadoAuloService.findbyId(AulaService.ID_ESTADO_PENDENTE));
 
