@@ -224,7 +224,12 @@ public class EventoService {
     }
     public List<ParticipanteDto> listarParticipantes(String eventoIdHash) {
         Integer eventoId = idHasher.decode(eventoIdHash);
-        return participantesEventoRepository.findByEventoId(eventoId).stream()
+        List<ParticipantesEvento> lista = participantesEventoRepository.findByEventoId(eventoId);
+
+        // Log temporário - remove depois
+        lista.forEach(p -> System.out.println("Participante: " + p.getUtilizador().getNome() + " | " + p.getUtilizador().getEmail()));
+
+        return lista.stream()
                 .map(p -> new ParticipanteDto(
                         p.getUtilizador().getNome(),
                         p.getUtilizador().getEmail(),
