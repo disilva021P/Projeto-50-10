@@ -14,6 +14,9 @@ import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.CascadeType;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -60,4 +63,6 @@ public class Evento {
     EstadoAula estadoAula;
     @Column(name = "max_participantes", columnDefinition = "int UNSIGNED")
     private Integer maxParticipantes;
+    @OneToMany(mappedBy = "evento", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ParticipantesEvento> participantes;
 }

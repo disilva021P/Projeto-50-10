@@ -87,7 +87,7 @@ public class EventoService {
         evento.setMaxParticipantes(dto.maxParticipantes());
         evento.setLocal(dto.local());
         evento.setPreco(dto.preco());
-        evento.setEstadoAula(estadoAulaRepository.findById(3).orElseThrow());
+        evento.setEstadoAula(estadoAulaRepository.findById(1).orElseThrow());
         evento.setCriadoPor(criador);
         Evento saved = eventoRepository.save(evento);
 
@@ -119,6 +119,10 @@ public class EventoService {
         evento.setDescricao(dto.descricao());
         evento.setDataEvento(dto.dataEvento());
         evento.setLocal(dto.local());
+        evento.setHoraInicio(dto.horaInicio());
+        evento.setHoraFim(dto.horaFim());
+        evento.setPreco(dto.preco());
+        evento.setMaxParticipantes(dto.maxParticipantes());
 
         return toDto(eventoRepository.save(evento));
     }
@@ -175,6 +179,7 @@ public class EventoService {
         ParticipantesEvento pe = participantesEventoRepository.findById(idComposto)
                 .orElseThrow(() -> new Exception("Inscrição não encontrada"));
         pe.setCancelado(true);
+        pe.setPago(false);
         participantesEventoRepository.save(pe);
     }
 
@@ -189,7 +194,7 @@ public class EventoService {
     }
 
     @Transactional
-    public void inscreverParticipante(String eventoHashId, String utilizadorHashId) throws Exception {
+    public void inscreverParticipante(String eventoHashId, String utilizadorHashId, boolean pago) throws Exception {
         Integer eventoId = idHasher.decode(eventoHashId);
         Integer utilizadorId = idHasher.decode(utilizadorHashId);
 
@@ -201,6 +206,7 @@ public class EventoService {
             ParticipantesEvento pe = inscricaoExistente.get();
             if (pe.getCancelado()) {
                 pe.setCancelado(false);
+                pe.setPago(pago);
                 participantesEventoRepository.save(pe);
                 return;
             } else {
@@ -217,14 +223,20 @@ public class EventoService {
         inscricao.setId(idComposto);
         inscricao.setEvento(evento);
         inscricao.setUtilizador(utilizador);
-        inscricao.setPago(false);
+        inscricao.setPago(pago);
         inscricao.setCancelado(false);
 
         participantesEventoRepository.save(inscricao);
     }
+
     public List<ParticipanteDto> listarParticipantes(String eventoIdHash) {
         Integer eventoId = idHasher.decode(eventoIdHash);
-        return participantesEventoRepository.findByEventoId(eventoId).stream()
+        List<ParticipantesEvento> lista = participantesEventoRepository.findByEventoId(eventoId);
+
+        // Log temporário - remove depois
+        lista.forEach(p -> System.out.println("Participante: " + p.getUtilizador().getNome() + " | " + p.getUtilizador().getEmail()));
+
+        return lista.stream()
                 .map(p -> new ParticipanteDto(
                         p.getUtilizador().getNome(),
                         p.getUtilizador().getEmail(),
