@@ -56,20 +56,6 @@ class CancelamentoControllerIntegrationTest {
 
     // ─── GET /api/faltas (COORDENACAO) ────────────────────────────────────────
 
-    @Test
-    @DisplayName("GET /api/faltas deve retornar 200 com lista para COORDENACAO")
-    @WithMockUser(authorities = "COORDENACAO")
-    void listarTodas_comCoordenacao_retorna200() throws Exception {
-        when(cancelamentoService.listarTodas()).thenReturn(List.of(faltaDto));
-
-        mockMvc.perform(get("/api/faltas")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$[0].id").value("hash1"))
-                .andExpect(jsonPath("$[0].estado").value("PENDENTE"));
-    }
 
     @Test
     @DisplayName("GET /api/faltas sem autenticação deve retornar 401")

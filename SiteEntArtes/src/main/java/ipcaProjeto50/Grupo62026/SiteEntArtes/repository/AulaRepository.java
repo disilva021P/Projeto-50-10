@@ -1,5 +1,6 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.repository;
 
+import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Aluno;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Aula;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -133,4 +135,23 @@ public interface AulaRepository extends JpaRepository<Aula, Integer> {
             @Param("inicio") LocalDate inicio,
             @Param("fim") LocalDate fim
     );
+    @Query("SELECT a FROM Aula a " +
+            "JOIN AulaProfessore ap ON ap.aula.id = a.id " +
+            "WHERE ap.professor.id = :id " +
+            "AND (a.dataAula < :dataAtual OR (a.dataAula = :dataAtual AND a.horaFim < :horaAtual))")
+    List<Aula> findAllProfessorPassadas(
+            @Param("id") Integer id,
+            @Param("dataAtual") LocalDate dataAtual,
+            @Param("horaAtual") LocalTime horaAtual,
+            Pageable pageable
+    );
+    @Query("SELECT aa.aluno FROM AulaAluno aa WHERE aa.aula.id = :aulaId")
+    List<Aluno> findAlunosInscritosDiretamente(@Param("aulaId") Integer aulaId);
+
+    // 2. Devolve todos os alunos da Turma associada a uma determinada Aula
+    // (Útil para aulas de grupo/regulares onde os alunos pertencem à turma do horário)
+    @Query("SELECT ta.aluno FROM TurmaAluno ta " +
+            "JOIN Aula a ON a.idHorario.idturma.id = ta.turma.id " +
+            "WHERE a.id = :aulaId")
+    List<Aluno> findAlunosDaTurmaPorAula(@Param("aulaId") Integer aulaId);
 }

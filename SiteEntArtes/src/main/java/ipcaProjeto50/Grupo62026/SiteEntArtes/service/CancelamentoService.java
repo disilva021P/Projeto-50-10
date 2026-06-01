@@ -1,20 +1,15 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.FaltaDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.FaltaResponseDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.FaltaResumoDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Aula;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Cancelamento;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Utilizadore;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.AulaRepository;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.CancelamentoRepository;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.EncarregadoAlunoRepository;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.UtilizadoreRepository;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,6 +22,7 @@ public class CancelamentoService {
     private final IdHasher idHasher;
     private final EncarregadoAlunoRepository encarregadoAlunoRepository;
     private final NotificacoesService notificacoesService;
+    private final AulaAlunoRepository aulaAlunoRepository;
     public FaltaDto marcarFalta(FaltaDto faltaDto,String idMarca_por) throws Exception {
         // 1. Descodifica para trabalhar internamente
         Integer idAulaReal = idHasher.decode(faltaDto.aulaId());
@@ -73,9 +69,9 @@ public class CancelamentoService {
 
 
     // 1. LISTAR TODAS (Geral)
-    public List<FaltaDto> listarTodas() {
+    public List<FaltaFrontendDto> listarTodas() {
         return cancelamentoRepository.findAll().stream()
-                .map(this::converterParaDto)
+                .map(this::converterParaFrontendDto)
                 .toList();
     }
 
@@ -165,6 +161,150 @@ public class CancelamentoService {
     }
 
 
+    private FaltaFrontendDto converterParaFrontendDto(Cancelamento c) {
+
+        String estadoCalculado;
+        if (c.getJustificado()) {
+            estadoCalculado = "APROVADA";
+        } else if (c.getJustificadoEm() != null) {
+            estadoCalculado = "INJUSTIFICADA";
+        } else {
+            estadoCalculado = "PENDENTE";
+        }
+
+        // Aula completa (reutiliza o converter que já tens para AulaTituloDto)
+        AulaTituloDto aulaDto =  converterParaAulaTituloDto(c.getAula());
+
+        // Utilizador que levou a falta
+        UtilizadoreResumoDto utilizadorDto = new UtilizadoreResumoDto(
+                idHasher.encode(c.getUtilizador().getId()),
+                c.getUtilizador().getNome()
+        );
+
+        // Quem marcou a falta (pode ser null se foi o sistema)
+        UtilizadoreResumoDto marcadoPorDto = c.getMarcardo_por() != null
+                ? new UtilizadoreResumoDto(
+                idHasher.encode(c.getMarcardo_por().getId()),
+                c.getMarcardo_por().getNome())
+                : null;
+        LocalDateTime ldt = null;
+        if(c.getJustificadoEm()!=null) LocalDateTime.ofInstant(c.getJustificadoEm(), ZoneId.systemDefault());
+
+        return new FaltaFrontendDto(
+                idHasher.encode(c.getId()),
+                aulaDto,
+                utilizadorDto,
+                c.getJustificado(),
+                c.getMotivo(),
+                estadoCalculado,
+                marcadoPorDto,
+                c.getCriadoEm(),
+                ldt
+        );
+    }
+// Adicionar estes métodos ao CancelamentoService
+
+    public List<FaltaFrontendDto> listarTodasFrontend() {
+        return cancelamentoRepository.findAll().stream()
+                .map(this::converterParaFrontendDto)
+                .toList();
+    }
+
+    public List<FaltaFrontendDto> listarFaltasPorUtilizadorFrontend(String utilizadorIdHash) {
+        Integer idReal = idHasher.decode(utilizadorIdHash);
+        return cancelamentoRepository.findAllByUtilizador_Id(idReal).stream()
+                .map(this::converterParaFrontendDto)
+                .toList();
+    }
+
+    public List<FaltaFrontendDto> listarPendentesFrontend() {
+        return cancelamentoRepository.findByJustificadoFalseAndJustificadoEmNull().stream()
+                .map(this::converterParaFrontendDto)
+                .toList();
+    }
+
+    public List<FaltaFrontendDto> listarFaltasPorProfessorAulaFrontend(String professorIdHash, String aulaId) {
+        List<Cancelamento> faltas = cancelamentoRepository.findFaltasByProfessorAula(
+                idHasher.decode(professorIdHash), idHasher.decode(aulaId));
+        return faltas.stream()
+                .map(this::converterParaFrontendDto)
+                .toList();
+    }
+
+    public List<FaltaFrontendDto> listarFaltasDosEducandosFrontend(String encarregadoId) {
+        List<Integer> educandosIds = encarregadoAlunoRepository
+                .findAllByEncarregado_Id(idHasher.decode(encarregadoId)).stream()
+                .map(ea -> ea.getAluno().getId())
+                .toList();
+
+        if (educandosIds.isEmpty()) return List.of();
+
+        return cancelamentoRepository.findByUtilizadorIdIn(educandosIds).stream()
+                .map(this::converterParaFrontendDto)
+                .toList();
+    }
+    private AulaTituloDto converterParaAulaTituloDto(Aula aula) {
+        String tituloFinal = "Aula";
+        Integer maxAlunos = null;
+        UtilizadoreResumoDto solicitadoPor = null;
+
+        // Cenário A: Se for uma instância de AulaCoaching
+        if (aula instanceof AulaCoaching coaching) {
+            if (coaching.getModalidade() != null && coaching.getModalidade().getNome() != null) {
+                tituloFinal = "Coaching " + coaching.getModalidade().getNome();
+            } else {
+                tituloFinal = "Coaching";
+            }
+
+            maxAlunos = coaching.getMaxAlunos();
+
+            // Buscar quem pediu (primeiro aluno inscrito)
+            AulaAluno aa = aulaAlunoRepository.findFirstByAula_Id(coaching.getId()).orElse(null);
+            if (aa != null) {
+                solicitadoPor = new UtilizadoreResumoDto(
+                        idHasher.encode(aa.getAluno().getId()),
+                        aa.getAluno().getNome()
+                );
+            }
+        }
+        // Cenário B: Aula regular
+        else if (aula.getIdHorario() != null && aula.getIdHorario().getIdturma() != null) {
+            var turma = aula.getIdHorario().getIdturma();
+            if (turma.getModalidade() != null && turma.getModalidade().getNome() != null) {
+                tituloFinal = turma.getModalidade().getNome();
+            } else if (turma.getNome() != null) {
+                tituloFinal = turma.getNome();
+            }
+        }
+
+        EstudioDto estudioDto = aula.getEstudio() != null
+                ? new EstudioDto(idHasher.encode(aula.getEstudio().getId()), aula.getEstudio().getNome(), aula.getEstudio().getCapacidade(), aula.getEstudio().getNotas())
+                : null;
+
+        EstadoAulaDto estadoDto = aula.getEstado() != null
+                ? new EstadoAulaDto(idHasher.encode(aula.getEstado().getId()), aula.getEstado().getEstado())
+                : null;
+
+        HorarioTurmaDto horarioDto = null;
+        if (aula.getIdHorario() != null) {
+            // constrói se precisares
+        }
+
+        return new AulaTituloDto(
+                idHasher.encode(aula.getId()),
+                estudioDto,
+                aula.getDuracaoMinutos(),
+                aula.getDataAula(),
+                aula.getHoraInicio(),
+                aula.getHoraFim(),
+                idHasher.encode(aula.getCriadoPor().getId()),
+                horarioDto,
+                estadoDto,
+                tituloFinal,
+                maxAlunos,
+                solicitadoPor
+        );
+    }
 
     private FaltaDto converterParaDto(Cancelamento c) {
         String estadoCalculado = "";

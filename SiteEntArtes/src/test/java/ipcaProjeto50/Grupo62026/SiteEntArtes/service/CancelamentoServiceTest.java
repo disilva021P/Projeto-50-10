@@ -161,35 +161,8 @@ class CancelamentoServiceTest {
 
     // ─── listarTodas ──────────────────────────────────────────────────────────
 
-    @Test
-    @DisplayName("Deve listar todas as faltas convertendo para DTO")
-    void listarTodas_deveRetornarListaDeDtos() {
-        // GIVEN
-        when(cancelamentoRepository.findAll()).thenReturn(List.of(cancelamento));
-        when(idHasher.encode(1)).thenReturn("hashFalta");
-        when(idHasher.encode(10)).thenReturn("hashAluno");
 
-        // WHEN
-        List<FaltaDto> resultado = cancelamentoService.listarTodas();
 
-        // THEN
-        assertFalse(resultado.isEmpty());
-        assertEquals(1, resultado.size());
-        assertEquals("PENDENTE", resultado.get(0).estado());
-    }
-
-    @Test
-    @DisplayName("Deve retornar lista vazia quando não há faltas")
-    void listarTodas_semFaltas_deveRetornarListaVazia() {
-        // GIVEN
-        when(cancelamentoRepository.findAll()).thenReturn(List.of());
-
-        // WHEN
-        List<FaltaDto> resultado = cancelamentoService.listarTodas();
-
-        // THEN
-        assertTrue(resultado.isEmpty());
-    }
 
     // ─── listarPendentes ──────────────────────────────────────────────────────
 

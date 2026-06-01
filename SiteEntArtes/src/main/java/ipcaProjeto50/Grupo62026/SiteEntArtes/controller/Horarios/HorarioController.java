@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
-import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/horario")
@@ -451,5 +450,31 @@ public class HorarioController {
         }
     }
 
+    @GetMapping("/professor/todasaulasPassadas")
+    @PreAuthorize("hasAuthority('PROFESSOR')")
+    public ResponseEntity<List<AulaTituloDto>> getTodasAulasProfessor(
+            Pageable pagina) {
+        try {
+            List<AulaTituloDto> aulas = aulaService.todasAulasPassadasProfessor(            getUserId(), pagina);
+            return ResponseEntity.ok(aulas);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
+    /**
+     * Obtém a lista de alunos presentes numa aula (seja via Turma ou Inscrição Direta/Coaching).
+     * Exemplo de chamada: GET /api/aulas/hashid_da_aula/alunos
+     */
+    @GetMapping("/{aulaId}/alunos")
+    public ResponseEntity<List<UtilizadoreResumoDto>> getAlunosDaAula(
+            @PathVariable String aulaId) {
+        try {
+            List<UtilizadoreResumoDto> alunos = aulaService.obterAlunosDaAula(aulaId);
+            return ResponseEntity.ok(alunos);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
 
 }

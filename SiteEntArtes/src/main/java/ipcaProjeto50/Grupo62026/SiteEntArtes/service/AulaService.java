@@ -1,14 +1,9 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
-import de.jollyday.Holiday;
-import de.jollyday.HolidayCalendar;
-import de.jollyday.HolidayManager;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.*;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.repository.Repository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -21,9 +16,9 @@ import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -770,6 +765,50 @@ public class AulaService {
         FaltaDto faltaDto = new FaltaDto(null,idHasher.encode(aula.getId()),alunoId,false,"Cancelamento antes das 48 horas","PENDENTE");
         cancelamentoService.marcarFalta(faltaDto,marcadopor);
         return;
+    }
+
+
+    public List<AulaTituloDto> todasAulasPassadasProfessor(String professorId, Pageable pagina) throws Exception {
+        Integer profId = idHasher.decode(professorId);
+        Utilizadore U = utilizadoreRepository.findById(profId)
+                .orElseThrow(() -> new Exception("Professor inexistente"));
+
+        // Obter a data e hora do momento da execução
+        LocalDate hoje = LocalDate.now();
+        LocalTime agora = LocalTime.now();
+
+        return aulaRepository.findAllProfessorPassadas(profId, hoje, agora, pagina)
+                .stream()
+                .map(this::converterParaAulaTituloDto)
+                .toList();
+    }
+    /**
+     * Devolve a lista de todos os alunos que devem frequentar uma aula.
+     * Verifica se a aula é de Turma (via Horário) ou de Coaching (Inscrição direta).
+     *
+     * @param aulaIdHash ID hasheado da aula
+     * @return Lista de AlunoResumoDto (ou Aluno)
+     */
+    public List<UtilizadoreResumoDto> obterAlunosDaAula(String aulaIdHash) throws Exception {
+        Aula aula = bucarPorId(aulaIdHash);
+
+        List<Aluno> listaAlunos;
+
+        // Se idHorario não é nulo, a aula pertence a uma turma (Aula Regular)
+        if (aula.getIdHorario() != null && aula.getIdHorario().getIdturma() != null) {
+            listaAlunos = aulaRepository.findAlunosDaTurmaPorAula(aula.getId());
+        }
+        // Caso contrário, assume-se que é uma aula de marcação direta (Coaching/Privada)
+        else {
+            listaAlunos = aulaRepository.findAlunosInscritosDiretamente(aula.getId());
+        }
+
+        return listaAlunos.stream()
+                .map(aluno -> new UtilizadoreResumoDto(
+                        idHasher.encode(aluno.getId()),
+                        aluno.getNome()
+                ))
+                .toList();
     }
 
 

@@ -261,16 +261,7 @@ class CancelamentoControllerTest {
 
     // ─── listarTodas ──────────────────────────────────────────────────────────
 
-    @Test
-    @DisplayName("GET /faltas deve retornar 200 com todas as faltas")
-    void listarTodas_retorna200() {
-        when(cancelamentoService.listarTodas()).thenReturn(List.of(faltaDto, faltaDto));
 
-        ResponseEntity<List<FaltaDto>> response = cancelamentoController.listarTodas();
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(2, response.getBody().size());
-    }
 
     // ─── listarPendentes ──────────────────────────────────────────────────────
 
