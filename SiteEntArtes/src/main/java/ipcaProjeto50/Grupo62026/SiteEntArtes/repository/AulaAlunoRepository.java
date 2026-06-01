@@ -18,4 +18,7 @@ public interface AulaAlunoRepository extends JpaRepository<AulaAluno, AulaAlunoI
     void deleteAllByAula_Id(Integer idReal);
 
     Optional<AulaAluno> findFirstByAula_Id(Integer aulaId);
+
+    boolean existsByAula_IdAndAluno_Id(Integer aulaId, Integer alunoId);
+
 }

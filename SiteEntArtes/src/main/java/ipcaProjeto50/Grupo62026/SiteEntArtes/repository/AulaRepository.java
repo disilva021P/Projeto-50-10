@@ -1,5 +1,6 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.repository;
 
+import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Aluno;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Aula;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,27 +22,26 @@ public interface AulaRepository extends JpaRepository<Aula, Integer> {
 
     List<Aula> findByDataAula(LocalDate data);
 
-    @Query(value = "SELECT a.* FROM aulas a " +
-            "JOIN aula_alunos al ON a.id = al.aula_id " +
-            "WHERE al.aluno_id =:id AND a.data_aula =:data",
-            nativeQuery = true)
+    @Query("SELECT a FROM Aula a " +
+            "JOIN AulaAluno aa ON a.id = aa.aula.id " +
+            "WHERE aa.aluno.id = :id AND a.dataAula = :data")
     List<Aula> findByDataEAluno(
             @Param("data") LocalDate data,
             @Param("id") Integer id
     );
 
-        @Query("SELECT DISTINCT a FROM Aula a " +
-                "JOIN a.idHorario h " + // Assume que idHorario é o nome do atributo na entidade Aula
-                "JOIN h.idturma t " +   // Assume que idturma é o objeto Turma no HorarioTurma
-                "JOIN TurmaAluno ta ON ta.turma.id = t.id " + // Liga a inscrição à turma
-                "WHERE ta.aluno.id = :alunoId " + // Filtra pelo aluno logado
-                "AND a.dataAula BETWEEN :inicio AND :fim " +
-                "ORDER BY a.dataAula ASC, a.horaInicio ASC")
-        List<Aula> buscarHorarioDoAluno(
-                @Param("alunoId") Integer alunoId,
-                @Param("inicio") LocalDate inicio,
-                @Param("fim") LocalDate fim
-        );
+    @Query("SELECT DISTINCT a FROM Aula a " +
+            "JOIN a.idHorario h " + // Assume que idHorario é o nome do atributo na entidade Aula
+            "JOIN h.idturma t " +   // Assume que idturma é o objeto Turma no HorarioTurma
+            "JOIN TurmaAluno ta ON ta.turma.id = t.id " + // Liga a inscrição à turma
+            "WHERE ta.aluno.id = :alunoId " + // Filtra pelo aluno logado
+            "AND a.dataAula BETWEEN :inicio AND :fim " +
+            "ORDER BY a.dataAula ASC, a.horaInicio ASC")
+    List<Aula> buscarHorarioDoAluno(
+            @Param("alunoId") Integer alunoId,
+            @Param("inicio") LocalDate inicio,
+            @Param("fim") LocalDate fim
+    );
     @Query("SELECT a FROM Aula a JOIN AulaAluno al WHERE al.aula.id = :aulaId AND al.aluno.id = :alunoId")
     Optional<Aula> findAulaByIdAndAlunoId(@Param("aulaId") Integer aulaId, @Param("alunoId") Integer alunoId);
 
@@ -132,5 +133,41 @@ public interface AulaRepository extends JpaRepository<Aula, Integer> {
             @Param("alunoId") Integer alunoId,
             @Param("inicio") LocalDate inicio,
             @Param("fim") LocalDate fim
+    );
+    @Query("SELECT a FROM Aula a " +
+            "JOIN AulaProfessore ap ON ap.aula.id = a.id " +
+            "WHERE ap.professor.id = :id " +
+            "AND (a.dataAula < :dataAtual OR (a.dataAula = :dataAtual AND a.horaFim < :horaAtual))")
+    List<Aula> findAllProfessorPassadas(
+            @Param("id") Integer id,
+            @Param("dataAtual") LocalDate dataAtual,
+            @Param("horaAtual") LocalTime horaAtual,
+            Pageable pageable
+    );
+    @Query("SELECT aa.aluno FROM AulaAluno aa WHERE aa.aula.id = :aulaId")
+    List<Aluno> findAlunosInscritosDiretamente(@Param("aulaId") Integer aulaId);
+
+    // 2. Devolve todos os alunos da Turma associada a uma determinada Aula
+    // (Útil para aulas de grupo/regulares onde os alunos pertencem à turma do horário)
+    @Query("SELECT ta.aluno FROM TurmaAluno ta " +
+            "JOIN Aula a ON a.idHorario.idturma.id = ta.turma.id " +
+            "WHERE a.id = :aulaId")
+    List<Aluno> findAlunosDaTurmaPorAula(@Param("aulaId") Integer aulaId);
+
+    @Query("SELECT DISTINCT a FROM Aula a " +
+            // Caminho 1: Alunos por inscrição direta
+            "LEFT JOIN AulaAluno aa ON a.id = aa.aula.id " +
+            // Caminho 2: Alunos por Turma
+            "LEFT JOIN a.idHorario h " +
+            "LEFT JOIN h.idturma t " +
+            "LEFT JOIN TurmaAluno ta ON ta.turma.id = t.id " +
+            // Caminho 3: Professores associados à aula
+            "LEFT JOIN AulaProfessore ap ON ap.aula.id = a.id " +
+            // Filtros: Traz a aula se a data bater E o ID for do aluno (direto/turma) OU se for o professor da aula
+            "WHERE a.dataAula = :data " +
+            "AND (aa.aluno.id = :id OR ta.aluno.id = :id OR ap.professor.id = :id)")
+    List<Aula> findByDataEUtilizadorGeral(
+            @Param("data") LocalDate data,
+            @Param("id") Integer id
     );
 }
