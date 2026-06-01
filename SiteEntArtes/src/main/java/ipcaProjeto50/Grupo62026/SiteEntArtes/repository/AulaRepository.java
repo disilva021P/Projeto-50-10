@@ -22,10 +22,9 @@ public interface AulaRepository extends JpaRepository<Aula, Integer> {
 
     List<Aula> findByDataAula(LocalDate data);
 
-    @Query(value = "SELECT a.* FROM aulas a " +
-            "JOIN aula_alunos al ON a.id = al.aula_id " +
-            "WHERE al.aluno_id =:id AND a.data_aula =:data",
-            nativeQuery = true)
+    @Query("SELECT a FROM Aula a " +
+            "JOIN AulaAluno aa ON a.id = aa.aula.id " +
+            "WHERE aa.aluno.id = :id AND a.dataAula = :data")
     List<Aula> findByDataEAluno(
             @Param("data") LocalDate data,
             @Param("id") Integer id

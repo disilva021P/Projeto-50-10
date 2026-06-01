@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,6 +15,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -475,6 +477,14 @@ public class HorarioController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(null);
         }
+    }
+    @GetMapping("/aulas/por-data")
+    public ResponseEntity<List<AulaTituloDto>> getAulasPorDataEUtilizador(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data,
+            @RequestParam String utilizadorId
+    ) {
+        List<AulaTituloDto> aulas = aulaService.findAulasByDataAndUtilizador(data, utilizadorId);
+        return ResponseEntity.ok(aulas);
     }
 
 }

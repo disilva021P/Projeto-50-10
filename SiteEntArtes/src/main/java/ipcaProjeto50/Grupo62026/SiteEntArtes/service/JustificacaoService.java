@@ -48,7 +48,7 @@ public class JustificacaoService {
                     "Justificação de falta submetida! ",
                     "A justificação para a aula de coaching de " + falta.getAula().getDataAula() +
                             " (" + falta.getAula().getHoraInicio() + " - " + falta.getAula().getHoraFim() +
-                            ") foi indeferida pelo professor " + falta.getMarcardo_por().getNome() + ".", // Mensagem alterada
+                            ") foi indeferida pelo professor " + falta.getUtilizador().getNome() + ".", // Mensagem alterada
                     "JUSTIFICACAO SUBMETIDA",
                     idHasher.encode( falta.getId())
             );

@@ -839,4 +839,7 @@ public class AulaService {
                 .toList();
     }
 
+    public List<AulaTituloDto> findAulasByDataAndUtilizador(LocalDate data, String utilizadorId) {
+        return aulaRepository.findByDataEAluno(data, idHasher.decode(utilizadorId)).stream().map(this::converterParaAulaTituloDto).toList();
+    }
 }
