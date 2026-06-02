@@ -592,7 +592,19 @@ public class UtilizadorService {
         Utilizadore utilizador = utilizadoreRepository.findById(idDecoded)
                 .orElseThrow(() -> new Exception("Utilizador não encontrado"));
 
-        //Se for um Professor, limpa primeiro os vínculos com as modalidades
+        // ==========================================================================================
+        // LIMPEZA FINANCEIRA: Remove todos os pagamentos vinculados a este utilizador
+        // ==========================================================================================
+        try {
+            entityManager.createQuery("DELETE FROM Pagamento p WHERE p.idutilizador.id = :id")
+                    .setParameter("id", idDecoded)
+                    .executeUpdate();
+        } catch (Exception e) {
+            System.err.println("Aviso ao limpar pagamentos: " + e.getMessage());
+        }
+        // ==========================================================================================
+
+        // Se for um Professor, limpa primeiro os vínculos com as modalidades
         if (utilizador instanceof Professore) {
             professorModalidadeRepository.deleteByProfessorId(idDecoded);
         }
@@ -606,8 +618,10 @@ public class UtilizadorService {
         else if (utilizador.getTipo() != null && (utilizador.getTipo().getId() == 4 || "ROLE_ENCARREGADO".equals(utilizador.getTipo().getTipoUtilizador()))) {
             encarregadoAluno.deleteAllByEncarregado_Id(idDecoded);
         }
+
         utilizadoreRepository.delete(utilizador);
     }
+
     // ─── Ver próprio perfil ───────────────────────────────────────────────────
     public UtilizadorResponseDto verMeuPerfil(String id) {
         Utilizadore utilizador = utilizadoreRepository.findById(idHasher.decode( id))
