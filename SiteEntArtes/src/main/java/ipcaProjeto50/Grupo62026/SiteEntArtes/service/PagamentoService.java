@@ -34,6 +34,9 @@ public class PagamentoService {
     private final TipoPagamentoRepository tipoPagamentoRepository;
     private final AulaRepository aulaRepository;
 
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
+
     // Listar todos os pagamentos ,
     public List<PagamentoDto> listarTodos() {
         return pagamentoRepository.findAll().stream().map(this::converterParaDto).toList();
@@ -134,12 +137,81 @@ public class PagamentoService {
         Pagamento pagamento = pagamentoRepository.findById(idReal)
                 .orElseThrow(() -> new Exception("Pagamento não encontrado"));
 
+        if (pagamento.getPago()) {
+            throw new Exception("O Pagamento já se encontra liquidado.");
+        }
+
         //  Fazemos a alteração (o "tempero" do cozinheiro)
         pagamento.setPago(true);
         pagamento.setDataConfirmado(LocalDate.now());
 
         //  Guardamos a Entity alterada
         Pagamento pagamentoGuardado = pagamentoRepository.save(pagamento);
+
+        // ==========================================================================================
+        // AUTOMAÇÃO: Gerar Crédito/Remuneração para o Professor (Tipo de Pagamento ID = 7) - JÁ LIQUIDADO
+        // ==========================================================================================
+        try {
+            // Verificamos se o pagamento liquidado é do tipo "Aula Avulso" (ID=2) e se tem uma aula associada
+            if (pagamentoGuardado.getIdTipoPagamento() != null &&
+                    pagamentoGuardado.getIdTipoPagamento().getId() == 2 &&
+                    pagamentoGuardado.getAula() != null) {
+
+                Integer aulaId = pagamentoGuardado.getAula().getId();
+
+                // 1. Procurar o professor associado a esta aula através da tabela aula_professores
+                Utilizadore professorDocente = null;
+                try {
+                    professorDocente = entityManager.createQuery(
+                                    "SELECT ap.professor FROM AulaProfessore ap WHERE ap.aula.id = :aulaId", Utilizadore.class)
+                            .setParameter("aulaId", aulaId)
+                            .getResultStream()
+                            .findFirst()
+                            .orElse(null);
+                } catch (Exception e) {
+                    System.err.println("Aviso: Não foi possível localizar o professor associado à aula " + aulaId);
+                }
+
+                // Se encontrarmos o professor docente, geramos a remuneração dele
+                if (professorDocente != null) {
+
+                    // 2. Procurar o Tipo de Pagamento com ID 7 ("Pagamento ao Professor")
+                    TipoPagamento tipoPagamentoProfessor = entityManager.find(TipoPagamento.class, 7);
+                    if (tipoPagamentoProfessor == null) {
+                        throw new Exception("Tipo de pagamento with ID 7 não encontrado na base de dados.");
+                    }
+
+                    // 3. Regra: O professor recebe exatamente o mesmo valor proporcional que o aluno pagou por esta inscrição
+                    java.math.BigDecimal valorRemuneracao = pagamentoGuardado.getValorPagamento();
+
+                    // 4. Instanciar o novo registo de Pagamento (Remuneração já ganha e liquidada)
+                    Pagamento creditoProfessor = new Pagamento();
+                    creditoProfessor.setValorPagamento(valorRemuneracao);
+
+                    // ─── ALTERAÇÃO AQUI: Agora nasce como Pago (1) e com Data de Confirmação ───
+                    creditoProfessor.setPago(true);
+                    creditoProfessor.setDataConfirmado(LocalDate.now());
+
+                    creditoProfessor.setDescricao(String.format("Honorários Recebidos: Sessão de Coaching realizada por Aluno %s",
+                            pagamentoGuardado.getIdutilizador().getNome()));
+
+                    creditoProfessor.setIdutilizador(professorDocente); // Conta do Professor
+                    creditoProfessor.setIdTipoPagamento(tipoPagamentoProfessor); // ID 7
+                    creditoProfessor.setDataPagamento(LocalDate.now()); // Data de lançamento
+                    creditoProfessor.setAula(pagamentoGuardado.getAula()); // Vincula à aula original
+
+                    // 5. Persistir de forma síncrona
+                    entityManager.persist(creditoProfessor);
+                    entityManager.flush();
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Erro crítico ao gerar crédito automático para o professor: " + e.getMessage());
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Erro ao processar divisão de honorários do professor: " + e.getMessage());
+        }
+        // ==========================================================================================
 
         //  TRANSFORMAMOS a Entity em DTO antes de enviar para o Controller
         return converterParaDto(pagamentoGuardado);
@@ -261,8 +333,6 @@ public class PagamentoService {
         );
     }
 
-
-
     public String escreverPagamentosCsv( List<PagamentoDto> pagamentos) {
         StringBuilder sb = new StringBuilder();
 
@@ -289,6 +359,7 @@ public class PagamentoService {
 
         return escreverPagamentosCsv(dtos);
     }
+
     public AlunoEstatisiticaDto obterEstatisticasAluno(String idHashed, Integer offset) {
         Integer idReal = idHasher.decode(idHashed);
         LocalDate dataAlvo = LocalDate.now().plusMonths(offset);

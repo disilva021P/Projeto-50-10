@@ -165,6 +165,19 @@ public class UtilizadorController {
         }
     }
 
+    @GetMapping("/alunos-menores")
+    @PreAuthorize("hasAuthority('COORDENACAO') or hasAuthority('ENCARREGADO')")
+    public ResponseEntity<List<UtilizadoreResumoDto>> listarAlunosMenores(
+            @RequestParam(name = "pesquisa", required = false, defaultValue = "") String pesquisa) {
+        try {
+            List<UtilizadoreResumoDto> menores = utilizadorService.listarAlunosMenoresParaAssociacao(pesquisa);
+            return ResponseEntity.ok(menores);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     // ─── PATCH /api/utilizadores/minha-password ───────────────────────────────
     @PatchMapping("/minha-password")
     public ResponseEntity<?> alterarPalavraPasse(

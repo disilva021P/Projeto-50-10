@@ -42,6 +42,9 @@ public class AulaCoachingService {
     private  final UtilizadorService utilizadorService;
     private final EncarregadoAlunoRepository encarregadoAlunoRepository;
 
+    @jakarta.persistence.PersistenceContext
+    private final jakarta.persistence.EntityManager entityManager;
+
     // =========================================================================
     // Leitura
     // =========================================================================
@@ -108,6 +111,7 @@ public class AulaCoachingService {
         }
 
     }
+
     /** Coachings do aluno na semana indicada pelo offset (0 = semana atual) */
     public List<AulaCoachingDto> buscarCoachingSemana(String userId, int offset, Pageable pageable) throws Exception {
         encontraUtilizador(userId);
@@ -269,7 +273,70 @@ public class AulaCoachingService {
             throw new Exception("Aula de coaching sem vagas disponíveis");
         }
 
+        // 1. Efetua a inscrição do aluno no sistema
         aulaService.inscreverAluno(alunoId, aulaId);
+
+        // ==========================================================================================
+        // AUTOMAÇÃO FINANCEIRA: Gerar Lançamento de "Aula Avulso" para o Aluno que se inscreveu
+        // ==========================================================================================
+        try {
+            // 1. Obter o valor_hora_default das configurações usando o entityManager
+            String valorHoraConfig = "36.00"; // Fallback de segurança
+            try {
+                valorHoraConfig = entityManager.createQuery(
+                                "SELECT c.valor FROM Configuracoe c WHERE LOWER(c.nomeConfig) = :nomeConfig", String.class)
+                        .setParameter("nomeConfig", "valor_hora_default")
+                        .getSingleResult();
+            } catch (jakarta.persistence.NoResultException e) {
+                // Caso não exista na BD, mantém os 36.00
+            }
+            java.math.BigDecimal valorHora = new java.math.BigDecimal(valorHoraConfig.trim());
+
+            // 2. Calcular o valor total proporcional baseado na duração da sessão (em minutos)
+            java.math.BigDecimal duracaoMinutos = java.math.BigDecimal.valueOf(coaching.getDuracaoMinutos());
+            java.math.BigDecimal custoTotalSessao = valorHora
+                    .divide(new java.math.BigDecimal("60"), 4, java.math.RoundingMode.HALF_UP)
+                    .multiply(duracaoMinutos)
+                    .setScale(2, java.math.RoundingMode.HALF_UP);
+
+            // 3. Procurar a Categoria "Aula Avulso" na tabela tipo_pagamento
+            TipoPagamento tipoAulaAvulso = entityManager.createQuery(
+                            "SELECT tp FROM TipoPagamento tp WHERE LOWER(tp.tipoPagamento) = :tipo", TipoPagamento.class)
+                    .setParameter("tipo", "aula avulso")
+                    .getResultStream()
+                    .findFirst()
+                    .orElseThrow(() -> new Exception("Tipo de pagamento 'Aula Avulso' não foi encontrado na base de dados."));
+
+            // 4. Carregar a entidade Utilizadore do Aluno que se está a inscrever
+            Integer idAlunoReal = idHasher.decode(alunoId);
+            Utilizadore alunoQueSeInscreveu = entityManager.find(Utilizadore.class, idAlunoReal);
+
+            // 5. Instanciar o objeto Pagamento associado ao Aluno correto
+            Pagamento pagamentoCoaching = new Pagamento();
+            pagamentoCoaching.setValorPagamento(custoTotalSessao);
+            pagamentoCoaching.setPago(false); // Fica pendente para o aluno pagar
+            pagamentoCoaching.setDescricao(String.format("Inscrição em Sessão de Coaching (%s) - Duração: %d min",
+                    coaching.getModalidade().getNome(),
+                    coaching.getDuracaoMinutos()));
+
+            pagamentoCoaching.setIdutilizador(alunoQueSeInscreveu); // Aluno correto mapeado dinamicamente
+            pagamentoCoaching.setIdTipoPagamento(tipoAulaAvulso);
+            pagamentoCoaching.setDataPagamento(java.time.LocalDate.now()); // Data de emissão/vencimento
+            pagamentoCoaching.setDataConfirmado(null);
+            pagamentoCoaching.setAula(coaching); // Vincula este pagamento à respetiva aula
+
+            // 6. Persistir na base de dados e sincronizar imediatamente
+            entityManager.persist(pagamentoCoaching);
+            entityManager.flush();
+
+        } catch (Exception e) {
+            System.err.println("Erro crítico ao faturar inscrição em Coaching existente: " + e.getMessage());
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Não foi possível concluir a inscrição devido a um erro no lançamento financeiro: " + e.getMessage());
+        }
+        // ==========================================================================================
+
         return convertToAulaCoachingDto(coaching);
     }
 
@@ -310,7 +377,7 @@ public class AulaCoachingService {
      * Lança exceção se o coaching já não estiver no estado PENDENTE.
      */
     @Transactional
-    public AulaCoachingDto confirmar(String aulaId,String professorId) throws Exception {
+    public AulaCoachingDto confirmar(String aulaId, String professorId) throws Exception {
         AulaCoaching coaching = aulaCoachingRepository.findById(idHasher.decode(aulaId))
                 .orElseThrow(() -> new Exception("Aula de coaching não encontrada"));
         Professore professore = professorService.findById(professorId);
@@ -349,6 +416,78 @@ public class AulaCoachingService {
             );
         }
         coaching.setEstado(estadoAuloService.findbyId(AulaService.ID_ESTADO_AGENDADA));
+
+        // ==========================================================================================
+        // AUTOMAÇÃO FINANCEIRA: Gerar Lançamento de "Aula Avulso" para o Aluno (Solicitante)
+        // ==========================================================================================
+        try {
+            // 1. Obter o valor_hora_default das configurações usando o entityManager do Service
+            String valorHoraConfig = "36.00"; // Fallback de segurança
+            try {
+                valorHoraConfig = entityManager.createQuery(
+                                "SELECT c.valor FROM Configuracoe c WHERE LOWER(c.nomeConfig) = :nomeConfig", String.class)
+                        .setParameter("nomeConfig", "valor_hora_default")
+                        .getSingleResult();
+            } catch (jakarta.persistence.NoResultException e) {
+                // Caso não exista na BD, mantém os 36.00
+            }
+            java.math.BigDecimal valorHora = new java.math.BigDecimal(valorHoraConfig.trim());
+
+            // 2. Calcular o valor total proporcional baseado na duração da sessão (em minutos)
+            java.math.BigDecimal duracaoMinutos = java.math.BigDecimal.valueOf(coaching.getDuracaoMinutos());
+            java.math.BigDecimal custoTotalSessao = valorHora
+                    .divide(new java.math.BigDecimal("60"), 4, java.math.RoundingMode.HALF_UP)
+                    .multiply(duracaoMinutos)
+                    .setScale(2, java.math.RoundingMode.HALF_UP);
+
+            // 3. Procurar a Categoria "Aula Avulso" na tabela tipo_pagamento
+            TipoPagamento tipoAulaAvulso = entityManager.createQuery(
+                            "SELECT tp FROM TipoPagamento tp WHERE LOWER(tp.tipoPagamento) = :tipo", TipoPagamento.class)
+                    .setParameter("tipo", "aula avulso")
+                    .getResultStream()
+                    .findFirst()
+                    .orElseThrow(() -> new Exception("Tipo de pagamento 'Aula Avulso' não foi encontrado na base de dados."));
+
+            // 4. CORREÇÃO: Descobrir quem é o Aluno associado a esta sessão de Coaching
+            // Vamos buscar a lista de alunos associados a esta aula (geralmente coaching é 1 para 1)
+            List<AulaAlunoDto> alunosNaAula = aulaAlunoService.findAllByAulaId(aulaId);
+            if (alunosNaAula.isEmpty()) {
+                throw new Exception("Não é possível gerar pagamento: Nenhum aluno está associado a esta sessão de coaching.");
+            }
+
+            // Obtemos o DTO do primeiro aluno da lista, descodificamos o ID dele e carregamos a Entidade Utilizadore
+            String idAlunoHashed = alunosNaAula.get(0).idAluno();
+            Integer idAlunoReal = idHasher.decode(idAlunoHashed);
+            Utilizadore alunoSolicitante = entityManager.find(Utilizadore.class, idAlunoReal);
+
+            // 5. Instanciar o objeto Pagamento associado ao Aluno correto
+            Pagamento pagamentoCoaching = new Pagamento();
+            pagamentoCoaching.setValorPagamento(custoTotalSessao);
+            pagamentoCoaching.setPago(false); // Fica pendente para o aluno pagar
+            pagamentoCoaching.setDescricao(String.format("Sessão de Coaching Privada (%s) - Duração: %d min com Prof. %s",
+                    coaching.getModalidade().getNome(),
+                    coaching.getDuracaoMinutos(),
+                    professore.getNome()));
+
+            // VINCULAÇÃO CORRIGIDA: Agora aponta garantidamente para o Aluno e não para o Professor!
+            pagamentoCoaching.setIdutilizador(alunoSolicitante);
+            pagamentoCoaching.setIdTipoPagamento(tipoAulaAvulso);
+            pagamentoCoaching.setDataPagamento(java.time.LocalDate.now()); // Data de emissão/vencimento
+            pagamentoCoaching.setDataConfirmado(null);
+            pagamentoCoaching.setAula(coaching); // Vincula este pagamento à respetiva aula
+
+            // 6. Persistir na base de dados e sincronizar imediatamente
+            entityManager.persist(pagamentoCoaching);
+            entityManager.flush();
+
+        } catch (Exception e) {
+            System.err.println("Erro crítico ao gerar faturamento automático de Coaching: " + e.getMessage());
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Não foi possível confirmar o coaching devido a um erro no lançamento financeiro: " + e.getMessage());
+        }
+        // ==========================================================================================
+
         return convertToAulaCoachingDto(aulaCoachingRepository.save(coaching));
     }
 

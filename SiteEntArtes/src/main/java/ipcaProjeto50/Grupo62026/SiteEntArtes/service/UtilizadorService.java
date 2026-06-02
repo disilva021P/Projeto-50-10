@@ -54,6 +54,9 @@ public class UtilizadorService {
     private final ModalidadeRepository modalidadeRepository;
     private final EncarregadoAlunoRepository encarregadoAlunoRepository;
 
+    // Pagamentos Mensalidade, Inscrição, Seguro
+    private final TipoPagamentoRepository tipoPagamentoRepository;
+
 
     // ─── Listar todos, com filtro opcional por tipo ───────────────────────────
     public Page<UtilizadorResponseDto> listarTodos(String tipoFiltro, Pageable pageable) {
@@ -137,6 +140,103 @@ public class UtilizadorService {
         Utilizadore utilizadorSalvo;
         if (utilizador instanceof Aluno) {
             utilizadorSalvo = alunoRepository.save((Aluno) utilizador);
+
+            // ==========================================================================================
+            // AUTOMAÇÃO DINÂMICA: Gerar Lançamentos de Inscrição e Seguro ao Criar Aluno
+            // ==========================================================================================
+            try {
+                // -------------------------------------------------------------------------
+                // 1. OBTENÇÃO DOS VALORES DAS CONFIGURAÇÕES
+                // -------------------------------------------------------------------------
+
+                // A) Buscar Taxa de Inscrição (Tenta 'inscricao_base', senão usa 'mensalidade_base', senão fallback 35.00)
+                String valorInscricaoConfig = "35.00";
+                try {
+                    valorInscricaoConfig = entityManager.createQuery(
+                                    "SELECT c.valor FROM Configuracoe c WHERE LOWER(c.nomeConfig) = :nomeConfig", String.class)
+                            .setParameter("nomeConfig", "inscricao_base")
+                            .getSingleResult();
+                } catch (jakarta.persistence.NoResultException e) {
+                    try {
+                        valorInscricaoConfig = entityManager.createQuery(
+                                        "SELECT c.valor FROM Configuracoe c WHERE LOWER(c.nomeConfig) = :nomeConfig", String.class)
+                                .setParameter("nomeConfig", "mensalidade_base")
+                                .getSingleResult();
+                    } catch (jakarta.persistence.NoResultException ex) {
+                        // Mantém o valor default de 35.00
+                    }
+                }
+                BigDecimal valorFinalInscricao = new BigDecimal(valorInscricaoConfig.trim());
+
+                // B) Buscar Taxa de Seguro (Tenta 'seguro_base', senão assume fallback de 15.00)
+                String valorSeguroConfig = "15.00";
+                try {
+                    valorSeguroConfig = entityManager.createQuery(
+                                    "SELECT c.valor FROM Configuracoe c WHERE LOWER(c.nomeConfig) = :nomeConfig", String.class)
+                            .setParameter("nomeConfig", "seguro_base")
+                            .getSingleResult();
+                } catch (jakarta.persistence.NoResultException e) {
+                    // Se não encontrar 'seguro_base' na BD, assume os 15.00€ automaticamente
+                }
+                BigDecimal valorFinalSeguro = new BigDecimal(valorSeguroConfig.trim());
+
+
+                // -------------------------------------------------------------------------
+                // 2. BUSCA DOS TIPOS DE PAGAMENTO (CATEGORIAS)
+                // -------------------------------------------------------------------------
+
+                // A) Categoria "Inscrição"
+                TipoPagamento tipoInscricao = entityManager.createQuery(
+                                "SELECT tp FROM TipoPagamento tp WHERE LOWER(tp.tipoPagamento) = :tipo", TipoPagamento.class)
+                        .setParameter("tipo", "inscrição")
+                        .getResultStream()
+                        .findFirst()
+                        .orElseThrow(() -> new Exception("Tipo de pagamento 'Inscrição' não foi encontrado na tabela tipo_pagamento."));
+
+                // B) Categoria "Seguro"
+                TipoPagamento tipoSeguro = entityManager.createQuery(
+                                "SELECT tp FROM TipoPagamento tp WHERE LOWER(tp.tipoPagamento) = :tipo", TipoPagamento.class)
+                        .setParameter("tipo", "seguro")
+                        .getResultStream()
+                        .findFirst()
+                        .orElseThrow(() -> new Exception("Tipo de pagamento 'Seguro' não foi encontrado na tabela tipo_pagamento."));
+
+
+                // -------------------------------------------------------------------------
+                // 3. CRIAÇÃO E PERSISTÊNCIA DOS LANÇAMENTOS FINANCEIROS
+                // -------------------------------------------------------------------------
+                LocalDate dataAtual = LocalDate.now();
+
+                // Lançamento A: Taxa de Inscrição
+                Pagamento taxaInscricao = new Pagamento();
+                taxaInscricao.setValorPagamento(valorFinalInscricao);
+                taxaInscricao.setPago(false);
+                taxaInscricao.setDescricao("Taxa de Inscrição Inicial de Aluno: " + utilizadorSalvo.getNome());
+                taxaInscricao.setIdutilizador(utilizadorSalvo);
+                taxaInscricao.setIdTipoPagamento(tipoInscricao);
+                taxaInscricao.setDataPagamento(dataAtual);
+                taxaInscricao.setDataConfirmado(null);
+                taxaInscricao.setAula(null);
+                entityManager.persist(taxaInscricao);
+
+                // Lançamento B: Taxa de Seguro Escolar Anual
+                Pagamento taxaSeguro = new Pagamento();
+                taxaSeguro.setValorPagamento(valorFinalSeguro);
+                taxaSeguro.setPago(false);
+                taxaSeguro.setDescricao("Seguro Obrigatório Anual de Aluno: " + utilizadorSalvo.getNome());
+                taxaSeguro.setIdutilizador(utilizadorSalvo);
+                taxaSeguro.setIdTipoPagamento(tipoSeguro);
+                taxaSeguro.setDataPagamento(dataAtual);
+                taxaSeguro.setDataConfirmado(null);
+                taxaSeguro.setAula(null);
+                entityManager.persist(taxaSeguro);
+
+
+            } catch (Exception e) {
+                System.err.println("Erro crítico ao gerar obrigações financeiras de entrada: " + e.getMessage());
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Incapaz de concluir a inscrição do aluno. Falha na configuração financeira: " + e.getMessage());
+            }
 
             if (dto.idTurmasIniciais() != null && !dto.idTurmasIniciais().isEmpty()) {
                 // Iterar por todas as hashes de turmas enviadas pelo Frontend
