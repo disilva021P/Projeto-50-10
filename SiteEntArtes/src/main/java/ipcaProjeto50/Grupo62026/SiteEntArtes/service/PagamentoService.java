@@ -149,7 +149,7 @@ public class PagamentoService {
         Pagamento pagamentoGuardado = pagamentoRepository.save(pagamento);
 
         // ==========================================================================================
-        // AUTOMAÇÃO: Gerar Crédito/Remuneração para o Professor (Tipo de Pagamento ID = 7) - JÁ LIQUIDADO
+        // AUTOMAÇÃO FINANCEIRA: Divisão de Honorários (Professor + Retenção Coordenação)
         // ==========================================================================================
         try {
             // Verificamos se o pagamento liquidado é do tipo "Aula Avulso" (ID=2) e se tem uma aula associada
@@ -172,44 +172,79 @@ public class PagamentoService {
                     System.err.println("Aviso: Não foi possível localizar o professor associado à aula " + aulaId);
                 }
 
-                // Se encontrarmos o professor docente, geramos a remuneração dele
+                // 2. BUSCAR A TAXA DE RETENÇÃO DA ESCOLA (Ex: '20' para 20%)
+                String taxaConfig = "20"; // Fallback se não estiver na BD
+                try {
+                    taxaConfig = entityManager.createQuery(
+                                    "SELECT c.valor FROM Configuracoe c WHERE LOWER(c.nomeConfig) = :nomeConfig", String.class)
+                            .setParameter("nomeConfig", "taxa_coaching_escola")
+                            .getSingleResult();
+                } catch (jakarta.persistence.NoResultException e) {
+                    // Mantém os 20% por defeito
+                }
+
+                java.math.BigDecimal percentagemEscola = new java.math.BigDecimal(taxaConfig.trim());
+                java.math.BigDecimal cemPercento = new java.math.BigDecimal("100");
+
+                // Calcular frações
+                java.math.BigDecimal fatorEscola = percentagemEscola.divide(cemPercento, 4, java.math.RoundingMode.HALF_UP);
+                java.math.BigDecimal fatorProfessor = cemPercento.subtract(percentagemEscola).divide(cemPercento, 4, java.math.RoundingMode.HALF_UP);
+
+                // Valores Absolutos (Ex: Aluno pagou 144.00€)
+                java.math.BigDecimal valorTotalAluno = pagamentoGuardado.getValorPagamento();
+                java.math.BigDecimal valorLucroEscola = valorTotalAluno.multiply(fatorEscola).setScale(2, java.math.RoundingMode.HALF_UP);       // 144 * 0.20 = 28.80€
+                java.math.BigDecimal valorRemuneracaoProfessor = valorTotalAluno.multiply(fatorProfessor).setScale(2, java.math.RoundingMode.HALF_UP); // 144 * 0.80 = 115.20€
+
+                // 3. Procurar os Tipos de Pagamento necessários (ID 7 para Professor, ID 2 ou outro para Receita da Escola)
+                TipoPagamento tipoPagamentoProfessor = entityManager.find(TipoPagamento.class, 7);
+                if (tipoPagamentoProfessor == null) {
+                    throw new Exception("Tipo de pagamento com ID 7 não encontrado na base de dados.");
+                }
+
+                // ─── PARTE A: GRAVAR CRÉDITO DO PROFESSOR (Se ele existir) ───
                 if (professorDocente != null) {
-
-                    // 2. Procurar o Tipo de Pagamento com ID 7 ("Pagamento ao Professor")
-                    TipoPagamento tipoPagamentoProfessor = entityManager.find(TipoPagamento.class, 7);
-                    if (tipoPagamentoProfessor == null) {
-                        throw new Exception("Tipo de pagamento with ID 7 não encontrado na base de dados.");
-                    }
-
-                    // 3. Regra: O professor recebe exatamente o mesmo valor proporcional que o aluno pagou por esta inscrição
-                    java.math.BigDecimal valorRemuneracao = pagamentoGuardado.getValorPagamento();
-
-                    // 4. Instanciar o novo registo de Pagamento (Remuneração já ganha e liquidada)
                     Pagamento creditoProfessor = new Pagamento();
-                    creditoProfessor.setValorPagamento(valorRemuneracao);
-
-                    // ─── ALTERAÇÃO AQUI: Agora nasce como Pago (1) e com Data de Confirmação ───
+                    creditoProfessor.setValorPagamento(valorRemuneracaoProfessor);
                     creditoProfessor.setPago(true);
                     creditoProfessor.setDataConfirmado(LocalDate.now());
+                    creditoProfessor.setDescricao(String.format(
+                            "Honorários Recebidos: Sessão Coaching de Aluno %s (Valor aluno: %.2f€ | Retenção Escola: %s%%)",
+                            pagamentoGuardado.getIdutilizador().getNome(), valorTotalAluno, taxaConfig));
+                    creditoProfessor.setIdutilizador(professorDocente);
+                    creditoProfessor.setIdTipoPagamento(tipoPagamentoProfessor);
+                    creditoProfessor.setDataPagamento(LocalDate.now());
+                    creditoProfessor.setAula(pagamentoGuardado.getAula());
 
-                    creditoProfessor.setDescricao(String.format("Honorários Recebidos: Sessão de Coaching realizada por Aluno %s",
-                            pagamentoGuardado.getIdutilizador().getNome()));
-
-                    creditoProfessor.setIdutilizador(professorDocente); // Conta do Professor
-                    creditoProfessor.setIdTipoPagamento(tipoPagamentoProfessor); // ID 7
-                    creditoProfessor.setDataPagamento(LocalDate.now()); // Data de lançamento
-                    creditoProfessor.setAula(pagamentoGuardado.getAula()); // Vincula à aula original
-
-                    // 5. Persistir de forma síncrona
                     entityManager.persist(creditoProfessor);
-                    entityManager.flush();
                 }
+
+                // ─── PARTE B: GRAVAR MARGEM/LUCRO DA COORDENAÇÃO (ID = 1) ───
+                // Buscamos o utilizador da Coordenação (ID 1) da base de dados
+                Utilizadore coordenacao = entityManager.find(Utilizadore.class, 1);
+                if (coordenacao != null) {
+                    Pagamento receitaEscola = new Pagamento();
+                    receitaEscola.setValorPagamento(valorLucroEscola); // Guarda os 28.80€
+                    receitaEscola.setPago(true); // Fica imediatamente como liquidado
+                    receitaEscola.setDataConfirmado(LocalDate.now());
+                    receitaEscola.setDescricao(String.format(
+                            "Margem de Retenção Escola: Sessão Coaching de Aluno %s (Valor total: %.2f€ | Retido: %s%%)",
+                            pagamentoGuardado.getIdutilizador().getNome(), valorTotalAluno, taxaConfig));
+
+                    receitaEscola.setIdutilizador(coordenacao); // Associa à conta da Coordenação (ID 1)
+                    receitaEscola.setIdTipoPagamento(pagamentoGuardado.getIdTipoPagamento()); // Mantém como Tipo ID 2 (Aula Avulso) ou o que preferires
+                    receitaEscola.setDataPagamento(LocalDate.now());
+                    receitaEscola.setAula(pagamentoGuardado.getAula());
+
+                    entityManager.persist(receitaEscola);
+                }
+
+                entityManager.flush();
             }
         } catch (Exception e) {
-            System.err.println("Erro crítico ao gerar crédito automático para o professor: " + e.getMessage());
+            System.err.println("Erro crítico na divisão automática de honorários: " + e.getMessage());
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Erro ao processar divisão de honorários do professor: " + e.getMessage());
+                    "Erro ao processar divisão de honorários com a coordenação: " + e.getMessage());
         }
         // ==========================================================================================
 

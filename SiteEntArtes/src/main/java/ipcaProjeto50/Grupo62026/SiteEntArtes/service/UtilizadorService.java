@@ -57,6 +57,9 @@ public class UtilizadorService {
     // Pagamentos Mensalidade, Inscrição, Seguro
     private final TipoPagamentoRepository tipoPagamentoRepository;
 
+    private final TurmaEncarregadoRepository turmaEncarregadoRepository;
+
+
 
     // ─── Listar todos, com filtro opcional por tipo ───────────────────────────
     public Page<UtilizadorResponseDto> listarTodos(String tipoFiltro, Pageable pageable) {
@@ -308,10 +311,107 @@ public class UtilizadorService {
             }
 
         } else {
-            // Guarda o utilizador genérico (Encarregado) primeiro para gerar o ID dele
+            // Guarda o encarregado para gerar o ID
             utilizadorSalvo = utilizadoreRepository.save(utilizador);
 
-            // ─── BLOCO DE GRAVAÇÃO DOS EDUCANDOS INICIAIS DO ENCARREGADO ──────
+            // ─── PAGAMENTOS: só se escolheu turmas ───────────────────────────────
+            if (dto.idTurmasIniciais() != null && !dto.idTurmasIniciais().isEmpty()) {
+                try {
+                    // Valor de inscrição
+                    String valorInscricaoConfig = "35.00";
+                    try {
+                        valorInscricaoConfig = entityManager.createQuery(
+                                        "SELECT c.valor FROM Configuracoe c WHERE LOWER(c.nomeConfig) = :n", String.class)
+                                .setParameter("n", "inscricao_base")
+                                .getSingleResult();
+                    } catch (jakarta.persistence.NoResultException e) {
+                        try {
+                            valorInscricaoConfig = entityManager.createQuery(
+                                            "SELECT c.valor FROM Configuracoe c WHERE LOWER(c.nomeConfig) = :n", String.class)
+                                    .setParameter("n", "mensalidade_base")
+                                    .getSingleResult();
+                        } catch (jakarta.persistence.NoResultException ex) { /* usa 35.00 */ }
+                    }
+
+                    // Valor de seguro
+                    String valorSeguroConfig = "15.00";
+                    try {
+                        valorSeguroConfig = entityManager.createQuery(
+                                        "SELECT c.valor FROM Configuracoe c WHERE LOWER(c.nomeConfig) = :n", String.class)
+                                .setParameter("n", "seguro_base")
+                                .getSingleResult();
+                    } catch (jakarta.persistence.NoResultException e) { /* usa 15.00 */ }
+
+                    TipoPagamento tipoInscricao = entityManager.createQuery(
+                                    "SELECT tp FROM TipoPagamento tp WHERE LOWER(tp.tipoPagamento) = :tipo", TipoPagamento.class)
+                            .setParameter("tipo", "inscrição")
+                            .getResultStream().findFirst()
+                            .orElseThrow(() -> new Exception("Tipo de pagamento 'Inscrição' não encontrado."));
+
+                    TipoPagamento tipoSeguro = entityManager.createQuery(
+                                    "SELECT tp FROM TipoPagamento tp WHERE LOWER(tp.tipoPagamento) = :tipo", TipoPagamento.class)
+                            .setParameter("tipo", "seguro")
+                            .getResultStream().findFirst()
+                            .orElseThrow(() -> new Exception("Tipo de pagamento 'Seguro' não encontrado."));
+
+                    LocalDate dataAtual = LocalDate.now();
+
+                    Pagamento taxaInscricao = new Pagamento();
+                    taxaInscricao.setValorPagamento(new BigDecimal(valorInscricaoConfig.trim()));
+                    taxaInscricao.setPago(false);
+                    taxaInscricao.setDescricao("Taxa de Inscrição Inicial de Encarregado: " + utilizadorSalvo.getNome());
+                    taxaInscricao.setIdutilizador(utilizadorSalvo);
+                    taxaInscricao.setIdTipoPagamento(tipoInscricao);
+                    taxaInscricao.setDataPagamento(dataAtual);
+                    taxaInscricao.setDataConfirmado(null);
+                    taxaInscricao.setAula(null);
+                    entityManager.persist(taxaInscricao);
+
+                    Pagamento taxaSeguro = new Pagamento();
+                    taxaSeguro.setValorPagamento(new BigDecimal(valorSeguroConfig.trim()));
+                    taxaSeguro.setPago(false);
+                    taxaSeguro.setDescricao("Seguro Obrigatório Anual de Encarregado: " + utilizadorSalvo.getNome());
+                    taxaSeguro.setIdutilizador(utilizadorSalvo);
+                    taxaSeguro.setIdTipoPagamento(tipoSeguro);
+                    taxaSeguro.setDataPagamento(dataAtual);
+                    taxaSeguro.setDataConfirmado(null);
+                    taxaSeguro.setAula(null);
+                    entityManager.persist(taxaSeguro);
+
+                } catch (Exception e) {
+                    System.err.println("Erro ao gerar pagamentos do encarregado: " + e.getMessage());
+                    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                            "Falha na configuração financeira do encarregado: " + e.getMessage());
+                }
+
+                // ─── INSCRIÇÃO NAS TURMAS ─────────────────────────────────────────
+                for (String turmaHash : dto.idTurmasIniciais()) {
+                    if (turmaHash != null && !turmaHash.trim().isEmpty()) {
+                        try {
+                            Integer idTurmaDecoded = idHasher.decode(turmaHash);
+                            Turma turma = turmaRepository.findById(idTurmaDecoded)
+                                    .orElseThrow(() -> new Exception("Turma não encontrada"));
+
+                            TurmaEncarregadoId idIntermedio = new TurmaEncarregadoId();
+                            idIntermedio.setTurmaId(turma.getId());
+                            idIntermedio.setEncarregadoId(utilizadorSalvo.getId());
+
+                            TurmaEncarregado inscricao = new TurmaEncarregado();
+                            inscricao.setId(idIntermedio);
+                            inscricao.setTurma(turma);
+                            inscricao.setEncarregado(utilizadorSalvo);
+                            inscricao.setInscritoEm(LocalDate.now());
+
+                            turmaEncarregadoRepository.save(inscricao);
+                        } catch (Exception e) {
+                            System.err.println("Erro ao inscrever encarregado na turma [" + turmaHash + "]: " + e.getMessage());
+                        }
+                    }
+                }
+                turmaEncarregadoRepository.flush();
+            }
+
+            // ─── EDUCANDOS ────────────────────────────────────────────────────────
             if (dto.idEducandosIniciais() != null && !dto.idEducandosIniciais().isEmpty()) {
                 for (String alunoHash : dto.idEducandosIniciais()) {
                     if (alunoHash != null && !alunoHash.trim().isEmpty()) {
@@ -320,29 +420,23 @@ public class UtilizadorService {
                             Aluno aluno = alunoRepository.findById(idAlunoDecoded)
                                     .orElseThrow(() -> new Exception("Aluno não encontrado"));
 
-                            // Instanciar e preencher a Chave Composta Id primeiro
-                            ipcaProjeto50.Grupo62026.SiteEntArtes.entity.EncarregadoAlunoId chaveComposta = new ipcaProjeto50.Grupo62026.SiteEntArtes.entity.EncarregadoAlunoId();
+                            EncarregadoAlunoId chaveComposta = new EncarregadoAlunoId();
                             chaveComposta.setEncarregadoId(utilizadorSalvo.getId());
                             chaveComposta.setAlunoId(aluno.getId());
 
-                            //Construir a entidade intermédia EncarregadoAluno vinculando a ID Composta
                             EncarregadoAluno associacao = new EncarregadoAluno();
-                            associacao.setId(chaveComposta); // 🟢 Define a chave composta na entidade
+                            associacao.setId(chaveComposta);
                             associacao.setEncarregado(utilizadorSalvo);
                             associacao.setAluno(aluno);
 
-                            //Guardar na tabela intermédia encarregado_aluno
                             encarregadoAluno.save(associacao);
-
                         } catch (Exception e) {
-                            System.err.println("Erro ao associar educando inicial hash [" + alunoHash + "] ao encarregado: " + e.getMessage());
+                            System.err.println("Erro ao associar educando [" + alunoHash + "]: " + e.getMessage());
                         }
                     }
                 }
-                // Garante a persistência imediata das ligações na base de dados
                 encarregadoAluno.flush();
             }
-            // ─────────────────────────────────────────────────────────────────────────
         }
 
         // Template HTML Original de Boas-Vindas
