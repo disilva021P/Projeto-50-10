@@ -12,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedModel;
 import org.springframework.stereotype.Service;
 
+import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -32,6 +33,8 @@ public class AulaService {
     private final ModalidadeService modalidadeService;
     private final AulaFixaService aulaFixaService;
     private final HorarioFixoRepository horarioFixoRepository;
+
+    private final EntityManager entityManager;
 
     private final DisponibilidadeService disponibilidadeService;
     private final EncarregadoAlunoRepository encarregadoAlunoRepository;
@@ -619,7 +622,8 @@ public class AulaService {
 
     @Transactional(rollbackFor = Exception.class)
     public void processarPagamentosAula(Aula aula) throws Exception {
-        // 1. Obter intervenientes (Usando IDs reais já disponíveis na entidade 'aula')
+
+        // 1. Obter intervenientes
         List<AulaProfessore> professores = aulaProfessorService.findAllByAulaId(idHasher.encode(aula.getId()));
         List<AulaAluno> alunosInscritos = aulaAlunoRepository.findAllByAula_Id(aula.getId());
 
@@ -639,45 +643,34 @@ public class AulaService {
 
         BigDecimal valorTotalAula = maiorValorHora.multiply(duracaoHoras);
 
-        // 3. Obter Tipos de Pagamento (Entities)
-        int idTipoAlunoReal = (aula.getIdHorario() != null) ? 1 : 2;
-        TipoPagamento tipoAluno = tipoPagamentoRepository.findById(idTipoAlunoReal)
+        // 3. Tipo de pagamento e label
+        boolean isCoaching = (aula.getIdHorario() == null);
+        int idTipoAluno = isCoaching ? 2 : 1; // 2 = Aula Avulso (coaching), 1 = Aula Fixa
+
+        TipoPagamento tipoAluno = tipoPagamentoRepository.findById(idTipoAluno)
                 .orElseThrow(() -> new Exception("Tipo de pagamento aluno não encontrado"));
 
-        TipoPagamento tipoProf = tipoPagamentoRepository.findById(7)
-                .orElseThrow(() -> new Exception("Tipo de remuneração professor não encontrado"));
+        String label = isCoaching ? "Coaching" : "Aula Fixa";
 
-        String label = (idTipoAlunoReal == 1) ? "Aula Fixa" : "Coaching";
-
-        // 4. Gerar Pagamentos dos Alunos
-        BigDecimal valorPorAluno = valorTotalAula.divide(BigDecimal.valueOf(alunosInscritos.size()), 2, java.math.RoundingMode.HALF_UP);
+        // 4. Gerar pagamentos dos Alunos
+        // - Coaching: cada aluno paga o valor total individualmente
+        //   (quando cada um pagar, o PagamentoService.confirmar() cria automaticamente
+        //    o crédito do professor já liquidado com a taxa da escola aplicada)
+        // - Aula Fixa: custo partilhado dividido pelo número de alunos
+        BigDecimal valorPorAluno = isCoaching
+                ? valorTotalAula
+                : valorTotalAula.divide(BigDecimal.valueOf(alunosInscritos.size()), 2, java.math.RoundingMode.HALF_UP);
 
         for (AulaAluno vinculo : alunosInscritos) {
             Pagamento p = new Pagamento();
             p.setValorPagamento(valorPorAluno);
             p.setDescricao("Pagamento " + label + ": " + aula.getDataAula());
             p.setPago(false);
+            p.setDataConfirmado(null);
             p.setDataPagamento(LocalDate.now());
             p.setAula(aula);
-            p.setIdutilizador(vinculo.getAluno()); // Atribuição direta da Entity
+            p.setIdutilizador(vinculo.getAluno());
             p.setIdTipoPagamento(tipoAluno);
-
-            pagamentoRepository.save(p);
-        }
-
-        // 5. Gerar Remuneração dos Professores
-        BigDecimal valorPorProf = valorTotalAula.divide(BigDecimal.valueOf(professores.size()), 2, java.math.RoundingMode.HALF_UP);
-
-        for (AulaProfessore vinculo : professores) {
-            Pagamento p = new Pagamento();
-            p.setValorPagamento(valorPorProf);
-            p.setDescricao("Remuneração " + label + ": " + aula.getDataAula());
-            p.setPago(false);
-            p.setDataPagamento(LocalDate.now());
-            p.setAula(aula);
-            p.setIdutilizador(vinculo.getProfessor()); // Atribuição direta da Entity
-            p.setIdTipoPagamento(tipoProf);
-
             pagamentoRepository.save(p);
         }
     }

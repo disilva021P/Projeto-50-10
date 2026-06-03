@@ -486,4 +486,15 @@ public class HorarioController {
         List<AulaTituloDto> aulas = aulaService.findAulasByDataAndUtilizador(data, utilizadorId);
         return ResponseEntity.ok(aulas);
     }
+
+    @GetMapping("/professor/coaching/agendados")
+    @PreAuthorize("hasAuthority('PROFESSOR')")
+    public ResponseEntity<?> coachingAgendados(@PageableDefault(page = 0, size = 50) Pageable pageable) {
+        try {
+            return ResponseEntity.ok(aulaCoachingService.findAgendadosByProfessorId(getUserId(), pageable));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erro ao buscar coachings agendados: " + e.getMessage());
+        }
+    }
 }

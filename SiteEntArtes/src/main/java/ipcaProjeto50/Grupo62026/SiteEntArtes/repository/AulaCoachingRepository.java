@@ -89,4 +89,16 @@ public interface AulaCoachingRepository extends JpaRepository<AulaCoaching,Integ
             @Param("inicio") LocalDate inicio,
             @Param("fim") LocalDate fim
     );
+
+    @Query("SELECT a FROM AulaCoaching a " +
+            "JOIN AulaProfessore ap ON ap.aula.id = a.id " +
+            "WHERE ap.professor.id = :idDecoded " +
+            "AND a.estado.id = 3 " +        // 3 = AGENDADO (confirmado pelo professor, aguarda realização)
+            "AND a.dataAula >= :hoje " +    // só futuros (ainda por realizar)
+            "ORDER BY a.dataAula ASC")
+    Page<AulaCoaching> buscarAulaCoachingAgendadosPorProfessor(
+            @Param("idDecoded") Integer idDecoded,
+            @Param("hoje") LocalDate hoje,
+            Pageable pageable
+    );
 }
