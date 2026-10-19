@@ -2,10 +2,12 @@
 
 > Projeto académico desenvolvido no âmbito da Licenciatura em Engenharia de Sistemas Informáticos — IPCA 2025/2026
 
-![Status](https://img.shields.io/badge/Status-Em%20Desenvolvimento-yellow)
+> 🔗 Frontend (Next.js): [disilva021P/Frontend-Projeto50-10](https://github.com/disilva021P/Frontend-Projeto50-10)
+
+![Status](https://img.shields.io/badge/Status-Concluído-brightgreen)
 ![Java](https://img.shields.io/badge/Java-21+-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-green)
-![React](https://img.shields.io/badge/React-18-blue)
+![Next.js](https://img.shields.io/badge/Next.js-App%20Router-black)
 ![MySQL](https://img.shields.io/badge/MySQL-8.x-blue)
 ![Licença](https://img.shields.io/badge/Licença-Académica-lightgrey)
 
@@ -17,11 +19,10 @@
 - [Equipa](#-equipa)
 - [Stack Tecnológica](#️-stack-tecnológica)
 - [Funcionalidades](#-funcionalidades-principais)
-- [Arquitetura](#-arquitetura)
+- [Arquitetura](#️-arquitetura)
 - [Instalação](#-instalação-e-execução)
 - [Metodologia](#-metodologia)
 - [Milestones](#️-milestones)
-- [Documentação](#-documentação)
 - [Contacto](#-contacto)
 
 ---
@@ -30,7 +31,7 @@
 
 A **Ent'Artes** é uma escola de dança que dependia de processos manuais para gerir inscrições, horários, pagamentos e comunicação interna, resultando em erros recorrentes, sobreposição de horários e informação dispersa por múltiplos canais informais.
 
-Este projeto consiste no desenvolvimento de um **sistema de gestão integrada** que digitaliza e automatiza os principais processos da escola, contemplando:
+Este projeto consistiu no desenvolvimento de um **sistema de gestão integrada** que digitaliza e automatiza os principais processos da escola, contemplando:
 
 - Gestão de alunos, professores e estúdios
 - Dois tipos de aulas: **semanais fixas** e **coaching personalizadas**
@@ -41,6 +42,8 @@ Este projeto consiste no desenvolvimento de um **sistema de gestão integrada** 
 - Gestão de eventos que a escola organiza/participa
 
 A solução segue uma arquitetura **cliente-servidor** com API RESTful, desenvolvida em contexto real com a Ent'Artes como entidade parceira no projeto **50+10**.
+
+Este repositório contém o **backend** (API em Spring Boot, na pasta `SiteEntArtes`). O frontend está no [repositório do Frontend](https://github.com/disilva021P/Frontend-Projeto50-10).
 
 ---
 
@@ -66,17 +69,17 @@ A solução segue uma arquitetura **cliente-servidor** com API RESTful, desenvol
 | Spring Security + JWT | — | Autenticação e autorização (RBAC) |
 | Spring Data JPA + Hibernate | — | ORM e persistência |
 | MySQL | 8.x | Base de dados relacional |
-| JUnit 5 + Mockito | — | Testes unitários (cobertura mín. 70%) |
+| JUnit 5 + Mockito | — | Testes unitários e de integração |
 | SpringDoc OpenAPI | — | Documentação automática (Swagger UI) |
 
 ### Frontend
 | Tecnologia | Versão | Utilização |
 |-----------|--------|-----------|
+| Next.js (App Router) | — | Framework web e navegação |
 | React | 18 | Biblioteca de UI |
-| JavaScript / TypeScript | — | Linguagem |
+| TypeScript / JavaScript | — | Linguagem |
 | Tailwind CSS | — | Estilização utility-first |
-| React Router | — | Navegação SPA |
-| Axios | — | Comunicação com API REST |
+| Fetch API / Axios | — | Comunicação com a API REST |
 
 ### Ferramentas
 | Ferramenta | Utilização |
@@ -147,8 +150,8 @@ A solução segue uma arquitetura **cliente-servidor** com API RESTful, desenvol
 │        BROWSER          │         │              SPRING BOOT API                 │
 │                         │         │                                              │
 │  ┌─────────────────┐    │  HTTP   │  ┌──────────┐  ┌──────────┐   ┌───────────┐  │
-│  │ React + Tailwind│◄───┼─ REST ──┼─►│ Security │─►│Controllers│─►│ Services  │  │
-│  │   React Router  │    │  JSON   │  │   JWT    │  │          │   │           │  │
+│  │     Next.js     │◄───┼─ REST ──┼─►│ Security │─►│Controllers│─►│ Services  │  │
+│  │ React+Tailwind  │    │  JSON   │  │   JWT    │  │          │   │           │  │
 │  │     Axios       │    │         │  └──────────┘  └──────────┘   └─────┬─────┘  │
 │  └─────────────────┘    │         │                                     │        │
 └─────────────────────────┘         │                              ┌──────▼──────┐ │
@@ -168,26 +171,23 @@ A arquitetura segue o padrão **Controller → Service → Repository**, com sep
 
 ## 🚀 Instalação e Execução
 
-> ⚠️ **Em construção** — instruções serão atualizadas à medida que o projeto avança.
-
-
 ### Pré-requisitos
 
 ```bash
 Java 21+
 MySQL 8.x
-Node.js 18+
 ```
 
 ### Backend
 
 ```bash
 # Clonar o repositório
-git clone https://github.com/<org>/entartes.git
-cd entartes/backend
+git clone https://github.com/disilva021P/Projeto-50-10.git
+cd Projeto-50-10/SiteEntArtes
 
-# Configurar variáveis de ambiente (criar ficheiro .env ou application-local.properties)
-# DB_URL=
+# Configurar a ligação à base de dados e a chave JWT
+# (em application-local.properties ou através de variáveis de ambiente)
+# DB_URL=...
 # DB_USER=...
 # DB_PASS=...
 # JWT_SECRET=...
@@ -201,17 +201,7 @@ Documentação Swagger: `http://localhost:8080/swagger-ui.html`
 
 ### Frontend
 
-```bash
-cd entartes/frontend
-
-# Instalar dependências
-npm install
-
-# Correr em desenvolvimento
-npm run dev
-```
-
-A aplicação ficará disponível em `http://localhost:3000`
+As instruções para correr a interface estão no [repositório do Frontend](https://github.com/disilva021P/Frontend-Projeto50-10).
 
 ---
 
@@ -220,9 +210,8 @@ A aplicação ficará disponível em `http://localhost:3000`
 - **Scrum** com sprints de **1 semana**
 - Daily standups de 15 minutos
 - Sprint reviews e retrospetivas semanais
-- Branching estruturado: `main` / `nº desenvolverdor` / `fetch/*` / `hotfix/*`
+- Branching estruturado: `main` / `nº do developer` / `feature/*` / `hotfix/*`
 - Gestão de backlog e sprints no **Jira**
-
 
 ---
 
@@ -231,23 +220,8 @@ A aplicação ficará disponível em `http://localhost:3000`
 | Marco | Data | Entregáveis |
 |-------|------|-------------|
 | **M1 — Análise e Modelação** | 13/03/2026 ✅ | Requisitos, diagramas UML/BPMN, mockups, backlog |
-| **M2 — Versão Beta** | 24/04/2026 | Backend completo, API funcional, testes implementados |
-| **M3 — Versão Final** | 09/05/2026 | Sistema completo, UI (simplificada) finalizada |
-
----
-
-## 📝 Documentação
-
-A documentação completa está disponível em `/docs`:
-
-```
-/docs
-├── relatorio/         # Relatório Completo
-├── uml/               # Diagramas de Casos de Uso, Classes, Sequência
-├── er/                # Diagrama Entidade-Relacionamento
-├── bpmn/              # Processos de negócio (BPMN)
-├── mockups/           # Protótipos de interface (Figma)
-```
+| **M2 — Versão Beta** | 24/04/2026 ✅ | Backend completo, API funcional, testes implementados |
+| **M3 — Versão Final (vRTW)** | 09/05/2026 ✅ | Sistema completo, UI finalizada, testes unitários e de integração |
 
 ---
 
