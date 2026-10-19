@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication; // <-- Adicionado
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -40,9 +41,16 @@ public class CoordenacaoController {
      * Aceita uma doação (Muda estado de 8 para 2)
      */
     @PostMapping("/aceitar/{artigoId}")
-    public ResponseEntity<?> aceitarDoacao(@PathVariable String artigoId) {
+    public ResponseEntity<?> aceitarDoacao(
+            @PathVariable String artigoId,
+            Authentication authentication // <-- Adicionado para pegar o Coordenador Logado
+    ) {
         try {
-            marketplaceService.alterarEstadoArtigo(artigoId, 2);
+            // Extrai o email/username do coordenador que está a aceitar
+            String coordenadorIdentificador = authentication.getName();
+
+            // Passa os 3 argumentos esperados pelo Service
+            marketplaceService.alterarEstadoArtigo(artigoId, 2, coordenadorIdentificador);
             return ResponseEntity.ok("Doação aceite com sucesso.");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Artigo não encontrado: " + artigoId);
@@ -55,9 +63,16 @@ public class CoordenacaoController {
      * Recusa uma doação (Muda estado de 8 para 5 - Removido)
      */
     @PostMapping("/recusar/{artigoId}")
-    public ResponseEntity<?> recusarDoacao(@PathVariable String artigoId) {
+    public ResponseEntity<?> recusarDoacao(
+            @PathVariable String artigoId,
+            Authentication authentication // <-- Adicionado para pegar o Coordenador Logado
+    ) {
         try {
-            marketplaceService.alterarEstadoArtigo(artigoId, 5);
+            // Extrai o email/username do coordenador que está a recusar
+            String coordenadorIdentificador = authentication.getName();
+
+            // Passa os 3 argumentos esperados pelo Service
+            marketplaceService.alterarEstadoArtigo(artigoId, 5, coordenadorIdentificador);
             return ResponseEntity.ok("Doação recusada com sucesso.");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Artigo não encontrado: " + artigoId);

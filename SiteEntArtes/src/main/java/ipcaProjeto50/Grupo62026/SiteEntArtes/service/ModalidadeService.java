@@ -43,22 +43,17 @@ public class ModalidadeService {
     public ModalidadeDto create(ModalidadeDto dto) {
         Modalidade novaModalidade = new Modalidade();
         novaModalidade.setNome(dto.nome());
-        Modalidade salva = modalidadeRepository.save(novaModalidade);
-        return converterParaDto(salva);
+        novaModalidade.setDescricao(dto.descricao());
+        return converterParaDto(modalidadeRepository.save(novaModalidade));
     }
 
     // --- UPDATE (Atualização) ---
 
     public ModalidadeDto update(String hashedId, ModalidadeDto dto) throws Exception {
-        // 1. Localizar a modalidade existente
         Modalidade modalidadeExistente = findById(hashedId);
-
-        // 2. Atualizar os campos (neste caso, apenas o nome)
         modalidadeExistente.setNome(dto.nome());
-
-        // 3. Guardar as alterações
-        Modalidade atualizada = modalidadeRepository.save(modalidadeExistente);
-        return converterParaDto(atualizada);
+        modalidadeExistente.setDescricao(dto.descricao());
+        return converterParaDto(modalidadeRepository.save(modalidadeExistente));
     }
 
     // --- DELETE (Remoção) ---
@@ -77,7 +72,8 @@ public class ModalidadeService {
         if (modalidade == null) return null;
         return new ModalidadeDto(
                 idHasher.encode(modalidade.getId()),
-                modalidade.getNome()
+                modalidade.getNome(),
+                modalidade.getDescricao()
         );
     }
 }

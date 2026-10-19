@@ -12,6 +12,7 @@ public record AulaCoachingRequestDto(
         LocalTime horaInicio,
         LocalTime horaFim,
         Integer maxAlunos,      // opcional — se null, usa o default da BD (8)
-        String modalidadeId
+        String modalidadeId,
+        String descricao
 
 ) {}

@@ -1,14 +1,9 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
-import de.jollyday.Holiday;
-import de.jollyday.HolidayCalendar;
-import de.jollyday.HolidayManager;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.*;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.repository.Repository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -17,13 +12,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedModel;
 import org.springframework.stereotype.Service;
 
+import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -37,6 +33,8 @@ public class AulaService {
     private final ModalidadeService modalidadeService;
     private final AulaFixaService aulaFixaService;
     private final HorarioFixoRepository horarioFixoRepository;
+
+    private final EntityManager entityManager;
 
     private final DisponibilidadeService disponibilidadeService;
     private final EncarregadoAlunoRepository encarregadoAlunoRepository;
@@ -156,6 +154,107 @@ public class AulaService {
                 .map(this::converterParaDto)
                 .toList();
     }
+    public List<AulaTituloDto> buscarHorarioCompletoDoAluno(String userId, int offset) throws Exception {
+        encontraUtilizador(userId); // valida existência
+        Integer alunoIdDecodificado = idHasher.decode(userId);
+
+        LocalDate inicioSemana = calcularInicioSemana(offset);
+        LocalDate fimSemana = inicioSemana.plusDays(6);
+
+        // 1. Vai buscar as Aulas Regulares da Semana
+        List<Aula> aulasRegulares = aulaRepository.buscarHorarioDoAluno(alunoIdDecodificado, inicioSemana, fimSemana);
+
+        // 2. Vai buscar as Aulas de Coaching do Aluno
+        List<AulaCoaching> aulasCoaching = aulaCoachingRepository.buscarAulaCoachingPorAlunoSemPedententes(alunoIdDecodificado);
+
+        // Filtrar as aulas de coaching para trazer apenas as que estão dentro da semana atual do offset
+        List<AulaCoaching> coachingNaSemana = aulasCoaching.stream()
+                .filter(ac -> ac.getDataAula() != null &&
+                        !ac.getDataAula().isBefore(inicioSemana) &&
+                        !ac.getDataAula().isAfter(fimSemana))
+                .toList();
+
+        // 3. Juntar as duas listas e transformar tudo em AulaTituloDto
+        List<AulaTituloDto> horarioCompleto = new java.util.ArrayList<>();
+
+        // Transforma as aulas regulares
+        aulasRegulares.forEach(aula -> horarioCompleto.add(converterParaAulaTituloDto(aula)));
+
+        // Transforma as aulas de coaching
+        coachingNaSemana.forEach(coaching -> horarioCompleto.add(converterParaAulaTituloDto(coaching)));
+
+        // 4. Ordenar o horário por Data e Hora de Início para o Frontend receber tudo direitinho
+        return horarioCompleto.stream()
+                .sorted((a, b) -> {
+                    int compData = a.dataAula().compareTo(b.dataAula());
+                    if (compData != 0) return compData;
+                    return a.horaInicio().compareTo(b.horaInicio());
+                })
+                .toList();
+    }
+    private AulaTituloDto converterParaAulaTituloDto(Aula aula) {
+        String tituloFinal = "Aula";
+        Integer maxAlunos = null;
+        UtilizadoreResumoDto solicitadoPor = null;
+
+        // Cenário A: Se for uma instância de AulaCoaching
+        if (aula instanceof AulaCoaching coaching) {
+            if (coaching.getModalidade() != null && coaching.getModalidade().getNome() != null) {
+                tituloFinal = "Coaching " + coaching.getModalidade().getNome();
+            } else {
+                tituloFinal = "Coaching";
+            }
+
+            maxAlunos = coaching.getMaxAlunos();
+
+            // Buscar quem pediu (primeiro aluno inscrito)
+            AulaAluno aa = aulaAlunoRepository.findFirstByAula_Id(coaching.getId()).orElse(null);
+            if (aa != null) {
+                solicitadoPor = new UtilizadoreResumoDto(
+                        idHasher.encode(aa.getAluno().getId()),
+                        aa.getAluno().getNome()
+                );
+            }
+        }
+        // Cenário B: Aula regular
+        else if (aula.getIdHorario() != null && aula.getIdHorario().getIdturma() != null) {
+            var turma = aula.getIdHorario().getIdturma();
+            if (turma.getModalidade() != null && turma.getModalidade().getNome() != null) {
+                tituloFinal = turma.getModalidade().getNome();
+            } else if (turma.getNome() != null) {
+                tituloFinal = turma.getNome();
+            }
+        }
+
+        EstudioDto estudioDto = aula.getEstudio() != null
+                ? new EstudioDto(idHasher.encode(aula.getEstudio().getId()), aula.getEstudio().getNome(), aula.getEstudio().getCapacidade(), aula.getEstudio().getNotas())
+                : null;
+
+        EstadoAulaDto estadoDto = aula.getEstado() != null
+                ? new EstadoAulaDto(idHasher.encode(aula.getEstado().getId()), aula.getEstado().getEstado())
+                : null;
+
+        HorarioTurmaDto horarioDto = null;
+        if (aula.getIdHorario() != null) {
+            // constrói se precisares
+        }
+
+        return new AulaTituloDto(
+                idHasher.encode(aula.getId()),
+                estudioDto,
+                aula.getDuracaoMinutos(),
+                aula.getDataAula(),
+                aula.getHoraInicio(),
+                aula.getHoraFim(),
+                idHasher.encode(aula.getCriadoPor().getId()),
+                horarioDto,
+                estadoDto,
+                tituloFinal,
+                maxAlunos,
+                solicitadoPor
+        );
+    }
+
 
     /**
      * Devolve uma aula específica de um aluno, verificando se este faz parte dela.
@@ -196,7 +295,8 @@ public class AulaService {
                 aula.getHoraFim(),
                 idHasher.encode(aula.getCriadoPor().getId()),
                 aulaFixaService.convertToDto(aula.getIdHorario()),
-                estadoAuloService.converterParaDto(aula.getEstado())
+                estadoAuloService.converterParaDto(aula.getEstado()),
+                aula.getNotas()
         );
     }
 
@@ -306,11 +406,14 @@ public class AulaService {
         }
 
         return erros;
-    }    @Transactional
+    }
+
+    @Transactional
     public void EliminarAulasComHorario(Integer idHorario) throws Exception {
         aulaFixaService.delete(idHorario);
         aulaRepository.deleteAllByIdHorario_Id(idHorario);
     }
+
     @Transactional
     public void EliminarAulasComHorario(String idHorario) throws Exception {
 
@@ -318,6 +421,7 @@ public class AulaService {
         aulaRepository.deleteAllByIdHorario_Id(idHasher.decode(idHorario));
         aulaFixaService.delete(idHasher.decode(idHorario));
     }
+
     @Transactional
     public void EliminarAulasFuturasComHorario(String idHorarioStr) throws Exception {
         Integer idHorario = idHasher.decode(idHorarioStr);
@@ -332,6 +436,7 @@ public class AulaService {
         // NOTA: Não apagamos o aulaFixaService (HorarioTurma) aqui,
         // porque ele ainda tem aulas no passado associadas a ele!
     }
+
     @Transactional(rollbackFor = Exception.class)
     public List<AulaDto> atualizaPorHorario(HorarioTurmaRequestDto dto, String id, String idProfessor,String idAtualizador) throws Exception {
 
@@ -368,7 +473,6 @@ public class AulaService {
             return GerarAulasComHorario(dtoNovoPeriodo, idProfessor);
         }
 
-        // CASO B: MUDANÇA APENAS DE HORA OU ESTÚDIO
         else {
             Integer idEstudioNovo = idHasher.decode(dto.estudioId());
 
@@ -385,7 +489,9 @@ public class AulaService {
 
             return new ArrayList<>();
         }
-    }    public Aula criarAula(AulaDto aulaDto, Integer modalidade) throws Exception {
+    }
+
+    public Aula criarAula(AulaDto aulaDto, Integer modalidade) throws Exception {
         // 1. Descodificar o ID do estúdio uma única vez para usar nas validações
         Integer idEstudioDecodificado = idHasher.decode(aulaDto.estudio().id());
 
@@ -429,7 +535,8 @@ public class AulaService {
                 horario.horaFim(),
                 horario.idcriadoPor().id(),
                 horario,
-                estadoAuloService.findbyIdDto(3)
+                estadoAuloService.findbyIdDto(3),
+                null
         );
     }
 
@@ -467,6 +574,7 @@ public class AulaService {
     public void checkAutomaticoExpiradas() throws Exception {
         verificarEAtualizarAulasExpiradas();
     }
+
     @Transactional
     public void verificarEAtualizarAulasExpiradas() throws Exception {
         LocalDateTime limite = LocalDateTime.now().minusHours(48);
@@ -511,9 +619,11 @@ public class AulaService {
 
         return converterParaDto(aulaRepository.save(aula));
     }
+
     @Transactional(rollbackFor = Exception.class)
     public void processarPagamentosAula(Aula aula) throws Exception {
-        // 1. Obter intervenientes (Usando IDs reais já disponíveis na entidade 'aula')
+
+        // 1. Obter intervenientes
         List<AulaProfessore> professores = aulaProfessorService.findAllByAulaId(idHasher.encode(aula.getId()));
         List<AulaAluno> alunosInscritos = aulaAlunoRepository.findAllByAula_Id(aula.getId());
 
@@ -533,45 +643,34 @@ public class AulaService {
 
         BigDecimal valorTotalAula = maiorValorHora.multiply(duracaoHoras);
 
-        // 3. Obter Tipos de Pagamento (Entities)
-        int idTipoAlunoReal = (aula.getIdHorario() != null) ? 1 : 2;
-        TipoPagamento tipoAluno = tipoPagamentoRepository.findById(idTipoAlunoReal)
+        // 3. Tipo de pagamento e label
+        boolean isCoaching = (aula.getIdHorario() == null);
+        int idTipoAluno = isCoaching ? 2 : 1; // 2 = Aula Avulso (coaching), 1 = Aula Fixa
+
+        TipoPagamento tipoAluno = tipoPagamentoRepository.findById(idTipoAluno)
                 .orElseThrow(() -> new Exception("Tipo de pagamento aluno não encontrado"));
 
-        TipoPagamento tipoProf = tipoPagamentoRepository.findById(7)
-                .orElseThrow(() -> new Exception("Tipo de remuneração professor não encontrado"));
+        String label = isCoaching ? "Coaching" : "Aula Fixa";
 
-        String label = (idTipoAlunoReal == 1) ? "Aula Fixa" : "Coaching";
-
-        // 4. Gerar Pagamentos dos Alunos
-        BigDecimal valorPorAluno = valorTotalAula.divide(BigDecimal.valueOf(alunosInscritos.size()), 2, java.math.RoundingMode.HALF_UP);
+        // 4. Gerar pagamentos dos Alunos
+        // - Coaching: cada aluno paga o valor total individualmente
+        //   (quando cada um pagar, o PagamentoService.confirmar() cria automaticamente
+        //    o crédito do professor já liquidado com a taxa da escola aplicada)
+        // - Aula Fixa: custo partilhado dividido pelo número de alunos
+        BigDecimal valorPorAluno = isCoaching
+                ? valorTotalAula
+                : valorTotalAula.divide(BigDecimal.valueOf(alunosInscritos.size()), 2, java.math.RoundingMode.HALF_UP);
 
         for (AulaAluno vinculo : alunosInscritos) {
             Pagamento p = new Pagamento();
             p.setValorPagamento(valorPorAluno);
             p.setDescricao("Pagamento " + label + ": " + aula.getDataAula());
             p.setPago(false);
+            p.setDataConfirmado(null);
             p.setDataPagamento(LocalDate.now());
             p.setAula(aula);
-            p.setIdutilizador(vinculo.getAluno()); // Atribuição direta da Entity
+            p.setIdutilizador(vinculo.getAluno());
             p.setIdTipoPagamento(tipoAluno);
-
-            pagamentoRepository.save(p);
-        }
-
-        // 5. Gerar Remuneração dos Professores
-        BigDecimal valorPorProf = valorTotalAula.divide(BigDecimal.valueOf(professores.size()), 2, java.math.RoundingMode.HALF_UP);
-
-        for (AulaProfessore vinculo : professores) {
-            Pagamento p = new Pagamento();
-            p.setValorPagamento(valorPorProf);
-            p.setDescricao("Remuneração " + label + ": " + aula.getDataAula());
-            p.setPago(false);
-            p.setDataPagamento(LocalDate.now());
-            p.setAula(aula);
-            p.setIdutilizador(vinculo.getProfessor()); // Atribuição direta da Entity
-            p.setIdTipoPagamento(tipoProf);
-
             pagamentoRepository.save(p);
         }
     }
@@ -620,11 +719,11 @@ public class AulaService {
                     aluno.getId(),
                     "Inscição em aula de coaching",
                     "Nova inscrição para aula de coaching de"+ aulaAluno.getAula().getDataAula() +" das "+
-                        aulaAluno.getAula().getHoraInicio() + " às " + aulaAluno.getAula().getHoraFim()
+                            aulaAluno.getAula().getHoraInicio() + " às " + aulaAluno.getAula().getHoraFim()
                     ,
                     "PEDIDO COACHING",
                     idHasher.encode( aulaAluno.getAula().getId())
-        );
+            );
         }
 
         aulaAlunoRepository.save(aulaAluno);
@@ -654,12 +753,90 @@ public class AulaService {
     public long contarInscritos(String aulaId) {
         return aulaAlunoRepository.countByAulaId(idHasher.decode(aulaId));
     }
+
     public void aplicaSancoes(String alunoId, Aula aula,String marcadopor) throws Exception {
         FaltaDto faltaDto = new FaltaDto(null,idHasher.encode(aula.getId()),alunoId,false,"Cancelamento antes das 48 horas","PENDENTE");
         cancelamentoService.marcarFalta(faltaDto,marcadopor);
         return;
     }
 
+
+    public List<AulaTituloDto> todasAulasPassadasProfessor(String professorId, Pageable pagina) throws Exception {
+        Integer profId = idHasher.decode(professorId);
+        Utilizadore U = utilizadoreRepository.findById(profId)
+                .orElseThrow(() -> new Exception("Professor inexistente"));
+
+        // Obter a data e hora do momento da execução
+        LocalDate hoje = LocalDate.now();
+        LocalTime agora = LocalTime.now();
+
+        return aulaRepository.findAllProfessorPassadas(profId, hoje, agora, pagina)
+                .stream()
+                .map(this::converterParaAulaTituloDto)
+                .toList();
+    }
+    /**
+     * Devolve a lista de todos os alunos que devem frequentar uma aula.
+     * Verifica se a aula é de Turma (via Horário) ou de Coaching (Inscrição direta).
+     *
+     * @param aulaIdHash ID hasheado da aula
+     * @return Lista de AlunoResumoDto (ou Aluno)
+     */
+    public List<UtilizadoreResumoDto> obterAlunosDaAula(String aulaIdHash) throws Exception {
+        Aula aula = bucarPorId(aulaIdHash);
+
+        List<Aluno> listaAlunos;
+
+        // Se idHorario não é nulo, a aula pertence a uma turma (Aula Regular)
+        if (aula.getIdHorario() != null && aula.getIdHorario().getIdturma() != null) {
+            listaAlunos = aulaRepository.findAlunosDaTurmaPorAula(aula.getId());
+        }
+        // Caso contrário, assume-se que é uma aula de marcação direta (Coaching/Privada)
+        else {
+            listaAlunos = aulaRepository.findAlunosInscritosDiretamente(aula.getId());
+        }
+
+        return listaAlunos.stream()
+                .map(aluno -> new UtilizadoreResumoDto(
+                        idHasher.encode(aluno.getId()),
+                        aluno.getNome()
+                ))
+                .toList();
+    }
+
+
+    public List<AulaTituloDto> buscarHorarioCompletoDoProfessor(String professorId, int offset) throws Exception {
+        Integer profId = idHasher.decode(professorId);
+        professorService.findById(professorId);
+
+        LocalDate inicioSemana = calcularInicioSemana(offset);
+        LocalDate fimSemana = inicioSemana.plusDays(6);
+
+        List<Aula> aulasRegulares = aulaRepository.findAulasByProfessorAndSemana(profId, inicioSemana, fimSemana)
+                .stream()
+                .filter(a -> !(a instanceof AulaCoaching))  // ← excluir coaching
+                .toList();
+
+        List<AulaCoaching> aulasCoaching = aulaCoachingRepository
+                .buscarAulaCoachingConfirmadasPorProfessorESemana(profId, inicioSemana, fimSemana);
+
+        List<AulaTituloDto> horario = new ArrayList<>();
+        aulasRegulares.forEach(a -> horario.add(converterParaAulaTituloDto(a)));
+        aulasCoaching.forEach(a -> horario.add(converterParaAulaTituloDto(a)));
+
+        return horario.stream()
+                .sorted((a, b) -> {
+                    int c = a.dataAula().compareTo(b.dataAula());
+                    return c != 0 ? c : a.horaInicio().compareTo(b.horaInicio());
+                })
+                .toList();
+    }
+
+    public List<AulaTituloDto> findAulasByDataAndUtilizador(LocalDate data, String utilizadorId) {
+        // Substitui findByDataEAluno pela nova query inteligente
+        return aulaRepository.findByDataEUtilizadorGeral(data, idHasher.decode(utilizadorId))
+                .stream()
+                .map(this::converterParaAulaTituloDto)
+                .toList();
+    }
 }
-
-

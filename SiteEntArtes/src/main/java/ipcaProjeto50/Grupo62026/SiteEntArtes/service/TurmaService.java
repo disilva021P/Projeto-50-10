@@ -1,10 +1,7 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.service;
 
 import ipcaProjeto50.Grupo62026.SiteEntArtes.Helper.IdHasher;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.ModalidadeDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.PagamentoDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.TurmaDto;
-import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.UtilizadoreResumoDto;
+import ipcaProjeto50.Grupo62026.SiteEntArtes.dto.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.*;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.TipoPagamentoRepository;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.repository.TurmaAlunoRepository;
@@ -41,10 +38,12 @@ public class TurmaService {
         Turma novaTurma = new Turma();
         novaTurma.setNome(dto.nome());
         novaTurma.setMensalidade(dto.mensalidade());
-
+        novaTurma.setAtivo(dto.ativo());
         // Buscar a modalidade usando o Service existente
         if (dto.modalidade() != null && dto.modalidade().id() != null) {
             novaTurma.setModalidade(modalidadeService.findById(dto.modalidade().id()));
+        }else{
+            throw new Exception("Modalidade nulla");
         }
 
         return converterTurmaParaDto(turmaRepository.save(novaTurma));
@@ -56,7 +55,7 @@ public class TurmaService {
 
         turmaExistente.setNome(dto.nome());
         turmaExistente.setMensalidade(dto.mensalidade());
-
+        turmaExistente.setAtivo(dto.ativo());
         if (dto.modalidade() != null && dto.modalidade().id() != null) {
             turmaExistente.setModalidade(modalidadeService.findById(dto.modalidade().id()));
         }
@@ -77,7 +76,8 @@ public class TurmaService {
                 idHasher.encode(turma.getId()),
                 turma.getNome(),
                 turma.getMensalidade(),
-                modalidadeService.converterParaDto(turma.getModalidade())
+                modalidadeService.converterParaDto(turma.getModalidade()),
+                turma.getAtivo()
         );
     }
     @Scheduled(cron = "0 0 0 1 * *") // Executa no dia 1 de cada mês
@@ -100,22 +100,30 @@ public class TurmaService {
                 );
 
                 // 3. Instanciar o Record (Imutável - valores passados no construtor)
-                PagamentoDto novaMensalidade = new PagamentoDto(
-                        null,                                        // id (gerado pela DB)
-                        turmaaluno.getTurma().getMensalidade(),        // valor (BigDecimal)
-                        false,                                       // pago
-                        "Mensalidade de " + LocalDate.now().getMonth(), // descricao
-                        tipoPagamentoHashed,                         // idTipoPagamento (String)
-                        "Mensalidade Turma",                         // tipoPagamentoNome
-                        null,                                        // aula (sem aula específica)
-                        LocalDate.now(),                             // dataPagamento
-                        null,                                        // dataConfirmado
-                        resumo                                       // utilizadoreResumoDto
-                );
-                pagamentoService.criar(novaMensalidade);
+                pagamentoService.criar(new CriarPagamentoDto(
+                        turmaaluno.getTurma().getMensalidade(),
+                        "Mensalidade de " + LocalDate.now().getMonth(),
+                        alunoIdHashed,          // a hash do utilizador que já tens no contexto
+                        tipoPagamentoHashed,    // a hash do tipo que já tens
+                        null,                   // sem aula
+                        LocalDate.now()
+                ));
             } catch (Exception e) {
                 // Log de erro para não interromper o loop dos outros alunos
                 System.err.println("Erro ao gerar pagamento para aluno " + turmaaluno.getId() + ": " + e.getMessage());
             }
         }
-    }}
+    }
+
+    public TurmaDto toggleAtivo(String id) throws Exception {
+        TurmaDto turma = findById(id);
+        return update(id,new TurmaDto(
+                id,
+                turma.nome(),
+                turma.mensalidade(),
+                turma.modalidade(),
+                !turma.ativo()
+        ));
+
+    }
+}

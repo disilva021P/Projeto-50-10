@@ -20,8 +20,6 @@ public class MensagensGrupoService {
 
     public List<MensagenPreviewDto> buscarPreviewGrupos(String userIdHashed) {
         Integer userId = idHasher.decode(userIdHashed);
-
-        // Usamos a query que criámos no repository para buscar a última mensagem
         // de cada grupo onde o utilizador é membro
         List<MensagensGrupo> ultimas = mensagensGrupoRepository.findUltimasMensagensPorMembro(userId);
 
@@ -39,7 +37,7 @@ public class MensagensGrupoService {
                 mensagem.getGrupo().getNome(),
                 mensagem.getConteudo(),
                 mensagem.getEnviadaEm(),
-                true // isGroup
+                true, // isTurma/isGroup
+                idHasher.encode(mensagem.getGrupo().getCriador().getId())
         );
-    }
-}
+    }}

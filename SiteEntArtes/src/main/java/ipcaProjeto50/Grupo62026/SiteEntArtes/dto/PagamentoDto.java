@@ -13,8 +13,22 @@ import java.time.LocalDate;
 /**
  * DTO for {@link ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Pagamento}
  */
-public record PagamentoDto(String id, BigDecimal valorPagamento, Boolean pago, String descricao,
-                           String idTipoPagamento,String tipoPagamentoNome , AulaDto aula,
-                            LocalDate dataPagamento,
-                           LocalDate dataConfirmado, UtilizadoreResumoDto utilizadoreResumoDto) implements Serializable {
-}
+public record PagamentoDto(
+        String id,
+        BigDecimal valorPagamento,
+        Boolean pago,
+        String descricao,
+        String idTipoPagamento,
+        String tipoPagamentoNome,
+        AulaDto aula,
+
+        @JsonDeserialize(using = LocalDateDeserializer.class)
+        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+        LocalDate dataPagamento,
+
+        @JsonDeserialize(using = LocalDateDeserializer.class)
+        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+        LocalDate dataConfirmado,
+
+        UtilizadoreResumoDto utilizadoreResumoDto
+) implements Serializable {}

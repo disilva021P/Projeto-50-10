@@ -21,6 +21,13 @@ public interface AulaCoachingRepository extends JpaRepository<AulaCoaching,Integ
     @Query("SELECT ac FROM AulaCoaching ac " +
             "JOIN Aula a ON ac.id = a.id " +
             "JOIN AulaAluno aa ON aa.aula.id = a.id " +
+            "WHERE aa.aluno.id =:alunoId "+
+            "AND ac.estado.id > 2 "
+    )
+    List<AulaCoaching> buscarAulaCoachingPorAlunoSemPedententes(@Param("alunoId") Integer alunoId);
+    @Query("SELECT ac FROM AulaCoaching ac " +
+            "JOIN Aula a ON ac.id = a.id " +
+            "JOIN AulaAluno aa ON aa.aula.id = a.id " +
             "WHERE aa.aluno.id =:alunoId")
     Page<AulaCoaching> buscarAulaCoachingPorAluno(@Param("alunoId") Integer alunoId, Pageable pageable);
     @Query("SELECT a FROM AulaCoaching a " +
@@ -43,29 +50,55 @@ public interface AulaCoachingRepository extends JpaRepository<AulaCoaching,Integ
                                                         @Param("fim") LocalDate fim, Pageable pageable);
 
     @Query("SELECT ac FROM AulaCoaching ac " +
-            "WHERE ac.estado.id = 3 " +
+            "WHERE ac.estado.id = :estadoAgendado " +          // ← parâmetro
             "AND ac.dataAula BETWEEN :inicio AND :fim " +
             "AND (SELECT COUNT(aa) FROM AulaAluno aa WHERE aa.aula.id = ac.id) < ac.maxAlunos " +
-            "AND NOT EXISTS (SELECT 1 FROM AulaAluno aa2 WHERE aa2.aula.id = ac.id AND aa2.aluno.id = :alunoId) " + // O parâmetro está aqui...
+            "AND NOT EXISTS (SELECT 1 FROM AulaAluno aa2 WHERE aa2.aula.id = ac.id AND aa2.aluno.id = :alunoId) " +
             "ORDER BY ac.dataAula ASC, ac.horaInicio ASC")
     Page<AulaCoaching> buscaAulasCoachingDisponiveis(
             @Param("inicio") LocalDate inicio,
             @Param("fim") LocalDate fim,
-            @Param("alunoId") Integer alunoId, // ... mas faltava esta linha!
+            @Param("alunoId") Integer alunoId,
+            @Param("estadoAgendado") Integer estadoAgendado,
             Pageable pageable
     );
 
     @Query("SELECT ac FROM AulaCoaching ac " +
-            "WHERE ac.estado.id = 3 AND ac.modalidade.id = :modalidadeId AND " +
-            " ac.dataAula BETWEEN :inicio AND :fim " +
+            "WHERE ac.estado.id = :estadoAgendado " +          // ← parâmetro
+            "AND ac.modalidade.id = :modalidadeId " +
+            "AND ac.dataAula BETWEEN :inicio AND :fim " +
             "AND (SELECT COUNT(aa) FROM AulaAluno aa WHERE aa.aula.id = ac.id) < ac.maxAlunos " +
-            "AND NOT EXISTS (SELECT 1 FROM AulaAluno aa2 WHERE aa2.aula.id = ac.id AND aa2.aluno.id = :alunoId) " + // E aqui também...
+            "AND NOT EXISTS (SELECT 1 FROM AulaAluno aa2 WHERE aa2.aula.id = ac.id AND aa2.aluno.id = :alunoId) " +
             "ORDER BY ac.dataAula ASC, ac.horaInicio ASC")
     Page<AulaCoaching> buscaAulasCoachingDisponiveilPorModalidade(
             @Param("inicio") LocalDate inicio,
             @Param("fim") LocalDate fim,
             @Param("modalidadeId") Integer id,
-            @Param("alunoId") Integer alunoId, // ... e falta aqui também!
+            @Param("alunoId") Integer alunoId,
+            @Param("estadoAgendado") Integer estadoAgendado,   // ← novo param
+            Pageable pageable
+    );
+
+    @Query("SELECT ac FROM AulaCoaching ac " +
+            "JOIN AulaProfessore ap ON ap.aula.id = ac.id " +
+            "WHERE ap.professor.id = :profId " +
+            "AND ac.dataAula BETWEEN :inicio AND :fim " +
+            "AND ac.estado.id NOT IN (2)")
+    List<AulaCoaching> buscarAulaCoachingConfirmadasPorProfessorESemana(
+            @Param("profId") Integer profId,
+            @Param("inicio") LocalDate inicio,
+            @Param("fim") LocalDate fim
+    );
+
+    @Query("SELECT a FROM AulaCoaching a " +
+            "JOIN AulaProfessore ap ON ap.aula.id = a.id " +
+            "WHERE ap.professor.id = :idDecoded " +
+            "AND a.estado.id = 3 " +        // 3 = AGENDADO (confirmado pelo professor, aguarda realização)
+            "AND a.dataAula >= :hoje " +    // só futuros (ainda por realizar)
+            "ORDER BY a.dataAula ASC")
+    Page<AulaCoaching> buscarAulaCoachingAgendadosPorProfessor(
+            @Param("idDecoded") Integer idDecoded,
+            @Param("hoje") LocalDate hoje,
             Pageable pageable
     );
 }

@@ -7,5 +7,4 @@ import java.io.Serializable;
 /**
  * DTO for {@link Modalidade}
  */
-public record ModalidadeDto(String id, String nome) implements Serializable {
-}
+public record ModalidadeDto(String id, String nome, String descricao) implements Serializable {}

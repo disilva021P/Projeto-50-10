@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,8 +15,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/horario")
@@ -41,6 +42,15 @@ public class HorarioController {
     // =========================================================================
     // region ALUNO
     // =========================================================================
+    @GetMapping("/semanaCompleta")
+    @PreAuthorize("hasAuthority('ALUNO')")
+    public ResponseEntity<?> buscarHorarioCompletoDoAluno(@RequestParam(name = "offset", defaultValue = "0") int offset) {
+        try {
+            return ResponseEntity.ok(aulaService.buscarHorarioCompletoDoAluno(getUserId(), offset));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao buscar horário semanal: " + e.getMessage());
+        }
+    }
 
     @GetMapping("/semana")
     @PreAuthorize("hasAuthority('ALUNO')")
@@ -122,6 +132,15 @@ public class HorarioController {
     // region ENCARREGADO
     // =========================================================================
 
+    @GetMapping("/semanaCompleta/educando/{educandoId}")
+    @PreAuthorize("hasAuthority('ALUNO')")
+    public ResponseEntity<?> buscarHorarioCompletoDoAluno(@PathVariable String educandoId, @RequestParam(name = "offset", defaultValue = "0") int offset) {
+        try {
+            return ResponseEntity.ok(aulaService.buscarHorarioCompletoDoAluno(educandoId, offset));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao buscar horário semanal: " + e.getMessage());
+        }
+    }
     @GetMapping("/semana/educando/{educandoId}")
     @PreAuthorize("hasAuthority('ENCARREGADO')")
     public ResponseEntity<?> horarioSemanaEducando(
@@ -142,7 +161,7 @@ public class HorarioController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size) {
         try {
-                utilizadorService.verificaPermissaoEducando(educandoId, getUserId());
+            utilizadorService.verificaPermissaoEducando(educandoId, getUserId());
             return ResponseEntity.ok(aulaCoachingService.findAllbyAlunoIdPage(educandoId, PageRequest.of(page, size)));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -165,6 +184,7 @@ public class HorarioController {
                     .body("Erro ao buscar coachings disponíveis: " + e.getMessage());
         }
     }
+
 
     @PostMapping("/marcarcoaching/educando/{educandoId}")
     @PreAuthorize("hasAuthority('ENCARREGADO')")
@@ -230,10 +250,10 @@ public class HorarioController {
     // =========================================================================
     @GetMapping("/professor/horario")
     @PreAuthorize("hasAuthority('PROFESSOR')")
-    public List<AulaDto> getHorarioProfessor(
+    public List<AulaTituloDto> getHorarioProfessor(
             @RequestParam(name = "offset", defaultValue = "0") int offset
     ) throws Exception {
-        return aulaService.buscarAulasProfessorSemana(getUserId(), offset);
+        return aulaService.buscarHorarioCompletoDoProfessor(getUserId(), offset);
     }
 
     @GetMapping("/professor/coaching/pendentes")
@@ -432,5 +452,49 @@ public class HorarioController {
         }
     }
 
+    @GetMapping("/professor/todasaulasPassadas")
+    @PreAuthorize("hasAuthority('PROFESSOR')")
+    public ResponseEntity<List<AulaTituloDto>> getTodasAulasProfessor(
+            Pageable pagina) {
+        try {
+            List<AulaTituloDto> aulas = aulaService.todasAulasPassadasProfessor(            getUserId(), pagina);
+            return ResponseEntity.ok(aulas);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
 
+    /**
+     * Obtém a lista de alunos presentes numa aula (seja via Turma ou Inscrição Direta/Coaching).
+     * Exemplo de chamada: GET /api/aulas/hashid_da_aula/alunos
+     */
+    @GetMapping("/{aulaId}/alunos")
+    public ResponseEntity<List<UtilizadoreResumoDto>> getAlunosDaAula(
+            @PathVariable String aulaId) {
+        try {
+            List<UtilizadoreResumoDto> alunos = aulaService.obterAlunosDaAula(aulaId);
+            return ResponseEntity.ok(alunos);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+    @GetMapping("/aulas/por-data")
+    public ResponseEntity<List<AulaTituloDto>> getAulasPorDataEUtilizador(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data,
+            @RequestParam String utilizadorId
+    ) {
+        List<AulaTituloDto> aulas = aulaService.findAulasByDataAndUtilizador(data, utilizadorId);
+        return ResponseEntity.ok(aulas);
+    }
+
+    @GetMapping("/professor/coaching/agendados")
+    @PreAuthorize("hasAuthority('PROFESSOR')")
+    public ResponseEntity<?> coachingAgendados(@PageableDefault(page = 0, size = 50) Pageable pageable) {
+        try {
+            return ResponseEntity.ok(aulaCoachingService.findAgendadosByProfessorId(getUserId(), pageable));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erro ao buscar coachings agendados: " + e.getMessage());
+        }
+    }
 }

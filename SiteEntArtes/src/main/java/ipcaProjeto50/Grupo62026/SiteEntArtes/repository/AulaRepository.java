@@ -1,5 +1,6 @@
 package ipcaProjeto50.Grupo62026.SiteEntArtes.repository;
 
+import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Aluno;
 import ipcaProjeto50.Grupo62026.SiteEntArtes.entity.Aula;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,10 +22,9 @@ public interface AulaRepository extends JpaRepository<Aula, Integer> {
 
     List<Aula> findByDataAula(LocalDate data);
 
-    @Query(value = "SELECT a.* FROM aulas a " +
-            "JOIN aula_alunos al ON a.id = al.aula_id " +
-            "WHERE al.aluno_id =:id AND a.data_aula =:data",
-            nativeQuery = true)
+    @Query("SELECT a FROM Aula a " +
+            "JOIN AulaAluno aa ON a.id = aa.aula.id " +
+            "WHERE aa.aluno.id = :id AND a.dataAula = :data")
     List<Aula> findByDataEAluno(
             @Param("data") LocalDate data,
             @Param("id") Integer id
@@ -105,4 +106,68 @@ public interface AulaRepository extends JpaRepository<Aula, Integer> {
     @Modifying
     @Transactional
     @Query("DELETE FROM Aula a WHERE a.idHorario.id = :idHorario AND a.dataAula >= :hoje")
-    void deleteFutureByHorarioId(@Param("idHorario") Integer idHorario, @Param("hoje") LocalDate hoje);}
+    void deleteFutureByHorarioId(@Param("idHorario") Integer idHorario, @Param("hoje") LocalDate hoje);
+
+    @Query("SELECT em.estudio.id " +
+            "FROM EstudioModalidade em " +
+            "LEFT JOIN Aula a ON a.estudio.id = em.estudio.id AND a.dataAula = :data " +
+            "WHERE em.modalidade.id = :modalidadeId " +
+            "GROUP BY em.estudio.id " +
+            "ORDER BY COUNT(a.id) ASC")
+    List<Integer> findEstudiosPorModalidadeOrdenadosPorAulasDoDia(
+            @Param("modalidadeId") Integer modalidadeId,
+            @Param("data") LocalDate data
+    );
+    @Query("SELECT DISTINCT a FROM Aula a " +
+            // Caminho 1: Aulas por Turma (Regulares)
+            "LEFT JOIN a.idHorario h " +
+            "LEFT JOIN h.idturma t " +
+            "LEFT JOIN TurmaAluno ta ON ta.turma.id = t.id " +
+            // Caminho 2: Aulas com marcação direta (Coaching / Privadas)
+            "LEFT JOIN AulaAluno al ON al.aula.id = a.id " +
+            // Filtros
+            "WHERE (ta.aluno.id = :alunoId OR al.aluno.id = :alunoId) " +
+            "AND a.dataAula BETWEEN :inicio AND :fim " +
+            "ORDER BY a.dataAula ASC, a.horaInicio ASC")
+    List<Aula> buscarHorarioCompletoDoAluno(
+            @Param("alunoId") Integer alunoId,
+            @Param("inicio") LocalDate inicio,
+            @Param("fim") LocalDate fim
+    );
+    @Query("SELECT a FROM Aula a " +
+            "JOIN AulaProfessore ap ON ap.aula.id = a.id " +
+            "WHERE ap.professor.id = :id " +
+            "AND (a.dataAula < :dataAtual OR (a.dataAula = :dataAtual AND a.horaFim < :horaAtual))")
+    List<Aula> findAllProfessorPassadas(
+            @Param("id") Integer id,
+            @Param("dataAtual") LocalDate dataAtual,
+            @Param("horaAtual") LocalTime horaAtual,
+            Pageable pageable
+    );
+    @Query("SELECT aa.aluno FROM AulaAluno aa WHERE aa.aula.id = :aulaId")
+    List<Aluno> findAlunosInscritosDiretamente(@Param("aulaId") Integer aulaId);
+
+    // 2. Devolve todos os alunos da Turma associada a uma determinada Aula
+    // (Útil para aulas de grupo/regulares onde os alunos pertencem à turma do horário)
+    @Query("SELECT ta.aluno FROM TurmaAluno ta " +
+            "JOIN Aula a ON a.idHorario.idturma.id = ta.turma.id " +
+            "WHERE a.id = :aulaId")
+    List<Aluno> findAlunosDaTurmaPorAula(@Param("aulaId") Integer aulaId);
+
+    @Query("SELECT DISTINCT a FROM Aula a " +
+            // Caminho 1: Alunos por inscrição direta
+            "LEFT JOIN AulaAluno aa ON a.id = aa.aula.id " +
+            // Caminho 2: Alunos por Turma
+            "LEFT JOIN a.idHorario h " +
+            "LEFT JOIN h.idturma t " +
+            "LEFT JOIN TurmaAluno ta ON ta.turma.id = t.id " +
+            // Caminho 3: Professores associados à aula
+            "LEFT JOIN AulaProfessore ap ON ap.aula.id = a.id " +
+            // Filtros: Traz a aula se a data bater E o ID for do aluno (direto/turma) OU se for o professor da aula
+            "WHERE a.dataAula = :data " +
+            "AND (aa.aluno.id = :id OR ta.aluno.id = :id OR ap.professor.id = :id)")
+    List<Aula> findByDataEUtilizadorGeral(
+            @Param("data") LocalDate data,
+            @Param("id") Integer id
+    );
+}

@@ -9,5 +9,5 @@ import java.math.BigDecimal;
  * DTO for {@link Turma}
  */
 public record TurmaDto(String id, String nome, BigDecimal mensalidade,
-                       ModalidadeDto modalidade) implements Serializable {
+                       ModalidadeDto modalidade, Boolean ativo) implements Serializable {
 }

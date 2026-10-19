@@ -112,9 +112,10 @@ public class EventosController
     @PostMapping("/{eventoId}/inscrever")
     public ResponseEntity<Void> inscrever(
             @PathVariable String eventoId,
-            @RequestParam String utilizadorId
+            @RequestParam String utilizadorId,
+            @RequestParam(defaultValue = "false") boolean pago
     ) throws Exception {
-        eventoService.inscreverParticipante(eventoId, utilizadorId);
+        eventoService.inscreverParticipante(eventoId, utilizadorId, pago);
         return ResponseEntity.ok().build();
     }
 

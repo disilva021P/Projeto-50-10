@@ -40,7 +40,9 @@ public interface AulaProfessoreRepository extends JpaRepository<AulaProfessore, 
     @Modifying
     @Query("DELETE FROM AulaProfessore ap WHERE ap.aula.id = :idAula")
     void deleteAllByAula_Id(@Param("idAula") Integer idAula);
-    List<AulaProfessore> findAllByAulaId(Integer id);
+
+    @Query("SELECT ap FROM AulaProfessore ap WHERE ap.aula.id = :id")
+    List<AulaProfessore> findAllByAulaId(@Param("id") Integer id);
 
     @Modifying // Essencial para DELETE ou UPDATE
     @Transactional

@@ -34,55 +34,67 @@ public class PagamentoService {
     private final TipoPagamentoRepository tipoPagamentoRepository;
     private final AulaRepository aulaRepository;
 
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
+
     // Listar todos os pagamentos ,
     public List<PagamentoDto> listarTodos() {
         return pagamentoRepository.findAll().stream().map(this::converterParaDto).toList();
     }
 
-    // Procurar uma pagamento por ID
+    // Procurar um pagamento por ID
     public Optional<PagamentoDto> buscarPorId(String id) {
         return pagamentoRepository.findById(idHasher.decode(id)).map(this::converterParaDto);
     }
 
     // Criar pagamento
     @Transactional
-    public PagamentoDto criar(PagamentoDto dto) throws Exception {
+    public PagamentoDto criar(CriarPagamentoDto dto) throws Exception { // <--- Alterado aqui
 
-        if(dto.dataPagamento()!=null && dto.dataPagamento().isBefore(LocalDate.now())){
+        if(dto.dataPagamento() != null && dto.dataPagamento().isBefore(LocalDate.now())){
             throw new Exception("Só pode marcar pagamentos futuros");
         }
         if (dto.valorPagamento().compareTo(BigDecimal.ZERO) <= 0) {
             throw new Exception("Valor não pode ser 0 ou menor que 0");
         }
-        //  Criamos uma Entity vazia
+
+        // Criamos uma Entity vazia
         Pagamento entidade = new Pagamento();
 
-        String idHashed = dto.utilizadoreResumoDto().id();
+        // No CriarPagamentoDto o ID do utilizador vem direto na raiz
+        String idHashed = dto.idUtilizador();
         Integer idReal = idHasher.decode(idHashed);
 
         String idHashed2 = dto.idTipoPagamento();
-        Integer idReal2= idHasher.decode(idHashed2);
+        Integer idReal2 = idHasher.decode(idHashed2);
 
         Utilizadore donoDoPagamento = utilizadoreRepository.findById(idReal)
                 .orElseThrow(() -> new Exception("Utilizador nao encontrado"));
-        TipoPagamento tipoPagamento= tipoPagamentoRepository.findById(idReal2)
+        TipoPagamento tipoPagamento = tipoPagamentoRepository.findById(idReal2)
                 .orElseThrow(() -> new Exception("Tipo nao encontrado"));
-        Aula aula=null;
 
-        if(dto.id()!=null)aula = aulaRepository.findById(idHasher.decode( dto.id())).orElseThrow(()->new Exception("Aula não encontrada"));
-        //  Passamos os dados do DTO (que veio do JS) para a Entity
+        Aula aula = null;
+        if (dto.idAula() != null && !dto.idAula().isBlank()) {
+            aula = aulaRepository.findById(idHasher.decode(dto.idAula()))
+                    .orElseThrow(() -> new Exception("Aula não encontrada"));
+        }
+
         entidade.setValorPagamento(dto.valorPagamento());
         entidade.setDescricao(dto.descricao());
-        entidade.setPago(false); // Por defeito, ninguém começa com a conta paga
         entidade.setDataPagamento(dto.dataPagamento() != null ? dto.dataPagamento() : LocalDate.now());
         entidade.setIdTipoPagamento(tipoPagamento);
         entidade.setAula(aula);
-
         entidade.setIdutilizador(donoDoPagamento);
-        //  Mandamos o Repository gravar a Entity na BD
+
+        // Se for tipo "Pagamento" (a professores), fica automaticamente liquidado
+        boolean isPagamentoProfessor = tipoPagamento.getTipoPagamento().equalsIgnoreCase("Pagamento");
+        entidade.setPago(isPagamentoProfessor);
+        entidade.setDataConfirmado(isPagamentoProfessor ? LocalDate.now() : null);
+
+        // Mandamos o Repository gravar a Entity na BD
         Pagamento gravado = pagamentoRepository.save(entidade);
 
-        //  Transformamos de volta em DTO para responder ao JS
+        // Transformamos de volta em DTO completo para responder ao Controller
         return converterParaDto(gravado);
     }
 
@@ -125,12 +137,116 @@ public class PagamentoService {
         Pagamento pagamento = pagamentoRepository.findById(idReal)
                 .orElseThrow(() -> new Exception("Pagamento não encontrado"));
 
+        if (pagamento.getPago()) {
+            throw new Exception("O Pagamento já se encontra liquidado.");
+        }
+
         //  Fazemos a alteração (o "tempero" do cozinheiro)
         pagamento.setPago(true);
         pagamento.setDataConfirmado(LocalDate.now());
 
         //  Guardamos a Entity alterada
         Pagamento pagamentoGuardado = pagamentoRepository.save(pagamento);
+
+        // ==========================================================================================
+        // AUTOMAÇÃO FINANCEIRA: Divisão de Honorários (Professor + Retenção Coordenação)
+        // ==========================================================================================
+        try {
+            // Verificamos se o pagamento liquidado é do tipo "Aula Avulso" (ID=2) e se tem uma aula associada
+            if (pagamentoGuardado.getIdTipoPagamento() != null &&
+                    pagamentoGuardado.getIdTipoPagamento().getId() == 2 &&
+                    pagamentoGuardado.getAula() != null) {
+
+                Integer aulaId = pagamentoGuardado.getAula().getId();
+
+                // 1. Procurar o professor associado a esta aula através da tabela aula_professores
+                Utilizadore professorDocente = null;
+                try {
+                    professorDocente = entityManager.createQuery(
+                                    "SELECT ap.professor FROM AulaProfessore ap WHERE ap.aula.id = :aulaId", Utilizadore.class)
+                            .setParameter("aulaId", aulaId)
+                            .getResultStream()
+                            .findFirst()
+                            .orElse(null);
+                } catch (Exception e) {
+                    System.err.println("Aviso: Não foi possível localizar o professor associado à aula " + aulaId);
+                }
+
+                // 2. BUSCAR A TAXA DE RETENÇÃO DA ESCOLA (Ex: '20' para 20%)
+                String taxaConfig = "20"; // Fallback se não estiver na BD
+                try {
+                    taxaConfig = entityManager.createQuery(
+                                    "SELECT c.valor FROM Configuracoe c WHERE LOWER(c.nomeConfig) = :nomeConfig", String.class)
+                            .setParameter("nomeConfig", "taxa_coaching_escola")
+                            .getSingleResult();
+                } catch (jakarta.persistence.NoResultException e) {
+                    // Mantém os 20% por defeito
+                }
+
+                java.math.BigDecimal percentagemEscola = new java.math.BigDecimal(taxaConfig.trim());
+                java.math.BigDecimal cemPercento = new java.math.BigDecimal("100");
+
+                // Calcular frações
+                java.math.BigDecimal fatorEscola = percentagemEscola.divide(cemPercento, 4, java.math.RoundingMode.HALF_UP);
+                java.math.BigDecimal fatorProfessor = cemPercento.subtract(percentagemEscola).divide(cemPercento, 4, java.math.RoundingMode.HALF_UP);
+
+                // Valores Absolutos (Ex: Aluno pagou 144.00€)
+                java.math.BigDecimal valorTotalAluno = pagamentoGuardado.getValorPagamento();
+                java.math.BigDecimal valorLucroEscola = valorTotalAluno.multiply(fatorEscola).setScale(2, java.math.RoundingMode.HALF_UP);       // 144 * 0.20 = 28.80€
+                java.math.BigDecimal valorRemuneracaoProfessor = valorTotalAluno.multiply(fatorProfessor).setScale(2, java.math.RoundingMode.HALF_UP); // 144 * 0.80 = 115.20€
+
+                // 3. Procurar os Tipos de Pagamento necessários (ID 7 para Professor, ID 2 ou outro para Receita da Escola)
+                TipoPagamento tipoPagamentoProfessor = entityManager.find(TipoPagamento.class, 7);
+                if (tipoPagamentoProfessor == null) {
+                    throw new Exception("Tipo de pagamento com ID 7 não encontrado na base de dados.");
+                }
+
+                // ─── PARTE A: GRAVAR CRÉDITO DO PROFESSOR (Se ele existir) ───
+                if (professorDocente != null) {
+                    Pagamento creditoProfessor = new Pagamento();
+                    creditoProfessor.setValorPagamento(valorRemuneracaoProfessor);
+                    creditoProfessor.setPago(true);
+                    creditoProfessor.setDataConfirmado(LocalDate.now());
+                    creditoProfessor.setDescricao(String.format(
+                            "Honorários Recebidos: Sessão Coaching de Aluno %s (Valor aluno: %.2f€ | Retenção Escola: %s%%)",
+                            pagamentoGuardado.getIdutilizador().getNome(), valorTotalAluno, taxaConfig));
+                    creditoProfessor.setIdutilizador(professorDocente);
+                    creditoProfessor.setIdTipoPagamento(tipoPagamentoProfessor);
+                    creditoProfessor.setDataPagamento(LocalDate.now());
+                    creditoProfessor.setAula(pagamentoGuardado.getAula());
+
+                    entityManager.persist(creditoProfessor);
+                }
+
+                // ─── PARTE B: GRAVAR MARGEM/LUCRO DA COORDENAÇÃO (ID = 1) ───
+                // Buscamos o utilizador da Coordenação (ID 1) da base de dados
+                Utilizadore coordenacao = entityManager.find(Utilizadore.class, 1);
+                if (coordenacao != null) {
+                    Pagamento receitaEscola = new Pagamento();
+                    receitaEscola.setValorPagamento(valorLucroEscola); // Guarda os 28.80€
+                    receitaEscola.setPago(true); // Fica imediatamente como liquidado
+                    receitaEscola.setDataConfirmado(LocalDate.now());
+                    receitaEscola.setDescricao(String.format(
+                            "Margem de Retenção Escola: Sessão Coaching de Aluno %s (Valor total: %.2f€ | Retido: %s%%)",
+                            pagamentoGuardado.getIdutilizador().getNome(), valorTotalAluno, taxaConfig));
+
+                    receitaEscola.setIdutilizador(coordenacao); // Associa à conta da Coordenação (ID 1)
+                    receitaEscola.setIdTipoPagamento(pagamentoGuardado.getIdTipoPagamento()); // Mantém como Tipo ID 2 (Aula Avulso) ou o que preferires
+                    receitaEscola.setDataPagamento(LocalDate.now());
+                    receitaEscola.setAula(pagamentoGuardado.getAula());
+
+                    entityManager.persist(receitaEscola);
+                }
+
+                entityManager.flush();
+            }
+        } catch (Exception e) {
+            System.err.println("Erro crítico na divisão automática de honorários: " + e.getMessage());
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Erro ao processar divisão de honorários com a coordenação: " + e.getMessage());
+        }
+        // ==========================================================================================
 
         //  TRANSFORMAMOS a Entity em DTO antes de enviar para o Controller
         return converterParaDto(pagamentoGuardado);
@@ -169,7 +285,7 @@ public class PagamentoService {
             // 1. Criar os DTOs de suporte (se necessário)
 // Se o pagamento não precisar dos detalhes do estúdio ou estado, podes passar null
             EstudioDto estudioDto = (aula.getEstudio() != null) ?
-                    new EstudioDto(idHasher.encode(aula.getEstudio().getId()), aula.getEstudio().getNome(),aula.getEstudio().getCapacidade()) : null;
+                    new EstudioDto(idHasher.encode(aula.getEstudio().getId()), aula.getEstudio().getNome(),aula.getEstudio().getCapacidade(), aula.getEstudio().getNotas()) : null;
 
             EstadoAulaDto estadoDto = (aula.getEstado() != null) ?
                     new EstadoAulaDto(idHasher.encode(aula.getEstado().getId()), aula.getEstado().getEstado()) : null;
@@ -184,7 +300,8 @@ public class PagamentoService {
                     aula.getHoraFim(),             // horaFim
                     idHasher.encode( aula.getCriadoPor().getId()),           // criadoPo (ajusta para o nome correto do campo na Entity)
                     null,                          // idHorario (HorarioTurmaDto - opcional aqui)
-                    estadoDto                      // estado
+                    estadoDto,                      // estado
+                    null                            // notas
             );
             return new PagamentoDto(
                     idHasher.encode(pagamento.getId()), // ID seguro para o JS
@@ -251,8 +368,6 @@ public class PagamentoService {
         );
     }
 
-
-
     public String escreverPagamentosCsv( List<PagamentoDto> pagamentos) {
         StringBuilder sb = new StringBuilder();
 
@@ -279,6 +394,7 @@ public class PagamentoService {
 
         return escreverPagamentosCsv(dtos);
     }
+
     public AlunoEstatisiticaDto obterEstatisticasAluno(String idHashed, Integer offset) {
         Integer idReal = idHasher.decode(idHashed);
         LocalDate dataAlvo = LocalDate.now().plusMonths(offset);

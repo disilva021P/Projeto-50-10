@@ -61,7 +61,6 @@ public class AulaFixaService {
     public HorarioTurma update(String idHashed, HorarioTurmaDto dadosAtualizados) throws Exception {
         Integer idDecoded = idHasher.decode(idHashed);
 
-        // Verificamos se o horário existe antes de tentar atualizar
         return horarioFixoRepository.findById(idDecoded)
                 .map(horarioExistente -> {
                     horarioExistente.setDataInicio(dadosAtualizados.dataInicio());
@@ -72,14 +71,20 @@ public class AulaFixaService {
                     horarioExistente.setDuracaoMinutos(dadosAtualizados.duracaoMinutos());
                     try {
                         horarioExistente.setEstudioId(estudioService.findEstudiobyId(idHasher.decode(dadosAtualizados.estudioId().id())));
+                        // ← adicionar isto:
+                        if (dadosAtualizados.idturmaId() != null && dadosAtualizados.idturmaId().id() != null) {
+                            Turma turma = turmaRepository.findById(idHasher.decode(dadosAtualizados.idturmaId().id()))
+                                    .orElseThrow(() -> new RuntimeException("Turma não encontrada"));
+                            horarioExistente.setIdturma(turma);
+                        }
                     } catch (Exception e) {
-                        throw new RuntimeException("Estudio não encontrado");
+                        throw new RuntimeException(e.getMessage());
                     }
-                    // Nota: Turma e Criador normalmente não mudam num update de horário,
                     return horarioFixoRepository.save(horarioExistente);
                 })
                 .orElseThrow(() -> new Exception("Horário não encontrado para atualização"));
     }
+
     @Transactional
     public void delete(String idHashed) throws Exception {
         Integer idDecoded = idHasher.decode(idHashed);

@@ -82,7 +82,22 @@ public class EstudioController {
             return ResponseEntity.badRequest().body("Erro ao associar modalidade: " + e.getMessage());
         }
     }
-
+    @GetMapping("/modalidades/{id}")
+    public ResponseEntity<?> getModalidadesById(@PathVariable String id) {
+        try {
+            return ResponseEntity.ok(estudioService.findModalidadesById(id));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+    @GetMapping("/modalidadesNaoAssociadas/{id}")
+    public ResponseEntity<?> getModalidadesNaoAssociadasById(@PathVariable String id) {
+        try {
+            return ResponseEntity.ok(estudioService.findModalidadesNaoAssociadasById(id));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
     @DeleteMapping("/{estudioId}/modalidade/{modalidadeId}")
     @PreAuthorize("hasAuthority('COORDENACAO')")
     public ResponseEntity<?> removerModalidade(@PathVariable String estudioId, @PathVariable String modalidadeId) {
